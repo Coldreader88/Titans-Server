@@ -24,6 +24,7 @@ namespace TitansUC.LobbyServer
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
         bool autoCreateAccounts;
+        int defaultMoney = 50000;
 
         private List<WorldInfo> worlds = new List<WorldInfo>();
 
@@ -63,6 +64,11 @@ namespace TitansUC.LobbyServer
         /// </summary>
         public bool AutoCreateAccounts { get { return autoCreateAccounts; } }
 
+        /// <summary>
+        /// Money a new character starts with (Java reference: default_money in config.cfg).
+        /// </summary>
+        public int DefaultMoney { get { return defaultMoney; } }
+
         public void Initialization(string path)
         {
             XmlDocument xml = new XmlDocument();
@@ -91,6 +97,9 @@ namespace TitansUC.LobbyServer
                             break;
                         case "autocreateaccounts":
                             this.autoCreateAccounts = bool.Parse(i.InnerText.Trim());
+                            break;
+                        case "defaultmoney":
+                            this.defaultMoney = int.Parse(i.InnerText.Trim());
                             break;
                         case "database":
                             foreach (object l in i.ChildNodes)

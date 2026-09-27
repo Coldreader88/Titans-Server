@@ -47,6 +47,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Database\CharacterDatabase.cs" />
+    <Compile Include="Network\Packets\Client\CM_REQUEST_CREATE_CHARACTER.cs" />
+    <Compile Include="Network\Packets\Client\CM_REQUEST_PLAYER_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_CREATE_CHARACTER.cs" />
+    <Compile Include="Network\Packets\Client\SM_PLAYER_INFO.cs" />
     <Compile Include="Configuration\Configuration.cs" />
     <Compile Include="Database\AccountDatabase.cs" />
     <Compile Include="LobbyServer.cs" />
