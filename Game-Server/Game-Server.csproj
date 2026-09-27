@@ -70,6 +70,10 @@
     <Compile Include="Network\Packets\Client\CM_SERVER_TIME.cs" />
     <Compile Include="Network\Packets\Client\CM_SIMPLE_PLAYER_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_CIRCUIT_ITEM.cs" />
+    <Compile Include="Network\Link\CmsLink.cs" />
+    <Compile Include="Network\Link\CmsLinkHandlers.cs" />
+    <Compile Include="Network\Packets\Client\SM_COMPULSION_MOVE.cs" />
+    <Compile Include="Network\Packets\Client\SM_FORCE_LOGOUT.cs" />
     <Compile Include="Network\Packets\Client\SM_ITEM_INFO.cs" />
     <Compile Include="Network\Packets\Client\SM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\SM_LOGOUT_GAME_FE.cs" />
