@@ -1,56 +1,49 @@
 ﻿using System;
+using System.Linq;
 using System.Xml;
 using SmartEngine.Core;
 using SmartEngine.Network;
 
-namespace TitansUC.GameServer
+namespace TitansUC.CmsServer
 {
     /// <summary>
-    /// Settings from Config/GameServer.xml.
+    /// Settings from Config/CMSServer.xml.
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60;
-        bool checkSessionKey = true;
+        int port = 42016, loglevel = 31, gameLinkPort = 10241;
+        bool checkLoginSession = true;
+        string welcome = string.Empty, gameLinkPassword = string.Empty;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
-        string chatHost = "127.0.0.1", chatPassword = "";
-        int chatPort = 10241;
 
         /// <summary>
-        /// Port the game server listens on (the Lobby sends it to the client, see LobbyServer.xml GameServerPort).
+        /// Port the game client connects to (Java: 24016).
         /// </summary>
         public int Port { get { return port; } }
 
         public int LogLevel { get { return loglevel; } }
 
         /// <summary>
-        /// Only log in characters the Lobby handed over with a matching session key. Turn off only to test
-        /// with a client that skips the Lobby.
+        /// Only accept characters the Lobby handed to the game server in their account's current session.
+        /// The CMS login carries no session key, so this is the only check there is. Turn off only for testing.
         /// </summary>
-        public bool CheckSessionKey { get { return checkSessionKey; } }
+        public bool CheckLoginSession { get { return checkLoginSession; } }
 
         /// <summary>
-        /// How far away other players are visible, in position units. 0 uses the radius the client asks
-        /// for in 0x03 (8000 on foot).
+        /// System message sent to each player after logging in (empty for none). One message per line.
         /// </summary>
-        public int ViewDistance { get { return viewDistance; } }
+        public string Welcome { get { return welcome; } }
 
         /// <summary>
-        /// Seconds between saves of a player's position while they play (they are also saved on logout).
+        /// Port the game servers connect to (GameServer.xml ChatPort).
         /// </summary>
-        public int SaveInterval { get { return saveInterval; } }
+        public int GameLinkPort { get { return gameLinkPort; } }
 
         /// <summary>
-        /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
+        /// Password the game servers must send first (GameServer.xml ChatPassword).
         /// </summary>
-        public string ChatHost { get { return chatHost; } }
-        public int ChatPort { get { return chatPort; } }
-
-        /// <summary>
-        /// Must match CMSServer.xml GameLinkPassword. Empty turns the link off.
-        /// </summary>
-        public string ChatPassword { get { return chatPassword; } }
+        public string GameLinkPassword { get { return gameLinkPassword; } }
 
         public string DBHost { get { return dbHost; } }
         public int DBPort { get { return dbPort; } }
@@ -64,7 +57,7 @@ namespace TitansUC.GameServer
             {
                 var xml = new XmlDocument();
                 xml.Load(path);
-                foreach (object j in xml["GameServer"].ChildNodes)
+                foreach (object j in xml["ChatServer"].ChildNodes)
                 {
                     var i = j as XmlElement;
                     if (i == null) continue;
@@ -76,23 +69,18 @@ namespace TitansUC.GameServer
                         case "loglevel":
                             loglevel = int.Parse(i.InnerText.Trim());
                             break;
-                        case "checksessionkey":
-                            checkSessionKey = bool.Parse(i.InnerText.Trim());
+                        case "checkloginsession":
+                            checkLoginSession = bool.Parse(i.InnerText.Trim());
                             break;
-                        case "viewdistance":
-                            viewDistance = int.Parse(i.InnerText.Trim());
+                        case "welcome":
+                            welcome = string.Join("\n", i.InnerText.Replace("\r", string.Empty).Split('\n')
+                                .Select(l => l.Trim()).Where(l => l.Length > 0));
                             break;
-                        case "saveinterval":
-                            saveInterval = int.Parse(i.InnerText.Trim());
+                        case "gamelinkport":
+                            gameLinkPort = int.Parse(i.InnerText.Trim());
                             break;
-                        case "chathost":
-                            chatHost = i.InnerText.Trim();
-                            break;
-                        case "chatport":
-                            chatPort = int.Parse(i.InnerText.Trim());
-                            break;
-                        case "chatpassword":
-                            chatPassword = i.InnerText;
+                        case "gamelinkpassword":
+                            gameLinkPassword = i.InnerText;
                             break;
                         case "database":
                             foreach (object l in i.ChildNodes)

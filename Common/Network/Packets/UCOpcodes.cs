@@ -62,10 +62,105 @@ namespace Common.Network.Packets
         SM_SERVER_TIME = 0x8013,
         SM_ITEM_INFO = 0x8016,
         SM_REGISTER_PLAYER = 0x8038,
+        SM_COMPULSION_MOVE = 0x803C,
         SM_LOGIN_GAME = 0x8041,
         SM_LOGOUT_GAME_FE = 0x8042,
+        SM_FORCE_LOGOUT = 0x8052,
         SM_LOGOUT_GS = 0x8055,
         SM_PAPER_DOLL_INFO = 0x806F,
         SM_OCCUPATION_CITY_INFO_LIST = 0x8070,
+    }
+
+    /// <summary>
+    /// Opcodes of the CMS server (chat, friends, teams and group chat; C# Cms-Server, Java CMS server on
+    /// 24016). Replies are the request opcode + 0x8000. Layouts come from the official captures in
+    /// UCGO Packet Logs.zip (see the packet classes in Cms-Server) and the Java mina_cmsserver handlers.
+    ///
+    /// Packets one client sends another (invitations and their answers) travel inside CM_RELAY and reach
+    /// the other client under their own opcode: 0x15, 0x16, 0x1E, 0x1F, 0x25, 0x26, 0x8014, 0x801C, 0x8022.
+    /// </summary>
+    public enum CMSOpcode
+    {
+        CM_LOGIN_CMS = 0x01,
+        CM_LOGOUT_CMS = 0x02,
+        CM_CHAT_MSG = 0x03,
+        CM_HEARTBEAT = 0x04,
+        CM_RELAY = 0x07,
+        CM_TEAM_NAME = 0x08,
+        CM_TEAM_MEMBER_STATUS = 0x0A,
+        CM_FRIEND_STATUS = 0x0B,
+        CM_CREATE_TEAM = 0x0D,
+        CM_TEAM_INFO = 0x0E,
+        CM_TEAM_ADD_MEMBER = 0x0F,
+        CM_TEAM_LEAVE = 0x10,
+        CM_TEAM_KICK = 0x12,
+        CM_CHAT_INFO = 0x13,
+        CM_TEAM_REGISTER_ONLINE = 0x14,
+        CM_GROUP_CHAT_CREATE = 0x17,
+        CM_GROUP_CHAT_MEMBERS = 0x18,
+        CM_GROUP_CHAT_ADD_MEMBER = 0x19,
+        CM_GROUP_CHAT_LEAVE = 0x1A,
+        CM_COMMUNITY_LIST = 0x20,
+        CM_ADD_FRIEND = 0x21,
+        CM_DELETE_FRIEND = 0x22,
+        CM_FRIENDS_REGISTER_ONLINE = 0x24,
+
+        // Relayed between clients (see CM_RELAY).
+        RELAY_TEAM_INVITE = 0x15,
+        RELAY_TEAM_INVITE_CANCEL = 0x16,
+        RELAY_GROUP_CHAT_INVITE = 0x1E,
+        RELAY_GROUP_CHAT_INVITE_CANCEL = 0x1F,
+        RELAY_FRIEND_REQUEST = 0x25,
+        RELAY_FRIEND_REQUEST_CANCEL = 0x26,
+        RELAY_TEAM_INVITE_ANSWER = 0x8014,
+        RELAY_GROUP_CHAT_INVITE_ANSWER = 0x801C,
+        RELAY_FRIEND_REQUEST_ANSWER = 0x8022,
+
+        SM_LOGIN_CMS = 0x8001,
+        SM_LOGOUT_CMS = 0x8002,
+        SM_CHAT_MSG = 0x8004,
+        SM_HEARTBEAT = 0x8005,
+        SM_TEAM_NAME = 0x8007,
+        SM_TEAM_MEMBER_STATUS = 0x8009,
+        SM_FRIEND_STATUS = 0x800A,
+        SM_CREATE_TEAM = 0x800C,
+        SM_TEAM_INFO = 0x800D,
+        SM_TEAM_MEMBER_JOINED = 0x800E,
+        SM_TEAM_MEMBER_LEFT = 0x800F,
+        SM_TEAM_MEMBER_KICKED = 0x8011,
+        SM_CHAT_INFO = 0x8012,
+        SM_TEAM_ONLINE = 0x8013,
+        SM_GROUP_CHAT_CREATE = 0x8015,
+        SM_GROUP_CHAT_MEMBERS = 0x8016,
+        SM_GROUP_CHAT_MEMBER_JOINED = 0x8017,
+        SM_GROUP_CHAT_MEMBER_LEFT = 0x8018,
+        SM_COMMUNITY_LIST = 0x801D,
+        SM_FRIEND_ADDED = 0x801E,
+        SM_FRIEND_DELETED = 0x801F,
+        SM_FRIEND_ONLINE = 0x8021,
+    }
+
+    /// <summary>
+    /// Opcodes of the internal link between the CMS server and the game servers (Java: CGServer on 24021
+    /// in mina_cmsserver, GCClient in mina_gameserver). The game server connects to the CMS server
+    /// (GameServer.xml ChatHost / ChatPort) and must send LINK_HELLO with the shared password first.
+    /// The same numbers are used in both directions, so the names say who sends them.
+    /// </summary>
+    public enum CGOpcode
+    {
+        // CMS server -> game server (Java mina_gameserver cluster/cms/GCOpcodeMap).
+        CMS_TELEPORT = 0x00,
+        CMS_SPAWN = 0x01,
+        CMS_CLOSURE = 0x02,
+        CMS_END_MAINTENANCE = 0x03,
+        CMS_POSITION_LOG = 0x06,
+        CMS_TELEPORT_TO_PLAYER = 0x08,
+        CMS_RUN_SCRIPT = 0x09,
+
+        // Game server -> CMS server (Java mina_cmsserver cluster/CGOpcodeMap).
+        GS_NPC_CHAT = 0x01,
+        GS_SYSTEM_MESSAGE = 0x5A,
+        GS_PLAYER_SYSTEM_MESSAGE = 0x5B,
+        GS_LINK_HELLO = 0x7F,
     }
 }
