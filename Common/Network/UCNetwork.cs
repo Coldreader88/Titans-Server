@@ -1,224 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Linq;
 using System.Text;
-using System.Net.Sockets;
-using Common.Network.Encryption.UCGO;
+using Common.Network.Encryption;
 using Common.Network.Packets;
 using SmartEngine.Core;
 using SmartEngine.Network;
-using Common.IO;
-using Common.Network.Encryption;
-using SmartEngine.Network.IO;
-using SmartEngine.Network.IO;
 
 namespace Common.Network
 {
-    public class UCHeader : Writable
-    {
-        public uint XORKey { get; set; }
-
-        public uint Sequence { get; set; }
-
-        public uint Opcode { get; set; }
-
-        public uint XORSize { get; set; }
-
-        public uint BlowfishSize
-        {
-            get
-            {
-                var finalsize = 8 - XORSize % 8;
-
-                
-                if (finalsize == 8)
-                {
-                    finalsize = XORSize;
-                }
-                else if (finalsize != 8)
-                {
-                    finalsize += XORSize;
-                }
-                
-
-                return finalsize;
-            }
-        }
-
-        public UCHeader()
-        {
-
-        }
-
-        public UCHeader(uint packetLen, uint xorKey, uint opcode, uint sequence)
-        {
-            this.XORKey = xorKey;
-            this.Sequence = sequence;
-            this.XORSize = packetLen;
-            this.Opcode = opcode;
-        }
-
-        public byte[] Create(byte[] packet)
-        {
-
-            try
-            {
-
-                var buffer = new SmartEngine.Network.IO.ByteBuffer();
-
-                buffer.WriteUInt(0x64616568);
-                buffer.WriteUShort((ushort)XORKey);
-                buffer.WriteUShort(0);
-                buffer.WriteUInt();
-                buffer.WriteUInt(Sequence);
-                buffer.WriteUInt(XORSize);
-
-                buffer.WriteUInt(BlowfishSize);
-
-                buffer.WriteUInt(Opcode);
-                buffer.Padd(new Random().Next(53, 255), 32);
-                buffer.WriteUInt(0x6C696174);
-
-                return buffer.Buffer;
-
-            }
-            catch (Exception ex)
-            {
-
-                Logger.ShowError(ex);
-
-                return new byte[64];
-            }
-        }
-
-        public byte[] Create()
-        {
-
-            try
-            {
-
-                var buffer = new SmartEngine.Network.IO.ByteBuffer();
-
-                buffer.WriteUInt(0x64616568);
-                buffer.WriteUInt(XORKey);
-                buffer.WriteUInt();
-                buffer.WriteUInt(Sequence);
-                buffer.WriteUInt(XORSize);
-
-                buffer.WriteUInt(BlowfishSize);
-
-                buffer.WriteUInt(Opcode);
-                buffer.Padd(new Random().Next(53, 255), 32);
-                buffer.WriteUInt(0x6C696174);
-
-                return buffer.Buffer;
-
-            }
-            catch (Exception ex)
-            {
-
-                Logger.ShowError(ex);
-
-                return new byte[64];
-            }
-        }
-
-        public static UCHeader Read(byte[] packet)
-        {
-            try
-            {
-
-                var header = new UCHeader();
-
-                var buffer = new Bytebuffer();
-
-                buffer.writeDATA(packet);
-
-                buffer.readINT();
-
-                header.XORKey = buffer.readINT();
-
-                buffer.readINT();
-
-                header.Sequence = buffer.readINT();
-                header.XORSize = buffer.readINT();
-
-                buffer.readINT();
-
-                header.Opcode = buffer.readINT();
-
-
-                return header;
-            }
-            catch (Exception ex)
-            {
-                Logger.ShowError(ex);
-
-                return null;
-            }
-        }
-
-        public ByteBuffer Write()
-        {
-            try
-            {
-
-                var buffer = new SmartEngine.Network.IO.ByteBuffer();
-
-                buffer.WriteUInt(0x68656164);
-                buffer.WriteUInt(XORKey);
-                buffer.WriteUInt();
-                buffer.WriteUInt(Sequence);
-                buffer.WriteUInt(XORSize);
-
-                buffer.WriteUInt(BlowfishSize);
-
-                buffer.WriteUInt(Opcode);
-                buffer.Padd(new Random().Next(53, 255), 32);
-                buffer.WriteUInt(0x6C696174);
-
-                return buffer;
-
-            }
-            catch (Exception ex)
-            {
-
-                Logger.ShowError(ex);
-
-                return new ByteBuffer();
-            }
-        }
-    }
-
+    /// <summary>
+    /// Sequence numbers for one connection.
+    ///
+    /// The official servers answered each request with the sequence number of that request: in the
+    /// captured logins (UCGO Packet Logs.zip, dummylogin.txt) the status server replies to sequence 0
+    /// with 0, and the login server replies to 1, 2, 3 with 1, 2, 3.
+    /// </summary>
     public class ServerSequence
     {
-        private uint serverSequence;
-        private uint clientSequence;
+        /// <summary>
+        /// The sequence number of the last packet received from the client.
+        /// </summary>
+        public uint CLIENT { get; set; }
 
-        public uint CLIENT 
-        { 
-            get { return clientSequence; } 
-            set { clientSequence = value; } 
-        }
-
+        /// <summary>
+        /// The sequence number to put on the next outgoing packet.
+        /// </summary>
         public uint SERVER
         {
-            /*get { return serverSequence++; }*/
-            get
-            {
-                return clientSequence;
-            }
+            get { return CLIENT; }
         }
-
     }
 
+    /// <summary>
+    /// Network layer for UCGO connections: splits the incoming byte stream into packets,
+    /// decrypts them and dispatches them by opcode, and wraps, encrypts and sends outgoing packets.
+    /// </summary>
     public class UCNetwork<T> : Network<T>
     {
+        /// <summary>
+        /// Largest body we accept. Packet offsets are 16 bit, so nothing larger can be parsed.
+        /// </summary>
+        public const int MaxBodySize = ushort.MaxValue - UCHeader.Size;
 
-        //protected UCEncryption Crypto { get; set; }
+        private readonly object sendLock = new object();
 
         public ServerSequence Sequence { get; set; }
+
+        protected UCEncryption UCCrypt
+        {
+            get { return (UCEncryption)Crypt; }
+        }
 
         public override Network<T> CreateNewInstance(System.Net.Sockets.Socket sock, Dictionary<T, Packet<T>> commandTable, Session<T> client)
         {
@@ -226,144 +57,237 @@ namespace Common.Network
 
             instance.Sequence = new ServerSequence();
 
-            instance.Sequence.CLIENT = 0;
-
             CreateNewInstance(instance, sock, commandTable, client);
 
             return instance;
         }
 
+        /// <summary>
+        /// Called with everything received so far (unprocessed bytes from the last call come first).
+        /// Several packets can arrive in one read and a packet can be split across reads, so this
+        /// decrypts each header to learn the packet length and keeps any incomplete tail in lastContent.
+        /// </summary>
         protected override void OnReceivePacket(byte[] buf)
         {
-            if (buf != null && buf.Any())
-            {
+            lastContent = null;
 
-                if (buf.Length > 64 && lastContent != buf)
-                {
-                    try
-                    {
-
-                        var buffer = buf.ToArray();
-
-                        this.Crypt.Decrypt(buffer, 0, buffer.Length);
-
-                        if (buffer != null && buffer.Any())
-                        {
-
-                            var _header = new byte[64];
-                            var payload = new byte[buffer.Length - 64];
-
-                            Array.Copy(buffer, _header, 64);
-                            Array.Copy(buffer, 64, payload, 0, payload.Length);
-
-                            var header = UCHeader.Read(_header);
-
-                            this.Sequence.CLIENT = header.Sequence;
-
-                            var p = new UCPacket<T>(buffer, header);
-
-                            p.PutBytes(payload);
-
-                            p.ID = (T)(object)(int)p.Header.Opcode;
-
-                            p.OriginalPacket = buffer;
-
-                            PrintPacketData(new Packet<T>(buffer), true, true);
-
-                            ProcessPacket(p);
-
-                            
-
-                            lastContent = buf;
-
-                        }
-                        else
-                        {
-                            Logger.ShowError("OnRecieve: Couldn't decrypt packet.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.ShowError(ex);
-                    }
-
-                }
-                else
-                {
-                    Logger.ShowError("OnRecieve: buffer {0}", buf != null ? "size is (" + buf.Length + ") must be bigger than 64." : "is null");
-                }
-
-            }
-            else
-            {
-
-                Logger.ShowWarning("OnRecieve: buffer is null or empty.");
-            }
-        }
-
-
-        public override void SendPacket(Packet<T> p, bool noWarper)
-        {
-            throw new NotImplementedException();
-        }
-
-        /*
-        public override void SendPacket(Packet<T> p)
-        {
-            Logger.ShowWarning("SendPacket");
-
-            if ((int)(object)p.ID == 0xFFFF || Disconnected)
+            if (buf == null || buf.Length == 0)
             {
                 return;
             }
 
-            PrintPacketData(p, false);
+            int offset = 0;
 
-            var packet = new UCPacket<T>();
-
-            var xorKey = (uint) ((UCEncryption) Crypt).XORKey;
-
-            packet.Write(new UCHeader((uint)p.Length, xorKey, (uint)(int)(object)p.ID,  this.Sequence.SERVER));
-            packet.ID = p.ID;
-            packet.PutBytes(p.Buffer.ToArray());
-
-            PrintPacketData(SuppressPacketHeaderPrintOut ? p : packet, false);
-
-            if (packet.Header.BlowfishSize > packet.Header.XORSize)
+            try
             {
-                packet.PutBytes((ushort)(packet.Header.BlowfishSize - packet.Header.XORSize));
+                while (!Disconnected && buf.Length - offset >= UCHeader.Size)
+                {
+                    var headerBytes = new byte[UCHeader.Size];
+                    Array.Copy(buf, offset, headerBytes, 0, UCHeader.Size);
+
+                    uint key = UCCrypt.DecryptHeader(headerBytes, 0);
+                    var header = UCHeader.Read(headerBytes);
+
+                    if (!header.IsValid || header.BlowfishSize > MaxBodySize)
+                    {
+                        Logger.ShowError(string.Format("Received a malformed packet header ({0}), disconnecting.", header));
+                        Disconnect();
+                        return;
+                    }
+
+                    int total = UCHeader.Size + (int)header.BlowfishSize;
+                    if (buf.Length - offset < total)
+                    {
+                        // The rest of this packet has not arrived yet.
+                        break;
+                    }
+
+                    var packet = new byte[total];
+                    Array.Copy(headerBytes, packet, UCHeader.Size);
+                    Array.Copy(buf, offset + UCHeader.Size, packet, UCHeader.Size, total - UCHeader.Size);
+                    offset += total;
+
+                    UCCrypt.DecryptBody(packet, 0, total, key);
+
+                    Sequence.CLIENT = header.Sequence;
+
+                    var body = new byte[header.XORSize];
+                    Array.Copy(packet, UCHeader.Size, body, 0, body.Length);
+
+                    var p = new UCPacket<T>(body, header)
+                    {
+                        ID = ToID(header.Opcode),
+                        Type = PacketType.CLIENT,
+                        OriginalPacket = packet,
+                    };
+
+                    ProcessPacket(p);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
             }
 
-            PrintPacketData(SuppressPacketHeaderPrintOut ? p : packet, false);
+            if (!Disconnected && offset < buf.Length)
+            {
+                var rest = new byte[buf.Length - offset];
+                Array.Copy(buf, offset, rest, 0, rest.Length);
+                lastContent = rest;
+            }
+        }
 
-            var buf = packet.Buffer.ToArray();
-
-            Crypt.Encrypt(buf, 0, buf.Length);
-
-            HexDump(buf);
-
-            SendPacketRaw(buf, 0, buf.Length);
-        }*/
-
-        static void HexDump(byte[] data, int bytesPerRow = 16)
+        /// <summary>
+        /// Hands a received packet to the handler registered for its opcode. The handler gets a
+        /// fresh packet instance holding the body and header.
+        /// </summary>
+        protected override void ProcessPacket(Packet<T> p)
         {
-            StringBuilder sb = new StringBuilder();
+            var packet = p as UCPacket<T>;
+            var session = NetSession;
 
-            if (data == null) return;
+            if (packet == null || session == null)
+            {
+                base.ProcessPacket(p);
+                return;
+            }
+
+            Packet<T> command;
+            commandTable.TryGetValue(packet.ID, out command);
+
+            if (command == null)
+            {
+                if (!SuppressUnknownPackets)
+                {
+                    Logger.ShowWarning(string.Format("Unknown packet 0x{0:X5} ({1} bytes)\r\n{2}",
+                        packet.Opcode, packet.Length, packet.DumpData2()));
+                }
+                return;
+            }
+
+            var handler = command.New();
+
+            var ucHandler = handler as UCPacket<T>;
+            if (ucHandler != null)
+            {
+                ucHandler.Header = packet.Header;
+                ucHandler.Type = packet.Type;
+                ucHandler.OriginalPacket = packet.OriginalPacket;
+                ucHandler.ID = packet.ID;
+            }
+
+            var body = packet.ToArray();
+            if (body.Length > 0)
+            {
+                handler.PutBytes(body, 0);
+            }
+            handler.Position = 0;
+
+            PrintPacketData(handler);
+
+            if (autoLock)
+                ClientManager.EnterCriticalArea();
+            try
+            {
+                handler.OnProcess(session);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+            finally
+            {
+                if (autoLock)
+                    ClientManager.LeaveCriticalArea();
+            }
+        }
+
+        /// <summary>
+        /// Sends a packet. With <paramref name="noWarper"/> the body is sent as is, without a header
+        /// and without encryption.
+        /// </summary>
+        public override void SendPacket(Packet<T> p, bool noWarper)
+        {
+            if (!noWarper)
+            {
+                SendPacket(p);
+                return;
+            }
+
+            if (Disconnected)
+            {
+                return;
+            }
+
+            var raw = p.ToArray();
+            SendPacketRaw(raw, 0, raw.Length);
+        }
+
+        /// <summary>
+        /// Wraps the packet body in a 64 byte header, pads it to 8 bytes, encrypts it and sends it.
+        /// </summary>
+        public override void SendPacket(Packet<T> p)
+        {
+            if (Disconnected || p == null)
+            {
+                return;
+            }
+
+            uint opcode = Convert.ToUInt32(p.ID);
+            if (opcode == 0xFFFF)
+            {
+                return;
+            }
+
+            var packet = p as UCPacket<T> ?? new UCPacket<T>(p.ToArray()) { ID = p.ID };
+            packet.Type = PacketType.SERVER;
+
+            if (packet.Length > MaxBodySize)
+            {
+                Logger.ShowError(string.Format("Packet 0x{0:X5} is too large to send ({1} bytes).", opcode, packet.Length));
+                return;
+            }
+
+            lock (sendLock)
+            {
+                var wire = packet.ToWire(Sequence.SERVER);
+
+                PrintPacketData(packet, false);
+
+                Crypt.Encrypt(wire, 0, wire.Length);
+
+                SendPacketRaw(wire, 0, wire.Length);
+            }
+        }
+
+        private static T ToID(uint opcode)
+        {
+            if (typeof(T).IsEnum)
+            {
+                return (T)Enum.ToObject(typeof(T), opcode);
+            }
+            return (T)Convert.ChangeType(opcode, typeof(T));
+        }
+
+        /// <summary>
+        /// Formats a byte array as a hex dump with an ASCII column.
+        /// </summary>
+        public static string HexDump(byte[] data, int bytesPerRow = 16)
+        {
+            var sb = new StringBuilder();
+
+            if (data == null) return string.Empty;
 
             for (int row = 0; row < data.Length; row += bytesPerRow)
             {
-                // offset column
-                sb.Append($"{row:X4}:   ");
+                sb.AppendFormat("{0:X4}:   ", row);
 
-                // hex column (pad short final rows so the ascii gutter stays aligned)
                 for (int i = 0; i < bytesPerRow; i++)
                 {
                     int idx = row + i;
-                    sb.Append(idx < data.Length ? $"{data[idx]:X2} " : "   ");
+                    sb.Append(idx < data.Length ? string.Format("{0:X2} ", data[idx]) : "   ");
                 }
 
-                // ascii gutter
                 sb.Append("  ");
                 for (int i = 0; i < bytesPerRow && row + i < data.Length; i++)
                 {
@@ -374,66 +298,7 @@ namespace Common.Network
                 sb.AppendLine();
             }
 
-            Logger.ShowWarning(sb.ToString());
-        }
-
-        public override void SendPacket(Packet<T> p)
-        {
-            Logger.ShowWarning("SendPacket");
-
-            if ((int)(object)p.ID == 0xFFFF || Disconnected)
-            {
-                return;
-            }
-
-            //PrintPacketData(p, false);
-            //HexDump(p.ToArray());
-
-            var packet = new UCPacket<T>();
-
-            packet.ID = p.ID;
-
-            packet.SetLength(64 + p.Length);
-
-            var xorKey = (uint)((UCEncryption)Crypt).XORKey;
-
-            var header = new UCHeader((uint)p.Length, xorKey, (uint)(int)(object)p.ID, this.Sequence.SERVER);
-
-            packet.PutBytes(header.Create(), 0);
-
-            var dataBytes = new byte[p.Length];
-
-            Array.Copy(p.Buffer, dataBytes, header.XORSize);
-
-            packet.PutBytes(dataBytes);
-
-            //packet.Write(new UCHeader((uint)p.Length, xorKey, (uint)(int)(object)p.ID, this.Sequence.SERVER));
-            //packet.ID = p.ID;
-
-
-            //HexDump(packet.ToArray());
-
-            //packet.SetLength(64 + header.XORSize); ;
-
-            PrintPacketData(SuppressPacketHeaderPrintOut ? p : packet, false);
-
-            /*if (packet.Header.BlowfishSize > packet.Header.XORSize)
-            {
-                packet.PutBytes((ushort)(packet.Header.BlowfishSize - packet.Header.XORSize));
-            }*/
-
-            //PrintPacketData(SuppressPacketHeaderPrintOut ? p : packet, false);
-            //HexDump(packet.ToArray());
-
-            var buf = new byte[64 + header.BlowfishSize];
-            
-            Array.Copy(packet.Buffer, buf, buf.Length);
-
-            Crypt.Encrypt(buf, 0, buf.Length);
-
-
-            SendPacketRaw(buf, 0, buf.Length);
+            return sb.ToString();
         }
     }
 }
-

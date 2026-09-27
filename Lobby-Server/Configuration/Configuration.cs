@@ -21,6 +21,10 @@ namespace TitansUC.LobbyServer
     {
         int client_version, port, gameport, loglevel;
 
+        string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
+        int dbPort = 3306;
+        bool autoCreateAccounts;
+
         private List<WorldInfo> worlds = new List<WorldInfo>();
 
         /// <summary>
@@ -44,6 +48,20 @@ namespace TitansUC.LobbyServer
         public int LogLevel { get { return loglevel; } }
 
         public List<WorldInfo> Worlds { get { return worlds; } }
+
+        /// <summary>
+        /// MySQL server holding the accounts table.
+        /// </summary>
+        public string DBHost { get { return dbHost; } }
+        public int DBPort { get { return dbPort; } }
+        public string DBName { get { return dbName; } }
+        public string DBUser { get { return dbUser; } }
+        public string DBPass { get { return dbPass; } }
+
+        /// <summary>
+        /// Create an account on first login when the user name does not exist yet.
+        /// </summary>
+        public bool AutoCreateAccounts { get { return autoCreateAccounts; } }
 
         public void Initialization(string path)
         {
@@ -70,6 +88,34 @@ namespace TitansUC.LobbyServer
                             break;
                         case "loglevel":
                             this.loglevel = int.Parse(i.InnerText);
+                            break;
+                        case "autocreateaccounts":
+                            this.autoCreateAccounts = bool.Parse(i.InnerText.Trim());
+                            break;
+                        case "database":
+                            foreach (object l in i.ChildNodes)
+                            {
+                                XmlElement k = l as XmlElement;
+                                if (k == null) continue;
+                                switch (k.Name.ToLower())
+                                {
+                                    case "host":
+                                        dbHost = k.InnerText.Trim();
+                                        break;
+                                    case "port":
+                                        dbPort = int.Parse(k.InnerText);
+                                        break;
+                                    case "name":
+                                        dbName = k.InnerText.Trim();
+                                        break;
+                                    case "user":
+                                        dbUser = k.InnerText.Trim();
+                                        break;
+                                    case "password":
+                                        dbPass = k.InnerText;
+                                        break;
+                                }
+                            }
                             break;
                         case "world":
                             {
