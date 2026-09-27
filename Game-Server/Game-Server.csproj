@@ -59,6 +59,16 @@
     <Compile Include="Network\Packets\Client\CM_CLIENT_MSG.cs" />
     <Compile Include="Network\Packets\Client\CM_ITEM_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_MOVE_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\CM_BUY_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\SM_BUY_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\CM_SELL_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\SM_SELL_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\CM_DELETE_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\CM_UPDATE_DEPOSIT.cs" />
+    <Compile Include="Network\Packets\Client\CM_PAY_REPAIR.cs" />
+    <Compile Include="Network\Packets\Client\SM_PAY_REPAIR.cs" />
+    <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
+    <Compile Include="World\ItemTemplates.cs" />
     <Compile Include="Network\Packets\Client\Bytes.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_PLACED_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_SPACE_PLACED_ITEM.cs" />

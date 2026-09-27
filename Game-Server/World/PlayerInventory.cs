@@ -60,6 +60,17 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public ItemNode Money { get { return Containers.Find(c => c.Name == "money"); } }
 
+        /// <summary>
+        /// The credit container: the money in the bank (0x19 moves money between the two).
+        /// </summary>
+        public ItemNode Credit { get { return Containers.Find(c => c.Name == "credit"); } }
+
+        /// <summary>
+        /// container_id of the row that stores the credit (item_amount), as the characters table has no column
+        /// for it. Not a real container's static id.
+        /// </summary>
+        public const int CreditRow = 500001;
+
         public PlayerInventory(Character character, IEnumerable<CharacterItem> items)
         {
             Containers = new List<ItemNode>();
@@ -105,6 +116,12 @@ namespace TitansUC.GameServer.World
 
             foreach (var item in items)
             {
+                if (item.ContainerID == CreditRow)
+                {
+                    Credit.Amount = item.Amount;
+                    continue;
+                }
+
                 var container = Find(item.ContainerID);
                 if (container == null || item.ItemID <= 0 || item.ContainerID == PlayerContainers.Weared)
                 {
@@ -256,6 +273,191 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Buys <paramref name="amount"/> of an item into a container (0x21), paying <paramref name="price"/>
+        /// from the money. Items that stack join a stack of the same item there (<see cref="BuyResult.Added"/>).
+        /// Vehicles go in the hangar, or with <paramref name="ride"/> straight into weared's vehicle slot.
+        /// Returns null when the container cannot take it or the money is short.
+        /// </summary>
+        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price, bool ride)
+        {
+            lock (sync)
+            {
+                var dest = GetLocked(destUID);
+                var money = Money;
+                if (dest == null || amount <= 0 || price < 0 || price > money.Amount)
+                {
+                    return null;
+                }
+
+                ItemNode item;
+                bool added = false;
+                if (template.IsVehicle)
+                {
+                    bool toHangar = !ride && dest.StaticID == PlayerContainers.Hangar && dest.Parent == null;
+                    bool toWeared = ride && dest.StaticID == PlayerContainers.Weared && Piloting == null;
+                    if (amount != 1 || !(toHangar || toWeared))
+                    {
+                        return null;
+                    }
+                    item = NewVehicle(new CharacterItem { ItemID = template.ID, Name = template.Name });
+                    if (toWeared)
+                    {
+                        dest.SetSlot(PilotSlot, item);
+                        Piloting = item;
+                    }
+                    else
+                    {
+                        dest.Add(item);
+                    }
+                }
+                else
+                {
+                    if (!CanHoldItems(dest))
+                    {
+                        return null;
+                    }
+                    item = template.Stacks
+                        ? dest.Children.Find(c => c.StaticID == template.ID && c.Format == ItemNode.Singleton)
+                        : null;
+                    if (item != null)
+                    {
+                        item.Amount += amount;
+                        Touch(item);
+                        added = true;
+                    }
+                    else
+                    {
+                        item = Register(dest.Add(NewItem(template.ID, amount, template.Name)));
+                    }
+                }
+
+                money.Amount -= price;
+                return new BuyResult { Item = item, Added = added };
+            }
+        }
+
+        /// <summary>
+        /// Sells <paramref name="amount"/> of an item, or a vehicle from the hangar (0x22), for
+        /// <paramref name="unitPrice"/> each. Returns null when it cannot, otherwise whether the whole stack went.
+        /// </summary>
+        public bool? Sell(uint itemUID, uint containerUID, int amount, int unitPrice)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                var container = GetLocked(containerUID);
+                if (item == null || container == null || item.Parent != container || amount <= 0)
+                {
+                    return null;
+                }
+
+                bool vehicle = container.StaticID == PlayerContainers.Hangar && container.Parent == null;
+                if (!vehicle && (!CanHoldItems(container) || item.Format != ItemNode.Singleton || amount > item.Amount))
+                {
+                    return null;
+                }
+
+                bool all = vehicle || amount >= item.Amount;
+                if (all)
+                {
+                    container.Remove(item);
+                    UnregisterTree(item);
+                }
+                else
+                {
+                    item.Amount -= amount;
+                    Touch(item);
+                }
+                Money.Amount += unitPrice * (vehicle ? 1 : amount);
+                return all;
+            }
+        }
+
+        /// <summary>
+        /// Throws an item away (0x15): the piloted vehicle (the player is then on foot) or an item in one of the
+        /// containers. Returns what was deleted, or null.
+        /// </summary>
+        public ItemNode Delete(uint itemUID, uint containerUID)
+        {
+            lock (sync)
+            {
+                if (Piloting != null && Piloting.UniqueID == itemUID)
+                {
+                    var vehicle = Piloting;
+                    Find(PlayerContainers.Weared).SetSlot(PilotSlot, ItemNode.EmptySlot(-1));
+                    UnregisterTree(vehicle);
+                    Piloting = null;
+                    return vehicle;
+                }
+
+                var item = GetLocked(itemUID);
+                var container = GetLocked(containerUID);
+                if (item == null || container == null || item.Parent != container ||
+                    !(CanHoldItems(container) || (container.StaticID == PlayerContainers.Hangar && container.Parent == null)))
+                {
+                    return null;
+                }
+                container.Remove(item);
+                UnregisterTree(item);
+                return item;
+            }
+        }
+
+        /// <summary>
+        /// Moves money between the money container and the bank (0x19). False when the source is short.
+        /// </summary>
+        public bool TransferMoney(bool toBank, int amount)
+        {
+            lock (sync)
+            {
+                var from = toBank ? Money : Credit;
+                var to = toBank ? Credit : Money;
+                if (amount <= 0 || amount > from.Amount)
+                {
+                    return false;
+                }
+                from.Amount -= amount;
+                to.Amount += amount;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Repairs a vehicle to full health (0x18), paying <paramref name="price"/>. Returns false when the
+        /// vehicle is not the player's or the money is short.
+        /// </summary>
+        public bool Repair(uint vehicleUID, int price)
+        {
+            lock (sync)
+            {
+                var vehicle = GetLocked(vehicleUID);
+                if (vehicle == null || vehicle.Format != ItemNode.Multi || vehicle.MaxHealth <= 0 || price > Money.Amount)
+                {
+                    return false;
+                }
+                Money.Amount -= price;
+                SetHealth(vehicle, vehicle.MaxHealth);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Sets a vehicle's health, in its node and its stats field.
+        /// </summary>
+        public static void SetHealth(ItemNode vehicle, int health)
+        {
+            vehicle.Health = health;
+            var stats = vehicle.Options != null && vehicle.Options.Length > 5 ? vehicle.Options[5] : null;
+            if (stats != null && stats.Length >= 5)
+            {
+                stats[1] = (byte)(health >> 24);
+                stats[2] = (byte)(health >> 16);
+                stats[3] = (byte)(health >> 8);
+                stats[4] = (byte)health;
+            }
+        }
+
+        /// <summary>
         /// Takes <paramref name="amount"/> of an item out of a container to drop it on the ground (0x23 item).
         /// Money is dropped from the money container itself (the client sends container 0). Returns the new
         /// ground item (the official server gave it a new unique id), or null when it cannot.
@@ -400,6 +602,10 @@ namespace TitansUC.GameServer.World
                         rows.Add(ToRow(PlayerContainers.Hangar, vehicle));
                     }
                 }
+                if (Credit.Amount != 0)
+                {
+                    rows.Add(new CharacterItem { ContainerID = CreditRow, ItemID = PlayerContainers.Credit, Name = "credit", Amount = Credit.Amount });
+                }
                 rows.AddRange(kept);
             }
             return rows;
@@ -439,15 +645,24 @@ namespace TitansUC.GameServer.World
 
         private void AddVehicle(ItemNode hangar, CharacterItem item)
         {
+            hangar.Add(NewVehicle(item));
+        }
+
+        /// <summary>
+        /// A vehicle with its armaments and inventory, registered. <paramref name="item"/>.Amount is the engine
+        /// id (0 or -1: the template's).
+        /// </summary>
+        private ItemNode NewVehicle(CharacterItem item)
+        {
             var template = VehicleTemplates.Get(item.ItemID);
             int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
             int engine = item.Amount > 0 ? item.Amount : (template != null ? template.EngineID : VehicleTemplates.DefaultEngine);
 
-            var vehicle = hangar.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
+            var vehicle = new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
             {
                 Name = !string.IsNullOrEmpty(item.Name) ? item.Name : (template != null ? template.Name : null),
                 EngineID = item.Amount > 0 ? item.Amount : -1,
-            });
+            };
             vehicle.Created = UnixNow();
             vehicle.Health = health;
             vehicle.MaxHealth = health;
@@ -468,6 +683,7 @@ namespace TitansUC.GameServer.World
                     Register(inventory.Add(NewItem(itemID, amount > 0 ? amount : 1, null)));
                 }
             }
+            return vehicle;
         }
 
         /// <summary>
@@ -590,6 +806,15 @@ namespace TitansUC.GameServer.World
 
         /// <summary>Part of a stack joined a stack of the same item (0x0401).</summary>
         AddedToStack,
+    }
+
+    public class BuyResult
+    {
+        /// <summary>The new item, or the stack the bought items joined.</summary>
+        public ItemNode Item { get; set; }
+
+        /// <summary>True when they joined a stack (official reply 0x01), false for a new item (0x02).</summary>
+        public bool Added { get; set; }
     }
 
     public class MoveResult

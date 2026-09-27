@@ -457,6 +457,167 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// 0x21: buy from a shop. The price comes from the item templates; the shop lists are the client's, so
+        /// anything the templates sell can be bought. Nothing is sent back when it is refused.
+        /// </summary>
+        public void OnBuyItem(CM_BUY_ITEM p)
+        {
+            if (!CheckInGame("Buy item"))
+            {
+                return;
+            }
+
+            var template = ItemTemplates.Get(p.StaticID);
+            if (p.CharacterID != CharacterID || template == null || !template.ForSale)
+            {
+                RefuseShop("buy", p.StaticID, template == null ? "unknown item" : "not for sale");
+                return;
+            }
+
+            bool ride = p.Service == CM_BUY_ITEM.ServiceVehicleRide;
+            long total = (long)template.Price * p.Amount;
+            if (total > int.MaxValue || template.IsVehicle != (ride || p.Service == CM_BUY_ITEM.ServiceVehicleToHangar))
+            {
+                RefuseShop("buy", p.StaticID, "service " + p.Service + ", amount " + p.Amount);
+                return;
+            }
+
+            var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total, ride);
+            if (result == null)
+            {
+                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money");
+                return;
+            }
+            if (ride)
+            {
+                SetVehicle(result.Item);
+            }
+
+            Logger.ShowInfo(string.Format("{0} bought {1} x {2} for {3}.", Character.Name, template.Name, p.Amount, total));
+            this.Network.SendPacket(new SM_BUY_ITEM(p, result, (int)total));
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x22: sell to a shop, for half the shop price (the official prices varied between about half and
+        /// all of it).
+        /// </summary>
+        public void OnSellItem(CM_SELL_ITEM p)
+        {
+            if (!CheckInGame("Sell item"))
+            {
+                return;
+            }
+
+            var template = ItemTemplates.Get(p.StaticID);
+            var item = Inventory.Get(p.ItemUniqueID);
+            if (p.CharacterID != CharacterID || template == null || item == null || item.StaticID != p.StaticID ||
+                template.Price <= 0 || template.Price >= ItemTemplates.NotForSale)
+            {
+                RefuseShop("sell", p.StaticID, template == null ? "unknown item" : "no price");
+                return;
+            }
+
+            int unitPrice = template.Price / 2;
+            int amount = template.IsVehicle ? 1 : p.Amount;
+            var soldAll = Inventory.Sell(p.ItemUniqueID, p.ContainerUniqueID, amount, unitPrice);
+            if (soldAll == null)
+            {
+                RefuseShop("sell", p.StaticID, "not in that container, or not that many");
+                return;
+            }
+
+            Logger.ShowInfo(string.Format("{0} sold {1} x {2} for {3}.", Character.Name, template.Name, amount, unitPrice * amount));
+            this.Network.SendPacket(new SM_SELL_ITEM(p, soldAll.Value, unitPrice * amount));
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x15: throw an item away (a bought car or shuttle once the client is done with it).
+        /// </summary>
+        public void OnDeleteItem(CM_DELETE_ITEM p)
+        {
+            if (!CheckInGame("Delete item"))
+            {
+                return;
+            }
+
+            bool wasPiloting = Inventory.Piloting != null && Inventory.Piloting.UniqueID == p.ItemUniqueID;
+            var deleted = p.CharacterID == CharacterID ? Inventory.Delete(p.ItemUniqueID, p.ContainerUniqueID) : null;
+            if (deleted == null)
+            {
+                RefuseShop("delete", (int)p.ItemUniqueID, "not theirs");
+                return;
+            }
+            if (wasPiloting)
+            {
+                SetVehicle(null);
+            }
+
+            Logger.ShowInfo(string.Format("{0} threw away {1} ({2}).", Character.Name, deleted.Name, deleted.StaticID));
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_DELETE_ITEM, p.Body));
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x19: move money to or from the bank (the credit container).
+        /// </summary>
+        public void OnUpdateDeposit(CM_UPDATE_DEPOSIT p)
+        {
+            if (!CheckInGame("Deposit"))
+            {
+                return;
+            }
+
+            bool toBank = p.Direction == CM_UPDATE_DEPOSIT.ToBank;
+            if (p.CharacterID != CharacterID || (!toBank && p.Direction != CM_UPDATE_DEPOSIT.FromBank) ||
+                !Inventory.TransferMoney(toBank, p.Amount))
+            {
+                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money");
+                return;
+            }
+
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_UPDATE_DEPOSIT, p.Body));
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x18: repair a vehicle to full health. Price: a tenth of the vehicle's shop price for the share of
+        /// health it lost (a guess; the official prices depended on the damage).
+        /// </summary>
+        public void OnPayRepair(CM_PAY_REPAIR p)
+        {
+            if (!CheckInGame("Repair"))
+            {
+                return;
+            }
+
+            var vehicle = Inventory.Get(p.VehicleUniqueID);
+            if (p.CharacterID != CharacterID || vehicle == null || vehicle.MaxHealth <= 0)
+            {
+                RefuseShop("repair", (int)p.VehicleUniqueID, "not their vehicle");
+                return;
+            }
+
+            var template = ItemTemplates.Get(vehicle.StaticID);
+            int shopPrice = template != null && template.ForSale ? template.Price : 0;
+            int price = (int)((long)shopPrice * (vehicle.MaxHealth - vehicle.Health) / vehicle.MaxHealth / 10);
+            if (!Inventory.Repair(p.VehicleUniqueID, price))
+            {
+                RefuseShop("repair", vehicle.StaticID, "not enough money");
+                return;
+            }
+
+            this.Network.SendPacket(new SM_PAY_REPAIR(p, price));
+            SaveItems();
+        }
+
+        private void RefuseShop(string what, int id, string reason)
+        {
+            Logger.ShowWarning(string.Format("{0}: {1} of {2} refused: {3}.", Character.Name, what, id, reason));
+        }
+
+        /// <summary>
         /// How far ground item events reach (and the 0x05 radius when the client sends none).
         /// </summary>
         private static int BroadcastDistance
