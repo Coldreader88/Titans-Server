@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copies the files the servers need at runtime into the build output (..\Bin\) after every build:
+    ConfigFiles\*  ->  Bin\Config\   (servers load ./Config/<Server>.xml)
+    DB\**          ->  Bin\DB\       (encryption table, templates, properties, SQL, ...)
+  Files are always overwritten, so Bin\ matches the repo after each build. Local edits made
+  directly in Bin\Config or Bin\DB are lost; edit ConfigFiles\ and DB\ instead.
+  Imported by each server project (Login, Lobby, Account, Character, CMS, Game).
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <!-- Visual Studio otherwise skips an up-to-date project entirely, so a change to DB\ or
+         ConfigFiles\ alone would never reach Bin\. MSBuild still skips the compile itself. -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <TitansRepoRoot>$(MSBuildThisFileDirectory)</TitansRepoRoot>
+  </PropertyGroup>
+
+  <Target Name="CopyServerRuntimeFiles" AfterTargets="Build">
+    <ItemGroup>
+      <TitansConfigFile Include="$(TitansRepoRoot)ConfigFiles\*.*" />
+      <TitansDbFile Include="$(TitansRepoRoot)DB\**\*.*" />
+    </ItemGroup>
+    <!-- Several servers build into the same Bin\ (in parallel in VS), so retry on a locked file. -->
+    <Copy SourceFiles="@(TitansConfigFile)"
+          DestinationFolder="$(OutDir)Config"
+          SkipUnchangedFiles="false"
+          OverwriteReadOnlyFiles="true"
+          Retries="10"
+          RetryDelayMilliseconds="500" />
+    <Copy SourceFiles="@(TitansDbFile)"
+          DestinationFiles="@(TitansDbFile->'$(OutDir)DB\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false"
+          OverwriteReadOnlyFiles="true"
+          Retries="10"
+          RetryDelayMilliseconds="500" />
+  </Target>
+</Project>
