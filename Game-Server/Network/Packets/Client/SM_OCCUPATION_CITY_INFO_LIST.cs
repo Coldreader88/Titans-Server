@@ -7,7 +7,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     ///
     /// <code>
     /// 0x82, then per city:
-    /// uint32 BE city id, uint16 BE occupying faction, uint32 BE status (0 = peace), uint32 BE Unix time,
+    /// uint32 BE city id, uint16 BE occupying faction, uint32 BE status (0 = peace), uint32 BE Unix time the state ends (see GameWorld.OccupationTimes),
     /// UC size + uint16 BE faction per trophy, uint32 BE counter
     /// </code>
     /// Java reference: NotifyOccupationCityInfoList.java / OccupationCity.java. Follows UCGOZone-Login.pcap: both cities
@@ -15,17 +15,19 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_OCCUPATION_CITY_INFO_LIST : UCPacket<GSOpcode>
     {
-        public SM_OCCUPATION_CITY_INFO_LIST(int unixTime)
+        public SM_OCCUPATION_CITY_INFO_LIST(int[] endTimes)
         {
             this.ID = GSOpcode.SM_OCCUPATION_CITY_INFO_LIST;
 
             this.PutSize(2);
-            foreach (var city in new[] { 0x3A, 0x3B })
+            var cities = new[] { 0x3A, 0x3B };
+            for (int c = 0; c < cities.Length; c++)
             {
+                int city = cities[c];
                 this.PutIntBE(city);
                 this.PutUShortBE(1);
                 this.PutIntBE(0);
-                this.PutIntBE(unixTime);
+                this.PutIntBE(endTimes[c]);
                 this.PutSize(5);
                 for (int i = 0; i < 5; i++)
                 {

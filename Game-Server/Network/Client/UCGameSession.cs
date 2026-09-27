@@ -184,7 +184,7 @@ namespace TitansUC.GameServer.Network.Client
         /// </summary>
         public void OnOccupationCityInfoList(CM_OCCUPATION_CITY_INFO_LIST p)
         {
-            this.Network.SendPacket(new SM_OCCUPATION_CITY_INFO_LIST(GameWorld.UnixTime()));
+            this.Network.SendPacket(new SM_OCCUPATION_CITY_INFO_LIST(GameWorld.OccupationTimes()));
         }
 
         /// <summary>
