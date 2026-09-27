@@ -164,7 +164,7 @@
       <HintPath>..\Dependencies\Collections\C5.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
-      <HintPath>..\Dependencies\MySql.Data.dll</HintPath>
+      <HintPath>..\Dependencies\MySql.Data\MySql.Data.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
