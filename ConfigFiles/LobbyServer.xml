@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<LobbyServer>
+  <Port>42018</Port>
+
+  <!-- 帐号服务器域名或IP -->
+  <AccountHost>127.0.0.1</AccountHost>
+  
+  <!-- 帐号服务器端口 -->
+  <AccountPort>42020</AccountPort>
+
+  <!-- 帐号服务器内部通讯验证密码 -->
+  <AccountPassword>titans_account</AccountPassword>
+
+  <!-- 人物服务器域名或IP -->
+  <CharacterHost>127.0.0.1</CharacterHost>
+  
+  <!-- 人物服务器端口 -->
+  <CharacterPort>42021</CharacterPort>
+
+  <!-- 人物服务器内部通讯验证密码 -->
+  <CharacterPassword>titans_character</CharacterPassword>
+  <!-- 
+            日志等级：（加法）
+            Info = 1,
+            Warning = 2,
+            Error = 4,
+            SQL = 8,
+            Debug = 16       
+  -->
+  <LogLevel>31</LogLevel>
+
+  <World>
+    <ID>1</ID>
+    <Name>Titans-Server_Srv1</Name>
+    <PublicIP>127.0.0.1</PublicIP>
+    <Port>42010</Port>
+    <MaxPlayerCount>1000</MaxPlayerCount>
+  </World>
+
+</LobbyServer>

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<LoginServer>
+  <Port>42012</Port>
+
+  <required-client-version>"0"</required-client-version>
+
+  <!-- 
+            日志等级：（加法）
+            Info = 1,
+            Warning = 2,
+            Error = 4,
+            SQL = 8,
+            Debug = 16       
+  -->
+  <LogLevel>31</LogLevel>
+  
+</LoginServer>

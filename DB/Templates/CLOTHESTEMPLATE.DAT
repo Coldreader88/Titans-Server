@@ -1,0 +1,4250 @@
+
+===================================
+ID: 240000
+Comment: 綿糸
+Code: cotton yarn
+Name: cotton yarn
+===================================
+
+===================================
+ID: 240001
+Comment: 毛糸
+Code: wool yarn
+Name: wool yarn
+===================================
+
+===================================
+ID: 240002
+Comment: 絹糸
+Code: silk yarn
+Name: silk yarn
+===================================
+
+===================================
+ID: 240003
+Comment: ガラス繊維
+Code: glass fibers
+Name: glass fibers
+===================================
+
+===================================
+ID: 240004
+Comment: 連邦ヘルメット
+Code: EF helmet
+Name: EF helmet
+===================================
+
+===================================
+ID: 240005
+Comment: ジオンヘルメット
+Code: ZEON helmet
+Name: ZEON helmet
+===================================
+
+===================================
+ID: 240006
+Comment: 連邦軍一般兵士用軍服 二等兵
+Code: EF uniform SR
+Name: EF uniform SR
+===================================
+
+===================================
+ID: 240007
+Comment: 連邦軍一般兵士用軍服 一等兵
+Code: EF uniform SA
+Name: EF uniform SA
+===================================
+
+===================================
+ID: 240008
+Comment: 連邦軍一般兵士用軍服 上等兵
+Code: EF uniform SN
+Name: EF uniform SN
+===================================
+
+===================================
+ID: 240009
+Comment: 連邦軍一般兵士用軍服 伍長
+Code: EF uniform PO
+Name: EF uniform PO
+===================================
+
+===================================
+ID: 240010
+Comment: 連邦軍一般兵士用軍服 軍曹
+Code: EF uniform CPO
+Name: EF uniform CPO
+===================================
+
+===================================
+ID: 240011
+Comment: 連邦軍一般兵士用軍服 曹長
+Code: EF uniform SCPO
+Name: EF uniform SCPO
+===================================
+
+===================================
+ID: 240012
+Comment: 連邦軍一般兵士用軍服 少尉
+Code: EF uniform ENS
+Name: EF uniform ENS
+===================================
+
+===================================
+ID: 240013
+Comment: 連邦軍一般兵士用軍服 中尉
+Code: EF uniform LTJG
+Name: EF uniform LTJG
+===================================
+
+===================================
+ID: 240014
+Comment: 連邦軍一般兵士用軍服 大尉
+Code: EF uniform LT
+Name: EF uniform LT
+===================================
+
+===================================
+ID: 240015
+Comment: 連邦軍一般兵士用軍服 少佐
+Code: EF uniform LCDR
+Name: EF uniform LCDR
+===================================
+
+===================================
+ID: 240016
+Comment: 連邦軍一般兵士用軍服 中佐
+Code: EF uniform CDR
+Name: EF uniform CDR
+===================================
+
+===================================
+ID: 240017
+Comment: 連邦軍一般兵士用軍服 大佐
+Code: EF uniform CAPT
+Name: EF uniform CAPT
+===================================
+
+===================================
+ID: 240018
+Comment: 連邦軍一般兵士用軍服 准将
+Code: EF uniform RDML
+Name: EF uniform RDML
+===================================
+
+===================================
+ID: 240019
+Comment: 連邦軍一般兵士用軍服 少将
+Code: EF uniform RADM
+Name: EF uniform RADM
+===================================
+
+===================================
+ID: 240020
+Comment: 連邦軍一般兵士用軍服 中将
+Code: EF uniform VADM
+Name: EF uniform VADM
+===================================
+
+===================================
+ID: 240021
+Comment: 連邦軍一般兵士用軍服 大将
+Code: EF uniform ADM
+Name: EF uniform ADM
+===================================
+
+===================================
+ID: 240022
+Comment: ジオン軍一般兵士用軍服 二等兵
+Code: ZEON uniform SR
+Name: ZEON uniform SR
+===================================
+
+===================================
+ID: 240023
+Comment: ジオン軍一般兵士用軍服 一等兵
+Code: ZEON uniform SA
+Name: ZEON uniform SA
+===================================
+
+===================================
+ID: 240024
+Comment: ジオン軍一般兵士用軍服 上等兵
+Code: ZEON uniform SN
+Name: ZEON uniform SN
+===================================
+
+===================================
+ID: 240025
+Comment: ジオン軍一般兵士用軍服 伍長
+Code: ZEON uniform PO
+Name: ZEON uniform PO
+===================================
+
+===================================
+ID: 240026
+Comment: ジオン軍一般兵士用軍服 軍曹
+Code: ZEON uniform CPO
+Name: ZEON uniform CPO
+===================================
+
+===================================
+ID: 240027
+Comment: ジオン軍一般兵士用軍服 曹長
+Code: ZEON uniform SCPO
+Name: ZEON uniform SCPO
+===================================
+
+===================================
+ID: 240028
+Comment: ジオン軍一般兵士用軍服 少尉
+Code: ZEON uniform ENS
+Name: ZEON uniform ENS
+===================================
+
+===================================
+ID: 240029
+Comment: ジオン軍一般兵士用軍服 中尉
+Code: ZEON uniform LTJG
+Name: ZEON uniform LTJG
+===================================
+
+===================================
+ID: 240030
+Comment: ジオン軍一般兵士用軍服 大尉
+Code: ZEON uniform LT
+Name: ZEON uniform LT
+===================================
+
+===================================
+ID: 240031
+Comment: ジオン軍一般兵士用軍服 少佐
+Code: ZEON uniform LCDR
+Name: ZEON uniform LCDR
+===================================
+
+===================================
+ID: 240032
+Comment: ジオン軍一般兵士用軍服 中佐
+Code: ZEON uniform CDR
+Name: ZEON uniform CDR
+===================================
+
+===================================
+ID: 240033
+Comment: ジオン軍一般兵士用軍服 大佐
+Code: ZEON uniform CAPT
+Name: ZEON uniform CAPT
+===================================
+
+===================================
+ID: 240034
+Comment: ジオン軍一般兵士用軍服 准将
+Code: ZEON uniform RDML
+Name: ZEON uniform RDML
+===================================
+
+===================================
+ID: 240035
+Comment: ジオン軍一般兵士用軍服 少将
+Code: ZEON uniform RADM
+Name: ZEON uniform RADM
+===================================
+
+===================================
+ID: 240036
+Comment: ジオン軍一般兵士用軍服 中将
+Code: ZEON uniform VADM
+Name: ZEON uniform VADM
+===================================
+
+===================================
+ID: 240037
+Comment: ジオン軍一般兵士用軍服 大将
+Code: ZEON uniform ADM
+Name: ZEON uniform ADM
+===================================
+
+===================================
+ID: 240038
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）二等兵
+Code: EF space suit SR
+Name: EF space suit SR
+===================================
+
+===================================
+ID: 240039
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）一等兵
+Code: EF space suit SA
+Name: EF space suit SA
+===================================
+
+===================================
+ID: 240040
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）上等兵
+Code: EF space suit SN
+Name: EF space suit SN
+===================================
+
+===================================
+ID: 240041
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）伍長
+Code: EF space suit PO
+Name: EF space suit PO
+===================================
+
+===================================
+ID: 240042
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）軍曹
+Code: EF space suit CPO
+Name: EF space suit CPO
+===================================
+
+===================================
+ID: 240043
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）曹長
+Code: EF space suit SCPO
+Name: EF space suit SCPO
+===================================
+
+===================================
+ID: 240044
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）少尉
+Code: EF space suit ENS
+Name: EF space suit ENS
+===================================
+
+===================================
+ID: 240045
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）中尉
+Code: EF space suit LTJG
+Name: EF space suit LTJG
+===================================
+
+===================================
+ID: 240046
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）大尉
+Code: EF space suit LT
+Name: EF space suit LT
+===================================
+
+===================================
+ID: 240047
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）少佐
+Code: EF space suit LCDR
+Name: EF space suit LCDR
+===================================
+
+===================================
+ID: 240048
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）中佐
+Code: EF space suit CDR
+Name: EF space suit CDR
+===================================
+
+===================================
+ID: 240049
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）大佐
+Code: EF space suit CAPT
+Name: EF space suit CAPT
+===================================
+
+===================================
+ID: 240050
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）准将
+Code: EF space suit RDML
+Name: EF space suit RDML
+===================================
+
+===================================
+ID: 240051
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）少将
+Code: EF space suit RADM
+Name: EF space suit RADM
+===================================
+
+===================================
+ID: 240052
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）中将
+Code: EF space suit VADM
+Name: EF space suit VADM
+===================================
+
+===================================
+ID: 240053
+Comment: 連邦用ノーマルスーツ（軽装宇宙服）大将
+Code: EF space suit ADM
+Name: EF space suit ADM
+===================================
+
+===================================
+ID: 240054
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）二等兵
+Code: ZEON space suit SR
+Name: ZEON space suit SR
+===================================
+
+===================================
+ID: 240055
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）一等兵
+Code: ZEON space suit SA
+Name: ZEON space suit SA
+===================================
+
+===================================
+ID: 240056
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）上等兵
+Code: ZEON space suit SN
+Name: ZEON space suit SN
+===================================
+
+===================================
+ID: 240057
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）伍長
+Code: ZEON space suit PO
+Name: ZEON space suit PO
+===================================
+
+===================================
+ID: 240058
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）軍曹
+Code: ZEON space suit CPO
+Name: ZEON space suit CPO
+===================================
+
+===================================
+ID: 240059
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）曹長
+Code: ZEON space suit SCPO
+Name: ZEON space suit SCPO
+===================================
+
+===================================
+ID: 240060
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）少尉
+Code: ZEON space suit ENS
+Name: ZEON space suit ENS
+===================================
+
+===================================
+ID: 240061
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）中尉
+Code: ZEON space suit LTJG
+Name: ZEON space suit LTJG
+===================================
+
+===================================
+ID: 240062
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）大尉
+Code: ZEON space suit LT
+Name: ZEON space suit LT
+===================================
+
+===================================
+ID: 240063
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）少佐
+Code: ZEON space suit LCDR
+Name: ZEON space suit LCDR
+===================================
+
+===================================
+ID: 240064
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）中佐
+Code: ZEON space suit CDR
+Name: ZEON space suit CDR
+===================================
+
+===================================
+ID: 240065
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）大佐
+Code: ZEON space suit CAPT
+Name: ZEON space suit CAPT
+===================================
+
+===================================
+ID: 240066
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）准将
+Code: ZEON space suit RDML
+Name: ZEON space suit RDML
+===================================
+
+===================================
+ID: 240067
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）少将
+Code: ZEON space suit RADM
+Name: ZEON space suit RADM
+===================================
+
+===================================
+ID: 240068
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）中将
+Code: ZEON space suit VADM
+Name: ZEON space suit VADM
+===================================
+
+===================================
+ID: 240069
+Comment: ジオン用ノーマルスーツ（軽装宇宙服）大将
+Code: ZEON space suit ADM
+Name: ZEON space suit ADM
+===================================
+
+===================================
+ID: 240070
+Comment: 連邦メカニック用スーツ 二等兵
+Code: EF overalls SR
+Name: EF overalls SR
+===================================
+
+===================================
+ID: 240071
+Comment: ジオンメカニック用スーツ 二等兵
+Code: ZEON overalls SR
+Name: ZEON overalls SR
+===================================
+
+===================================
+ID: 240072
+Comment: Tシャツ・アデレード
+Code: T-shirt Adelaide
+Name: T-shirt Adelaide
+===================================
+
+===================================
+ID: 240073
+Comment: Tシャツ・メルボルン
+Code: T-shirt Melbourne
+Name: T-shirt Melbourne
+===================================
+
+===================================
+ID: 240074
+Comment: Tシャツ・シドニー
+Code: T-shirt Sydney
+Name: T-shirt Sydney
+===================================
+
+===================================
+ID: 240075
+Comment: Tシャツ・キャンベラ
+Code: T-shirt Canberra
+Name: T-shirt Canberra
+===================================
+
+===================================
+ID: 240076
+Comment: Tシャツ・ダーウィン
+Code: T-shirt Darwin
+Name: T-shirt Darwin
+===================================
+
+===================================
+ID: 240077
+Comment: Tシャツ・パース
+Code: T-shirt Perth
+Name: T-shirt Perth
+===================================
+
+===================================
+ID: 240078
+Comment: Tシャツ・ブリスベン
+Code: T-shirt Brisbane
+Name: T-shirt Brisbane
+===================================
+
+===================================
+ID: 240079
+Comment: Tシャツ･アナハイム
+Code: T-shirt Anaheim
+Name: T-shirt Anaheim
+===================================
+
+===================================
+ID: 240080
+Comment: Tシャツ・ジオニック
+Code: T-shirt Zeonic
+Name: T-shirt Zeonic
+===================================
+
+===================================
+ID: 240081
+Comment: Tシャツ（半袖）
+Code: T-shirt
+Name: T-shirt
+===================================
+
+===================================
+ID: 240082
+Comment: シャツすそ出し（長袖）
+Code: shirt
+Name: shirt
+===================================
+
+===================================
+ID: 240083
+Comment: 半ズボン
+Code: kneelength pants
+Name: kneelength pants
+===================================
+
+===================================
+ID: 240084
+Comment: ジーンズ
+Code: jeans
+Name: jeans
+===================================
+
+===================================
+ID: 240085
+Comment: 運動靴
+Code: sneakers
+Name: sneakers
+===================================
+
+===================================
+ID: 240086
+Comment: 連邦手袋
+Code: EF gloves
+Name: EF gloves
+===================================
+
+===================================
+ID: 240087
+Comment: ジオン手袋
+Code: ZEON gloves
+Name: ZEON gloves
+===================================
+
+===================================
+ID: 240088
+Comment: 帽子
+Code: cap
+Name: cap
+===================================
+
+===================================
+ID: 240089
+Comment: 皮ジャン
+Code: leather jacket
+Name: leather jacket
+===================================
+
+===================================
+ID: 240090
+Comment: Tシャツ（袖色変え）
+Code: T-shirt two-tone
+Name: T-shirt two-tone
+===================================
+
+===================================
+ID: 240091
+Comment: 帽子（前面白）
+Code: cap two-tone
+Name: cap two-tone
+===================================
+
+===================================
+ID: 240092
+Comment: サングラス
+Code: sunglasses
+Name: sunglasses
+===================================
+
+===================================
+ID: 240093
+Comment: 連邦用制帽
+Code: EF hat
+Name: EF hat
+===================================
+
+===================================
+ID: 240094
+Comment: ジオン用制帽（角なし）
+Code: ZEON hat
+Name: ZEON hat
+===================================
+
+===================================
+ID: 240095
+Comment: 連邦メカニック用スーツ 一等兵
+Code: EF overalls  SA
+Name: EF overalls  SA
+===================================
+
+===================================
+ID: 240096
+Comment: 連邦メカニック用スーツ 上等兵
+Code: EF overalls  SN
+Name: EF overalls  SN
+===================================
+
+===================================
+ID: 240097
+Comment: 連邦メカニック用スーツ 伍長
+Code: EF overalls  PO
+Name: EF overalls  PO
+===================================
+
+===================================
+ID: 240098
+Comment: 連邦メカニック用スーツ 軍曹
+Code: EF overalls  CPO
+Name: EF overalls  CPO
+===================================
+
+===================================
+ID: 240099
+Comment: 連邦メカニック用スーツ 曹長
+Code: EF overalls  SCPO
+Name: EF overalls  SCPO
+===================================
+
+===================================
+ID: 240100
+Comment: 連邦メカニック用スーツ 少尉
+Code: EF overalls  ENS
+Name: EF overalls  ENS
+===================================
+
+===================================
+ID: 240101
+Comment: 連邦メカニック用スーツ 中尉
+Code: EF overalls  LTJG
+Name: EF overalls  LTJG
+===================================
+
+===================================
+ID: 240102
+Comment: 連邦メカニック用スーツ 大尉
+Code: EF overalls  LT
+Name: EF overalls  LT
+===================================
+
+===================================
+ID: 240103
+Comment: 連邦メカニック用スーツ 少佐
+Code: EF overalls  LCDR
+Name: EF overalls  LCDR
+===================================
+
+===================================
+ID: 240104
+Comment: 連邦メカニック用スーツ 中佐
+Code: EF overalls  CDR
+Name: EF overalls  CDR
+===================================
+
+===================================
+ID: 240105
+Comment: 連邦メカニック用スーツ 大佐
+Code: EF overalls  CAPT
+Name: EF overalls  CAPT
+===================================
+
+===================================
+ID: 240106
+Comment: 連邦メカニック用スーツ 准将
+Code: EF overalls  RDML
+Name: EF overalls  RDML
+===================================
+
+===================================
+ID: 240107
+Comment: 連邦メカニック用スーツ 少将
+Code: EF overalls  RADM
+Name: EF overalls  RADM
+===================================
+
+===================================
+ID: 240108
+Comment: 連邦メカニック用スーツ 中将
+Code: EF overalls  VADM
+Name: EF overalls  VADM
+===================================
+
+===================================
+ID: 240109
+Comment: 連邦メカニック用スーツ 大将
+Code: EF overalls  ADM
+Name: EF overalls  ADM
+===================================
+
+===================================
+ID: 240110
+Comment: ジオンメカニック用スーツ 一等兵
+Code: ZEON overalls SA
+Name: ZEON overalls SA
+===================================
+
+===================================
+ID: 240111
+Comment: ジオンメカニック用スーツ 上等兵
+Code: ZEON overalls SN
+Name: ZEON overalls SN
+===================================
+
+===================================
+ID: 240112
+Comment: ジオンメカニック用スーツ 伍長
+Code: ZEON overalls PO
+Name: ZEON overalls PO
+===================================
+
+===================================
+ID: 240113
+Comment: ジオンメカニック用スーツ 軍曹
+Code: ZEON overalls CPO
+Name: ZEON overalls CPO
+===================================
+
+===================================
+ID: 240114
+Comment: ジオンメカニック用スーツ 曹長
+Code: ZEON overalls SCPO
+Name: ZEON overalls SCPO
+===================================
+
+===================================
+ID: 240115
+Comment: ジオンメカニック用スーツ 少尉
+Code: ZEON overalls ENS
+Name: ZEON overalls ENS
+===================================
+
+===================================
+ID: 240116
+Comment: ジオンメカニック用スーツ 中尉
+Code: ZEON overalls LTJG
+Name: ZEON overalls LTJG
+===================================
+
+===================================
+ID: 240117
+Comment: ジオンメカニック用スーツ 大尉
+Code: ZEON overalls LT
+Name: ZEON overalls LT
+===================================
+
+===================================
+ID: 240118
+Comment: ジオンメカニック用スーツ 少佐
+Code: ZEON overalls LCDR
+Name: ZEON overalls LCDR
+===================================
+
+===================================
+ID: 240119
+Comment: ジオンメカニック用スーツ 中佐
+Code: ZEON overalls CDR
+Name: ZEON overalls CDR
+===================================
+
+===================================
+ID: 240120
+Comment: ジオンメカニック用スーツ 大佐
+Code: ZEON overalls CAPT
+Name: ZEON overalls CAPT
+===================================
+
+===================================
+ID: 240121
+Comment: ジオンメカニック用スーツ 准将
+Code: ZEON overalls RDML
+Name: ZEON overalls RDML
+===================================
+
+===================================
+ID: 240122
+Comment: ジオンメカニック用スーツ 少将
+Code: ZEON overalls RADM
+Name: ZEON overalls RADM
+===================================
+
+===================================
+ID: 240123
+Comment: ジオンメカニック用スーツ 中将
+Code: ZEON overalls VADM
+Name: ZEON overalls VADM
+===================================
+
+===================================
+ID: 240124
+Comment: ジオンメカニック用スーツ 大将
+Code: ZEON overalls ADM
+Name: ZEON overalls ADM
+===================================
+
+===================================
+ID: 240125
+Comment: ジオン用制帽（角あり）
+Code: ZEON hat S
+Name: ZEON hat S
+===================================
+
+===================================
+ID: 240126
+Comment: コンバース系スニーカー
+Code: cotton sneakers
+Name: cotton sneakers
+===================================
+
+===================================
+ID: 240127
+Comment: 皮ショートブーツ
+Code: leather short boots
+Name: leather short boots
+===================================
+
+===================================
+ID: 240128
+Comment: カウボーイハット
+Code: cowboy hat
+Name: cowboy hat
+===================================
+
+===================================
+ID: 240129
+Comment: ハンチング帽
+Code: hunting cap
+Name: hunting cap
+===================================
+
+===================================
+ID: 240130
+Comment: 未来派サングラス
+Code: sports glasses
+Name: sports glasses
+===================================
+
+===================================
+ID: 240131
+Comment: リストバンド・1
+Code: wristband
+Name: wristband
+===================================
+
+===================================
+ID: 240132
+Comment: リストバンド・2
+Code: wristband  two-tone
+Name: wristband  two-tone
+===================================
+
+===================================
+ID: 240133
+Comment: ロングTシャツ
+Code: L T-shirt
+Name: L T-shirt
+===================================
+
+===================================
+ID: 240134
+Comment: ロングTシャツ（袖色替え）
+Code: L T-shirt two-tone
+Name: L T-shirt two-tone
+===================================
+
+===================================
+ID: 240135
+Comment: ロングTシャツ（ボーダー）
+Code: L T-shirt border
+Name: L T-shirt border
+===================================
+
+===================================
+ID: 240136
+Comment: 麦わら帽
+Code: strawhat
+Name: strawhat
+===================================
+
+===================================
+ID: 240137
+Comment: カンカン帽
+Code: boater
+Name: boater
+===================================
+
+===================================
+ID: 240138
+Comment: ドゴール帽
+Code: de Gaulle cap
+Name: de Gaulle cap
+===================================
+
+===================================
+ID: 240139
+Comment: ドゴール帽（プレート付き）
+Code: de Gaulle cap  two-tone
+Name: de Gaulle cap  two-tone
+===================================
+
+===================================
+ID: 240140
+Comment: ビーチサンダル
+Code: beach sandal
+Name: beach sandal
+===================================
+
+===================================
+ID: 240141
+Comment: スポーツサンダル
+Code: sports sandal
+Name: sports sandal
+===================================
+
+===================================
+ID: 240142
+Comment: つっかけ系サンダル
+Code: sabot sandal
+Name: sabot sandal
+===================================
+
+===================================
+ID: 240143
+Comment: チノパン
+Code: chinos pants
+Name: chinos pants
+===================================
+
+===================================
+ID: 240144
+Comment: 膝丈カーゴパンツ
+Code: kneelength cargo pants
+Name: kneelength cargo pants
+===================================
+
+===================================
+ID: 240145
+Comment: ポロシャツ
+Code: polo shirt
+Name: polo shirt
+===================================
+
+===================================
+ID: 240146
+Comment: 眼鏡・丸
+Code: wire rim glasses
+Name: wire rim glasses
+===================================
+
+===================================
+ID: 240147
+Comment: 眼鏡・下だけ
+Code: half rim glasses
+Name: half rim glasses
+===================================
+
+===================================
+ID: 240148
+Comment: 眼鏡・角縁
+Code: black frame glasses
+Name: black frame glasses
+===================================
+
+===================================
+ID: 240149
+Comment: 眼鏡・溶接用（黒）
+Code: safety glasses A
+Name: safety glasses A
+===================================
+
+===================================
+ID: 240150
+Comment: 眼鏡・溶接用（赤）
+Code: safety glasses B
+Name: safety glasses B
+===================================
+
+===================================
+ID: 240151
+Comment: 時計・スポーツ
+Code: sports watch
+Name: sports watch
+===================================
+
+===================================
+ID: 240152
+Comment: 時計・オーソドックス
+Code: wristwatch
+Name: wristwatch
+===================================
+
+===================================
+ID: 240153
+Comment: 眼鏡・戦前風
+Code: round glasses
+Name: round glasses
+===================================
+
+===================================
+ID: 240154
+Comment: 時計・
+Code: watch
+Name: watch
+===================================
+
+===================================
+ID: 240155
+Comment: 時計・
+Code: watch
+Name: watch
+===================================
+
+===================================
+ID: 240156
+Comment: ヘッドセット・マツム（連邦）
+Code: headset Mathum Sonic
+Name: headset Mathum Sonic
+===================================
+
+===================================
+ID: 240157
+Comment: ヘッドセット・フェリペ（ジオン）
+Code: headset Felipe
+Name: headset Felipe
+===================================
+
+===================================
+ID: 240158
+Comment: ショートコート
+Code: shortcoat
+Name: shortcoat
+===================================
+
+===================================
+ID: 240159
+Comment: 連邦メカニック用帽子
+Code: EF work cap
+Name: EF work cap
+===================================
+
+===================================
+ID: 240160
+Comment: ジオンメカニック用帽子
+Code: ZEON work cap
+Name: ZEON work cap
+===================================
+
+===================================
+ID: 240161
+Comment: ゴーグル
+Code: goggles
+Name: goggles
+===================================
+
+===================================
+ID: 240162
+Comment: Tシャツ・サザンクロス
+Code: T-shirt Southern Cross
+Name: T-shirt Southern Cross
+===================================
+
+===================================
+ID: 240163
+Comment: Tシャツ・連邦1
+Code: T-shirt Ecotopia 01
+Name: T-shirt Ecotopia 01
+===================================
+
+===================================
+ID: 240164
+Comment: Tシャツ・連邦2
+Code: T-shirt Ecotopia 02
+Name: T-shirt Ecotopia 02
+===================================
+
+===================================
+ID: 240165
+Comment: Tシャツ・ジオン1
+Code: T-shirt Zeal 01
+Name: T-shirt Zeal 01
+===================================
+
+===================================
+ID: 240166
+Comment: Tシャツ・ジオン2
+Code: T-shirt Zeal 02
+Name: T-shirt Zeal 02
+===================================
+
+===================================
+ID: 240167
+Comment: ヘッドセット・スーズ（連邦）
+Code: headset Suze
+Name: headset Suze
+===================================
+
+===================================
+ID: 240168
+Comment: ヘッドセット・グラモニカ（ジオン）
+Code: headset Gramonica
+Name: headset Gramonica
+===================================
+
+===================================
+ID: 240169
+Comment: 08小隊ヘルメット
+Code: EF combat helmet
+Name: EF combat helmet
+===================================
+
+===================================
+ID: 240170
+Comment: 08小隊ヘルメット・バイザー付き
+Code: EF combat helmet visor
+Name: EF combat helmet visor
+===================================
+
+===================================
+ID: 240171
+Comment: 08小隊隊服
+Code: EF combat uniform
+Name: EF combat uniform
+===================================
+
+===================================
+ID: 240172
+Comment: 連邦手袋・指無し
+Code: EF fingerless gloves
+Name: EF fingerless gloves
+===================================
+
+===================================
+ID: 240173
+Comment: ジオン略帽
+Code: ZEON overseas cap A
+Name: ZEON overseas cap A
+===================================
+
+===================================
+ID: 240174
+Comment: ジオン特務隊服
+Code: ZEON combat uniform
+Name: ZEON combat uniform
+===================================
+
+===================================
+ID: 240175
+Comment: ジオン手袋・特務隊仕様
+Code: ZEON long gloves
+Name: ZEON long gloves
+===================================
+
+===================================
+ID: 240176
+Comment: 特別記念Tシャツ1(EF)
+Code: T-shirt EF limited edition
+Name: T-shirt EF limited edition
+===================================
+
+===================================
+ID: 240177
+Comment: 特別記念Tシャツ2(ZEON)
+Code: T-shirt ZEON limited edition
+Name: T-shirt ZEON limited edition
+===================================
+
+===================================
+ID: 240178
+Comment: ちょっとイカスTシャツ(異次元)
+Code: T-shirt The Goso
+Name: T-shirt The Goso
+===================================
+
+===================================
+ID: 240179
+Comment: 結構イカスTシャツ(トロピカル)
+Code: T-shirt Cloth pictures
+Name: T-shirt Cloth pictures
+===================================
+
+===================================
+ID: 240180
+Comment: すごくイカスTシャツ(蝶々)
+Code: T-shirt I-sK
+Name: T-shirt I-sK
+===================================
+
+===================================
+ID: 240181
+Comment: ものすごくイカスTシャツ(蛾)
+Code: T-shirt Arts Oh
+Name: T-shirt Arts Oh
+===================================
+
+===================================
+ID: 240182
+Comment: 究極のTシャツ(横浜わさび)
+Code: T-shirt ZEN
+Name: T-shirt ZEN
+===================================
+
+===================================
+ID: 240183
+Comment: 連邦Tシャツ
+Code: EF T-shirt
+Name: EF T-shirt
+===================================
+
+===================================
+ID: 240184
+Comment: ジオンTシャツ
+Code: ZEON T-shirt
+Name: ZEON T-shirt
+===================================
+
+===================================
+ID: 240185
+Comment: 特別記念Tシャツ3(両軍)
+Code: T-shirt limited edition
+Name: T-shirt limited edition
+===================================
+
+===================================
+ID: 240186
+Comment: ゴーグル眼鏡扱いバージョン
+Code: goggles
+Name: goggles
+===================================
+
+===================================
+ID: 240187
+Comment: 白手袋
+Code: white gloves
+Name: white gloves
+===================================
+
+===================================
+ID: 240188
+Comment: 指輪ルビー
+Code: ruby ring
+Name: ruby ring
+===================================
+
+===================================
+ID: 240189
+Comment: 指輪サファイア
+Code: sapphire ring
+Name: sapphire ring
+===================================
+
+===================================
+ID: 240190
+Comment: 指輪エメラルド
+Code: emerald ring
+Name: emerald ring
+===================================
+
+===================================
+ID: 240191
+Comment: 指輪・4
+Code: ring
+Name: ring
+===================================
+
+===================================
+ID: 240192
+Comment: 指輪・5
+Code: ring
+Name: ring
+===================================
+
+===================================
+ID: 240193
+Comment: マトリックスサングラス
+Code: protective sunglasses
+Name: protective sunglasses
+===================================
+
+===================================
+ID: 240194
+Comment: 連邦軍コロニー駐留隊ベレー帽 赤
+Code: EF beret A
+Name: EF beret A
+===================================
+
+===================================
+ID: 240195
+Comment: 連邦軍コロニー駐留隊ベレー帽 青
+Code: EF beret B
+Name: EF beret B
+===================================
+
+===================================
+ID: 240196
+Comment: 連邦軍コロニー駐留隊ベレー帽 緑（指揮官用）
+Code: EF beret S
+Name: EF beret S
+===================================
+
+===================================
+ID: 240197
+Comment: ジオン略帽 砂色
+Code: ZEON overseas cap B
+Name: ZEON overseas cap B
+===================================
+
+===================================
+ID: 240198
+Comment: ジオン略帽 黒（指揮官用）
+Code: ZEON overseas cap S
+Name: ZEON overseas cap S
+===================================
+
+===================================
+ID: 240199
+Comment: 通常記念Tシャツ1(EF)
+Code: T-shirt EF version
+Name: T-shirt EF version
+===================================
+
+===================================
+ID: 240200
+Comment: 通常記念Tシャツ2(ZEON)
+Code: T-shirt ZEON version
+Name: T-shirt ZEON version
+===================================
+
+===================================
+ID: 240201
+Comment: 指輪人造ルビー
+Code: synthetic ruby ring
+Name: synthetic ruby ring
+===================================
+
+===================================
+ID: 240202
+Comment: 指輪人造サファイア
+Code: synthetic sapphire ring
+Name: synthetic sapphire ring
+===================================
+
+===================================
+ID: 240203
+Comment: 指輪人造エメラルド
+Code: synthetic emerald ring
+Name: synthetic emerald ring
+===================================
+
+===================================
+ID: 240204
+Comment: 指輪・4
+Code: ring
+Name: ring
+===================================
+
+===================================
+ID: 240205
+Comment: 指輪・5
+Code: ring
+Name: ring
+===================================
+
+===================================
+ID: 240206
+Comment: 偽マトリックスサングラス
+Code: protective sunglasses PE
+Name: protective sunglasses PE
+===================================
+
+===================================
+ID: 240207
+Comment: ミトン手袋
+Code: mittens
+Name: mittens
+===================================
+
+===================================
+ID: 240208
+Comment: トゲ付リストバンド黒・シルバー
+Code: stud wristband silver
+Name: stud wristband silver
+===================================
+
+===================================
+ID: 240209
+Comment: トゲ付リストバンド茶・ゴールド
+Code: stud wristband gold
+Name: stud wristband gold
+===================================
+
+===================================
+ID: 240210
+Comment: 民間ベレー帽
+Code: beret
+Name: beret
+===================================
+
+===================================
+ID: 240211
+Comment: ニットワッチキャップ
+Code: watch cap
+Name: watch cap
+===================================
+
+===================================
+ID: 240212
+Comment: ニットスキーキャップ
+Code: ski cap
+Name: ski cap
+===================================
+
+===================================
+ID: 240213
+Comment: ニットチベタンキャップ
+Code: tibetan cap
+Name: tibetan cap
+===================================
+
+===================================
+ID: 240214
+Comment: モスコーキャップ　茶
+Code: fur hat brown
+Name: fur hat brown
+===================================
+
+===================================
+ID: 240215
+Comment: モスコーキャップ　黒
+Code: fur hat black
+Name: fur hat black
+===================================
+
+===================================
+ID: 240216
+Comment: モスコーキャップ　白
+Code: fur hat white
+Name: fur hat white
+===================================
+
+===================================
+ID: 240217
+Comment: ノーマルキャップ　後ろ被りタイプ
+Code: cap
+Name: cap
+===================================
+
+===================================
+ID: 240218
+Comment: ノーマルキャップツートン　後ろ被りタイプ
+Code: cap two-tone
+Name: cap two-tone
+===================================
+
+===================================
+ID: 240219
+Comment: 連邦メカニックキャップ　後ろ被りタイプ
+Code: EF work cap
+Name: EF work cap
+===================================
+
+===================================
+ID: 240220
+Comment: ジオンメカニックキャップ　後ろ被りタイプ
+Code: ZEON work cap
+Name: ZEON work cap
+===================================
+
+===================================
+ID: 240221
+Comment: Ｔシャツ　横袖黒タイプ
+Code: sports T-shirt
+Name: sports T-shirt
+===================================
+
+===================================
+ID: 240222
+Comment: チェックネルシャツ
+Code: flannel shirt
+Name: flannel shirt
+===================================
+
+===================================
+ID: 240223
+Comment: ストライプシャツ0
+Code: striped shirt
+Name: striped shirt
+===================================
+
+===================================
+ID: 240224
+Comment: ネクタイ付シャツ1
+Code: shirt with tie
+Name: shirt with tie
+===================================
+
+===================================
+ID: 240225
+Comment: ネクタイ付シャツ2
+Code: white shirt with tie
+Name: white shirt with tie
+===================================
+
+===================================
+ID: 240226
+Comment: クレリックシャツ
+Code: cleric shirt
+Name: cleric shirt
+===================================
+
+===================================
+ID: 240227
+Comment: タイトジーンズサイドライン
+Code: sideline jeans
+Name: sideline jeans
+===================================
+
+===================================
+ID: 240228
+Comment: ルーズジーンズ腰履き
+Code: loose fit jeans
+Name: loose fit jeans
+===================================
+
+===================================
+ID: 240229
+Comment: ローライズベルボトムジーンズ
+Code: bellbottom jeans
+Name: bellbottom jeans
+===================================
+
+===================================
+ID: 240230
+Comment: ホットパンツ
+Code: hot pants
+Name: hot pants
+===================================
+
+===================================
+ID: 240231
+Comment: 七部丈カーゴパンツ
+Code: cropped jeans
+Name: cropped jeans
+===================================
+
+===================================
+ID: 240232
+Comment: ペインターパンツ
+Code: painter pants
+Name: painter pants
+===================================
+
+===================================
+ID: 240233
+Comment: サブリナパンツ
+Code: sabrina pants
+Name: sabrina pants
+===================================
+
+===================================
+ID: 240234
+Comment: ファー付N3Bタイプコート
+Code: fur trimmed parka
+Name: fur trimmed parka
+===================================
+
+===================================
+ID: 240235
+Comment: タートルネックスキーセーター
+Code: turtleneck sweater
+Name: turtleneck sweater
+===================================
+
+===================================
+ID: 240236
+Comment: タートルネックスキーセーター（無地）
+Code: plain turtleneck sweater
+Name: plain turtleneck sweater
+===================================
+
+===================================
+ID: 240237
+Comment: スパッツ
+Code: spats
+Name: spats
+===================================
+
+===================================
+ID: 240238
+Comment: サイドラインスパッツ
+Code: sideline spats
+Name: sideline spats
+===================================
+
+===================================
+ID: 240239
+Comment: モカシン
+Code: moccasin
+Name: moccasin
+===================================
+
+===================================
+ID: 240240
+Comment: エンジニアブーツ
+Code: engineer boots
+Name: engineer boots
+===================================
+
+===================================
+ID: 240241
+Comment: ファーブーツ
+Code: fur trimmed boots
+Name: fur trimmed boots
+===================================
+
+===================================
+ID: 240242
+Comment: はちまき
+Code: hachimaki
+Name: hachimaki
+===================================
+
+===================================
+ID: 240243
+Comment: バンダナ
+Code: bandanna
+Name: bandanna
+===================================
+
+===================================
+ID: 240244
+Comment: バンダナ・森林迷彩
+Code: bandanna tiger stripe
+Name: bandanna tiger stripe
+===================================
+
+===================================
+ID: 240245
+Comment: バンダナ・砂漠迷彩
+Code: bandanna three color
+Name: bandanna three color
+===================================
+
+===================================
+ID: 240246
+Comment: バンダナ・都市迷彩
+Code: bandanna urban camo
+Name: bandanna urban camo
+===================================
+
+===================================
+ID: 240247
+Comment: アイパッチ
+Code: eye patch
+Name: eye patch
+===================================
+
+===================================
+ID: 240248
+Comment: アイパッチ・ドクロマーク
+Code: eye patch skull
+Name: eye patch skull
+===================================
+
+===================================
+ID: 240249
+Comment: ノースリーブシャツ・スポーツ
+Code: no sleeve sports shirts
+Name: no sleeve sports shirts
+===================================
+
+===================================
+ID: 240250
+Comment: ノースリーブシャツ・カジュアル
+Code: no sleeve shirts
+Name: no sleeve shirts
+===================================
+
+===================================
+ID: 240251
+Comment: チャイナシャツ・模様あり
+Code: chinese pattern no sleeve shirts
+Name: chinese pattern no sleeve shirts
+===================================
+
+===================================
+ID: 240252
+Comment: チャイナシャツ・無地
+Code: chinese no sleeve shirts
+Name: chinese no sleeve shirts
+===================================
+
+===================================
+ID: 240253
+Comment: チャイナパンツ・模様あり
+Code: chinese pattern pants with buttons
+Name: chinese pattern pants with buttons
+===================================
+
+===================================
+ID: 240254
+Comment: チャイナパンツ・無地
+Code: pants with buttons
+Name: pants with buttons
+===================================
+
+===================================
+ID: 240255
+Comment: ボックスプリーツスカート・無地
+Code: box pleats skirt
+Name: box pleats skirt
+===================================
+
+===================================
+ID: 240256
+Comment: ボックスプリーツスカート・タータンチェック
+Code: check box pleats skirt
+Name: check box pleats skirt
+===================================
+
+===================================
+ID: 240257
+Comment: 刺繍入りスカート
+Code: embroidered skirt
+Name: embroidered skirt
+===================================
+
+===================================
+ID: 240258
+Comment: フォーマルスーツ
+Code: formal suit
+Name: formal suit
+===================================
+
+===================================
+ID: 240259
+Comment: 240259
+Code: 240259
+Name: 240259
+===================================
+
+===================================
+ID: 240260
+Comment: 240260
+Code: 240260
+Name: 240260
+===================================
+
+===================================
+ID: 240261
+Comment: 240261
+Code: 240261
+Name: 240261
+===================================
+
+===================================
+ID: 240262
+Comment: 240262
+Code: 240262
+Name: 240262
+===================================
+
+===================================
+ID: 240263
+Comment: 240263
+Code: 240263
+Name: 240263
+===================================
+
+===================================
+ID: 240264
+Comment: 240264
+Code: 240264
+Name: 240264
+===================================
+
+===================================
+ID: 240265
+Comment: 240265
+Code: 240265
+Name: 240265
+===================================
+
+===================================
+ID: 240266
+Comment: 240266
+Code: 240266
+Name: 240266
+===================================
+
+===================================
+ID: 240267
+Comment: 240267
+Code: 240267
+Name: 240267
+===================================
+
+===================================
+ID: 240268
+Comment: 240268
+Code: 240268
+Name: 240268
+===================================
+
+===================================
+ID: 240269
+Comment: 240269
+Code: 240269
+Name: 240269
+===================================
+
+===================================
+ID: 240270
+Comment: 240270
+Code: 240270
+Name: 240270
+===================================
+
+===================================
+ID: 240271
+Comment: 240271
+Code: 240271
+Name: 240271
+===================================
+
+===================================
+ID: 240272
+Comment: 240272
+Code: 240272
+Name: 240272
+===================================
+
+===================================
+ID: 240273
+Comment: 240273
+Code: 240273
+Name: 240273
+===================================
+
+===================================
+ID: 240274
+Comment: 240274
+Code: 240274
+Name: 240274
+===================================
+
+===================================
+ID: 240275
+Comment: 240275
+Code: 240275
+Name: 240275
+===================================
+
+===================================
+ID: 240276
+Comment: 240276
+Code: 240276
+Name: 240276
+===================================
+
+===================================
+ID: 240277
+Comment: 240277
+Code: 240277
+Name: 240277
+===================================
+
+===================================
+ID: 240278
+Comment: 240278
+Code: 240278
+Name: 240278
+===================================
+
+===================================
+ID: 240279
+Comment: 240279
+Code: 240279
+Name: 240279
+===================================
+
+===================================
+ID: 240280
+Comment: 240280
+Code: 240280
+Name: 240280
+===================================
+
+===================================
+ID: 240281
+Comment: 240281
+Code: 240281
+Name: 240281
+===================================
+
+===================================
+ID: 240282
+Comment: 240282
+Code: 240282
+Name: 240282
+===================================
+
+===================================
+ID: 240283
+Comment: 240283
+Code: 240283
+Name: 240283
+===================================
+
+===================================
+ID: 240284
+Comment: 240284
+Code: 240284
+Name: 240284
+===================================
+
+===================================
+ID: 240285
+Comment: 240285
+Code: 240285
+Name: 240285
+===================================
+
+===================================
+ID: 240286
+Comment: 240286
+Code: 240286
+Name: 240286
+===================================
+
+===================================
+ID: 240287
+Comment: 240287
+Code: 240287
+Name: 240287
+===================================
+
+===================================
+ID: 240288
+Comment: 240288
+Code: 240288
+Name: 240288
+===================================
+
+===================================
+ID: 240289
+Comment: 240289
+Code: 240289
+Name: 240289
+===================================
+
+===================================
+ID: 240290
+Comment: 240290
+Code: 240290
+Name: 240290
+===================================
+
+===================================
+ID: 240291
+Comment: 240291
+Code: 240291
+Name: 240291
+===================================
+
+===================================
+ID: 240292
+Comment: 240292
+Code: 240292
+Name: 240292
+===================================
+
+===================================
+ID: 240293
+Comment: 240293
+Code: 240293
+Name: 240293
+===================================
+
+===================================
+ID: 240294
+Comment: 240294
+Code: 240294
+Name: 240294
+===================================
+
+===================================
+ID: 240295
+Comment: 240295
+Code: 240295
+Name: 240295
+===================================
+
+===================================
+ID: 240296
+Comment: 連邦ランドムーバー
+Code: EF land mover
+Name: EF land mover
+===================================
+
+===================================
+ID: 240297
+Comment: ジオンランドムーバー
+Code: ZEON land mover
+Name: ZEON land mover
+===================================
+
+===================================
+ID: 240298
+Comment: 暫定連邦軍宇宙服（首グレイ）
+Code: EF space suit
+Name: EF space suit
+===================================
+
+===================================
+ID: 240299
+Comment: 暫定ジオン軍宇宙服（首グレイ）
+Code: ZEON space suit
+Name: ZEON space suit
+===================================
+
+===================================
+ID: 240300
+Comment: GQ 連邦ヘルメット
+Code: GQ EF helmet
+Name: GQ EF helmet
+===================================
+
+===================================
+ID: 240301
+Comment: GQ ジオンヘルメット
+Code: GQ ZEON helmet
+Name: GQ ZEON helmet
+===================================
+
+===================================
+ID: 240302
+Comment: GQ 連邦軍一般兵士用軍服 二等兵
+Code: GQ EF uniform SR
+Name: GQ EF uniform SR
+===================================
+
+===================================
+ID: 240303
+Comment: GQ 連邦軍一般兵士用軍服 一等兵
+Code: GQ EF uniform SA
+Name: GQ EF uniform SA
+===================================
+
+===================================
+ID: 240304
+Comment: GQ 連邦軍一般兵士用軍服 上等兵
+Code: GQ EF uniform SN
+Name: GQ EF uniform SN
+===================================
+
+===================================
+ID: 240305
+Comment: GQ 連邦軍一般兵士用軍服 伍長
+Code: GQ EF uniform PO
+Name: GQ EF uniform PO
+===================================
+
+===================================
+ID: 240306
+Comment: GQ 連邦軍一般兵士用軍服 軍曹
+Code: GQ EF uniform CPO
+Name: GQ EF uniform CPO
+===================================
+
+===================================
+ID: 240307
+Comment: GQ 連邦軍一般兵士用軍服 曹長
+Code: GQ EF uniform SCPO
+Name: GQ EF uniform SCPO
+===================================
+
+===================================
+ID: 240308
+Comment: GQ 連邦軍一般兵士用軍服 少尉
+Code: GQ EF uniform ENS
+Name: GQ EF uniform ENS
+===================================
+
+===================================
+ID: 240309
+Comment: GQ 連邦軍一般兵士用軍服 中尉
+Code: GQ EF uniform LTJG
+Name: GQ EF uniform LTJG
+===================================
+
+===================================
+ID: 240310
+Comment: GQ 連邦軍一般兵士用軍服 大尉
+Code: GQ EF uniform LT
+Name: GQ EF uniform LT
+===================================
+
+===================================
+ID: 240311
+Comment: GQ 連邦軍一般兵士用軍服 少佐
+Code: GQ EF uniform LCDR
+Name: GQ EF uniform LCDR
+===================================
+
+===================================
+ID: 240312
+Comment: GQ 連邦軍一般兵士用軍服 中佐
+Code: GQ EF uniform CDR
+Name: GQ EF uniform CDR
+===================================
+
+===================================
+ID: 240313
+Comment: GQ 連邦軍一般兵士用軍服 大佐
+Code: GQ EF uniform CAPT
+Name: GQ EF uniform CAPT
+===================================
+
+===================================
+ID: 240314
+Comment: GQ 連邦軍一般兵士用軍服 准将
+Code: GQ EF uniform RDML
+Name: GQ EF uniform RDML
+===================================
+
+===================================
+ID: 240315
+Comment: GQ 連邦軍一般兵士用軍服 少将
+Code: GQ EF uniform RADM
+Name: GQ EF uniform RADM
+===================================
+
+===================================
+ID: 240316
+Comment: GQ 連邦軍一般兵士用軍服 中将
+Code: GQ EF uniform VADM
+Name: GQ EF uniform VADM
+===================================
+
+===================================
+ID: 240317
+Comment: GQ 連邦軍一般兵士用軍服 大将
+Code: GQ EF uniform ADM
+Name: GQ EF uniform ADM
+===================================
+
+===================================
+ID: 240318
+Comment: GQ ジオン軍一般兵士用軍服 二等兵
+Code: GQ ZEON uniform SR
+Name: GQ ZEON uniform SR
+===================================
+
+===================================
+ID: 240319
+Comment: GQ ジオン軍一般兵士用軍服 一等兵
+Code: GQ ZEON uniform SA
+Name: GQ ZEON uniform SA
+===================================
+
+===================================
+ID: 240320
+Comment: GQ ジオン軍一般兵士用軍服 上等兵
+Code: GQ ZEON uniform SN
+Name: GQ ZEON uniform SN
+===================================
+
+===================================
+ID: 240321
+Comment: GQ ジオン軍一般兵士用軍服 伍長
+Code: GQ ZEON uniform PO
+Name: GQ ZEON uniform PO
+===================================
+
+===================================
+ID: 240322
+Comment: GQ ジオン軍一般兵士用軍服 軍曹
+Code: GQ ZEON uniform CPO
+Name: GQ ZEON uniform CPO
+===================================
+
+===================================
+ID: 240323
+Comment: GQ ジオン軍一般兵士用軍服 曹長
+Code: GQ ZEON uniform SCPO
+Name: GQ ZEON uniform SCPO
+===================================
+
+===================================
+ID: 240324
+Comment: GQ ジオン軍一般兵士用軍服 少尉
+Code: GQ ZEON uniform ENS
+Name: GQ ZEON uniform ENS
+===================================
+
+===================================
+ID: 240325
+Comment: GQ ジオン軍一般兵士用軍服 中尉
+Code: GQ ZEON uniform LTJG
+Name: GQ ZEON uniform LTJG
+===================================
+
+===================================
+ID: 240326
+Comment: GQ ジオン軍一般兵士用軍服 大尉
+Code: GQ ZEON uniform LT
+Name: GQ ZEON uniform LT
+===================================
+
+===================================
+ID: 240327
+Comment: GQ ジオン軍一般兵士用軍服 少佐
+Code: GQ ZEON uniform LCDR
+Name: GQ ZEON uniform LCDR
+===================================
+
+===================================
+ID: 240328
+Comment: GQ ジオン軍一般兵士用軍服 中佐
+Code: GQ ZEON uniform CDR
+Name: GQ ZEON uniform CDR
+===================================
+
+===================================
+ID: 240329
+Comment: GQ ジオン軍一般兵士用軍服 大佐
+Code: GQ ZEON uniform CAPT
+Name: GQ ZEON uniform CAPT
+===================================
+
+===================================
+ID: 240330
+Comment: GQ ジオン軍一般兵士用軍服 准将
+Code: GQ ZEON uniform RDML
+Name: GQ ZEON uniform RDML
+===================================
+
+===================================
+ID: 240331
+Comment: GQ ジオン軍一般兵士用軍服 少将
+Code: GQ ZEON uniform RADM
+Name: GQ ZEON uniform RADM
+===================================
+
+===================================
+ID: 240332
+Comment: GQ ジオン軍一般兵士用軍服 中将
+Code: GQ ZEON uniform VADM
+Name: GQ ZEON uniform VADM
+===================================
+
+===================================
+ID: 240333
+Comment: GQ ジオン軍一般兵士用軍服 大将
+Code: GQ ZEON uniform ADM
+Name: GQ ZEON uniform ADM
+===================================
+
+===================================
+ID: 240334
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）二等兵
+Code: GQ EF space suit SR
+Name: GQ EF space suit SR
+===================================
+
+===================================
+ID: 240335
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）一等兵
+Code: GQ EF space suit SA
+Name: GQ EF space suit SA
+===================================
+
+===================================
+ID: 240336
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）上等兵
+Code: GQ EF space suit SN
+Name: GQ EF space suit SN
+===================================
+
+===================================
+ID: 240337
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）伍長
+Code: GQ EF space suit PO
+Name: GQ EF space suit PO
+===================================
+
+===================================
+ID: 240338
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）軍曹
+Code: GQ EF space suit CPO
+Name: GQ EF space suit CPO
+===================================
+
+===================================
+ID: 240339
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）曹長
+Code: GQ EF space suit SCPO
+Name: GQ EF space suit SCPO
+===================================
+
+===================================
+ID: 240340
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）少尉
+Code: GQ EF space suit ENS
+Name: GQ EF space suit ENS
+===================================
+
+===================================
+ID: 240341
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）中尉
+Code: GQ EF space suit LTJG
+Name: GQ EF space suit LTJG
+===================================
+
+===================================
+ID: 240342
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）大尉
+Code: GQ EF space suit LT
+Name: GQ EF space suit LT
+===================================
+
+===================================
+ID: 240343
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）少佐
+Code: GQ EF space suit LCDR
+Name: GQ EF space suit LCDR
+===================================
+
+===================================
+ID: 240344
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）中佐
+Code: GQ EF space suit CDR
+Name: GQ EF space suit CDR
+===================================
+
+===================================
+ID: 240345
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）大佐
+Code: GQ EF space suit CAPT
+Name: GQ EF space suit CAPT
+===================================
+
+===================================
+ID: 240346
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）准将
+Code: GQ EF space suit RDML
+Name: GQ EF space suit RDML
+===================================
+
+===================================
+ID: 240347
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）少将
+Code: GQ EF space suit RADM
+Name: GQ EF space suit RADM
+===================================
+
+===================================
+ID: 240348
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）中将
+Code: GQ EF space suit VADM
+Name: GQ EF space suit VADM
+===================================
+
+===================================
+ID: 240349
+Comment: GQ 連邦用ノーマルスーツ（軽装宇宙服）大将
+Code: GQ EF space suit ADM
+Name: GQ EF space suit ADM
+===================================
+
+===================================
+ID: 240350
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）二等兵
+Code: GQ ZEON space suit SR
+Name: GQ ZEON space suit SR
+===================================
+
+===================================
+ID: 240351
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）一等兵
+Code: GQ ZEON space suit SA
+Name: GQ ZEON space suit SA
+===================================
+
+===================================
+ID: 240352
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）上等兵
+Code: GQ ZEON space suit SN
+Name: GQ ZEON space suit SN
+===================================
+
+===================================
+ID: 240353
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）伍長
+Code: GQ ZEON space suit PO
+Name: GQ ZEON space suit PO
+===================================
+
+===================================
+ID: 240354
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）軍曹
+Code: GQ ZEON space suit CPO
+Name: GQ ZEON space suit CPO
+===================================
+
+===================================
+ID: 240355
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）曹長
+Code: GQ ZEON space suit SCPO
+Name: GQ ZEON space suit SCPO
+===================================
+
+===================================
+ID: 240356
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）少尉
+Code: GQ ZEON space suit ENS
+Name: GQ ZEON space suit ENS
+===================================
+
+===================================
+ID: 240357
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）中尉
+Code: GQ ZEON space suit LTJG
+Name: GQ ZEON space suit LTJG
+===================================
+
+===================================
+ID: 240358
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）大尉
+Code: GQ ZEON space suit LT
+Name: GQ ZEON space suit LT
+===================================
+
+===================================
+ID: 240359
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）少佐
+Code: GQ ZEON space suit LCDR
+Name: GQ ZEON space suit LCDR
+===================================
+
+===================================
+ID: 240360
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）中佐
+Code: GQ ZEON space suit CDR
+Name: GQ ZEON space suit CDR
+===================================
+
+===================================
+ID: 240361
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）大佐
+Code: GQ ZEON space suit CAPT
+Name: GQ ZEON space suit CAPT
+===================================
+
+===================================
+ID: 240362
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）准将
+Code: GQ ZEON space suit RDML
+Name: GQ ZEON space suit RDML
+===================================
+
+===================================
+ID: 240363
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）少将
+Code: GQ ZEON space suit RADM
+Name: GQ ZEON space suit RADM
+===================================
+
+===================================
+ID: 240364
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）中将
+Code: GQ ZEON space suit VADM
+Name: GQ ZEON space suit VADM
+===================================
+
+===================================
+ID: 240365
+Comment: GQ ジオン用ノーマルスーツ（軽装宇宙服）大将
+Code: GQ ZEON space suit ADM
+Name: GQ ZEON space suit ADM
+===================================
+
+===================================
+ID: 240366
+Comment: GQ 連邦メカニック用スーツ 二等兵
+Code: GQ EF overalls SR
+Name: GQ EF overalls SR
+===================================
+
+===================================
+ID: 240367
+Comment: GQ ジオンメカニック用スーツ 二等兵
+Code: GQ ZEON overalls SR
+Name: GQ ZEON overalls SR
+===================================
+
+===================================
+ID: 240368
+Comment: GQ 連邦手袋
+Code: GQ EF gloves
+Name: GQ EF gloves
+===================================
+
+===================================
+ID: 240369
+Comment: GQ ジオン手袋
+Code: GQ ZEON gloves
+Name: GQ ZEON gloves
+===================================
+
+===================================
+ID: 240370
+Comment: GQ サングラス
+Code: GQ sunglasses
+Name: GQ sunglasses
+===================================
+
+===================================
+ID: 240371
+Comment: GQ 連邦用制帽
+Code: GQ EF hat
+Name: GQ EF hat
+===================================
+
+===================================
+ID: 240372
+Comment: GQ ジオン用制帽（角なし）
+Code: GQ ZEON hat
+Name: GQ ZEON hat
+===================================
+
+===================================
+ID: 240373
+Comment: GQ 連邦メカニック用スーツ 一等兵
+Code: GQ EF overalls  SA
+Name: GQ EF overalls  SA
+===================================
+
+===================================
+ID: 240374
+Comment: GQ 連邦メカニック用スーツ 上等兵
+Code: GQ EF overalls  SN
+Name: GQ EF overalls  SN
+===================================
+
+===================================
+ID: 240375
+Comment: GQ 連邦メカニック用スーツ 伍長
+Code: GQ EF overalls  PO
+Name: GQ EF overalls  PO
+===================================
+
+===================================
+ID: 240376
+Comment: GQ 連邦メカニック用スーツ 軍曹
+Code: GQ EF overalls  CPO
+Name: GQ EF overalls  CPO
+===================================
+
+===================================
+ID: 240377
+Comment: GQ 連邦メカニック用スーツ 曹長
+Code: GQ EF overalls  SCPO
+Name: GQ EF overalls  SCPO
+===================================
+
+===================================
+ID: 240378
+Comment: GQ 連邦メカニック用スーツ 少尉
+Code: GQ EF overalls  ENS
+Name: GQ EF overalls  ENS
+===================================
+
+===================================
+ID: 240379
+Comment: GQ 連邦メカニック用スーツ 中尉
+Code: GQ EF overalls  LTJG
+Name: GQ EF overalls  LTJG
+===================================
+
+===================================
+ID: 240380
+Comment: GQ 連邦メカニック用スーツ 大尉
+Code: GQ EF overalls  LT
+Name: GQ EF overalls  LT
+===================================
+
+===================================
+ID: 240381
+Comment: GQ 連邦メカニック用スーツ 少佐
+Code: GQ EF overalls  LCDR
+Name: GQ EF overalls  LCDR
+===================================
+
+===================================
+ID: 240382
+Comment: GQ 連邦メカニック用スーツ 中佐
+Code: GQ EF overalls  CDR
+Name: GQ EF overalls  CDR
+===================================
+
+===================================
+ID: 240383
+Comment: GQ 連邦メカニック用スーツ 大佐
+Code: GQ EF overalls  CAPT
+Name: GQ EF overalls  CAPT
+===================================
+
+===================================
+ID: 240384
+Comment: GQ 連邦メカニック用スーツ 准将
+Code: GQ EF overalls  RDML
+Name: GQ EF overalls  RDML
+===================================
+
+===================================
+ID: 240385
+Comment: GQ 連邦メカニック用スーツ 少将
+Code: GQ EF overalls  RADM
+Name: GQ EF overalls  RADM
+===================================
+
+===================================
+ID: 240386
+Comment: GQ 連邦メカニック用スーツ 中将
+Code: GQ EF overalls  VADM
+Name: GQ EF overalls  VADM
+===================================
+
+===================================
+ID: 240387
+Comment: GQ 連邦メカニック用スーツ 大将
+Code: GQ EF overalls  ADM
+Name: GQ EF overalls  ADM
+===================================
+
+===================================
+ID: 240388
+Comment: GQ ジオンメカニック用スーツ 一等兵
+Code: GQ ZEON overalls SA
+Name: GQ ZEON overalls SA
+===================================
+
+===================================
+ID: 240389
+Comment: GQ ジオンメカニック用スーツ 上等兵
+Code: GQ ZEON overalls SN
+Name: GQ ZEON overalls SN
+===================================
+
+===================================
+ID: 240390
+Comment: GQ ジオンメカニック用スーツ 伍長
+Code: GQ ZEON overalls PO
+Name: GQ ZEON overalls PO
+===================================
+
+===================================
+ID: 240391
+Comment: GQ ジオンメカニック用スーツ 軍曹
+Code: GQ ZEON overalls CPO
+Name: GQ ZEON overalls CPO
+===================================
+
+===================================
+ID: 240392
+Comment: GQ ジオンメカニック用スーツ 曹長
+Code: GQ ZEON overalls SCPO
+Name: GQ ZEON overalls SCPO
+===================================
+
+===================================
+ID: 240393
+Comment: GQ ジオンメカニック用スーツ 少尉
+Code: GQ ZEON overalls ENS
+Name: GQ ZEON overalls ENS
+===================================
+
+===================================
+ID: 240394
+Comment: GQ ジオンメカニック用スーツ 中尉
+Code: GQ ZEON overalls LTJG
+Name: GQ ZEON overalls LTJG
+===================================
+
+===================================
+ID: 240395
+Comment: GQ ジオンメカニック用スーツ 大尉
+Code: GQ ZEON overalls LT
+Name: GQ ZEON overalls LT
+===================================
+
+===================================
+ID: 240396
+Comment: GQ ジオンメカニック用スーツ 少佐
+Code: GQ ZEON overalls LCDR
+Name: GQ ZEON overalls LCDR
+===================================
+
+===================================
+ID: 240397
+Comment: GQ ジオンメカニック用スーツ 中佐
+Code: GQ ZEON overalls CDR
+Name: GQ ZEON overalls CDR
+===================================
+
+===================================
+ID: 240398
+Comment: GQ ジオンメカニック用スーツ 大佐
+Code: GQ ZEON overalls CAPT
+Name: GQ ZEON overalls CAPT
+===================================
+
+===================================
+ID: 240399
+Comment: GQ ジオンメカニック用スーツ 准将
+Code: GQ ZEON overalls RDML
+Name: GQ ZEON overalls RDML
+===================================
+
+===================================
+ID: 240400
+Comment: GQ ジオンメカニック用スーツ 少将
+Code: GQ ZEON overalls RADM
+Name: GQ ZEON overalls RADM
+===================================
+
+===================================
+ID: 240401
+Comment: GQ ジオンメカニック用スーツ 中将
+Code: GQ ZEON overalls VADM
+Name: GQ ZEON overalls VADM
+===================================
+
+===================================
+ID: 240402
+Comment: GQ ジオンメカニック用スーツ 大将
+Code: GQ ZEON overalls ADM
+Name: GQ ZEON overalls ADM
+===================================
+
+===================================
+ID: 240403
+Comment: GQ ジオン用制帽（角あり）
+Code: GQ ZEON hat S
+Name: GQ ZEON hat S
+===================================
+
+===================================
+ID: 240404
+Comment: GQ 未来派サングラス
+Code: GQ sports glasses
+Name: GQ sports glasses
+===================================
+
+===================================
+ID: 240405
+Comment: GQ 眼鏡・丸
+Code: GQ wire rim glasses
+Name: GQ wire rim glasses
+===================================
+
+===================================
+ID: 240406
+Comment: GQ 眼鏡・下だけ
+Code: GQ half rim glasses
+Name: GQ half rim glasses
+===================================
+
+===================================
+ID: 240407
+Comment: GQ 眼鏡・角縁
+Code: GQ black frame glasses
+Name: GQ black frame glasses
+===================================
+
+===================================
+ID: 240408
+Comment: GQ 眼鏡・溶接用（黒）
+Code: GQ safety glasses A
+Name: GQ safety glasses A
+===================================
+
+===================================
+ID: 240409
+Comment: GQ 眼鏡・溶接用（赤）
+Code: GQ safety glasses B
+Name: GQ safety glasses B
+===================================
+
+===================================
+ID: 240410
+Comment: GQ 時計・スポーツ
+Code: GQ sports watch
+Name: GQ sports watch
+===================================
+
+===================================
+ID: 240411
+Comment: GQ 時計・オーソドックス
+Code: GQ wristwatch
+Name: GQ wristwatch
+===================================
+
+===================================
+ID: 240412
+Comment: GQ 眼鏡・戦前風
+Code: GQ round glasses
+Name: GQ round glasses
+===================================
+
+===================================
+ID: 240413
+Comment: GQ 時計・
+Code: GQ watch
+Name: GQ watch
+===================================
+
+===================================
+ID: 240414
+Comment: GQ 時計・
+Code: GQ watch
+Name: GQ watch
+===================================
+
+===================================
+ID: 240415
+Comment: GQ ヘッドセット・マツム（連邦）
+Code: GQ headset Mathum Sonic
+Name: GQ headset Mathum Sonic
+===================================
+
+===================================
+ID: 240416
+Comment: GQ ヘッドセット・フェリペ（ジオン）
+Code: GQ headset Felipe
+Name: GQ headset Felipe
+===================================
+
+===================================
+ID: 240417
+Comment: GQ 連邦メカニック用帽子
+Code: GQ EF work cap
+Name: GQ EF work cap
+===================================
+
+===================================
+ID: 240418
+Comment: GQ ジオンメカニック用帽子
+Code: GQ ZEON work cap
+Name: GQ ZEON work cap
+===================================
+
+===================================
+ID: 240419
+Comment: GQ ゴーグル
+Code: GQ goggles
+Name: GQ goggles
+===================================
+
+===================================
+ID: 240420
+Comment: GQ ヘッドセット・スーズ（連邦）
+Code: GQ headset Suze
+Name: GQ headset Suze
+===================================
+
+===================================
+ID: 240421
+Comment: GQ ヘッドセット・グラモニカ（ジオン）
+Code: GQ headset Gramonica
+Name: GQ headset Gramonica
+===================================
+
+===================================
+ID: 240422
+Comment: GQ 08小隊ヘルメット
+Code: GQ EF combat helmet
+Name: GQ EF combat helmet
+===================================
+
+===================================
+ID: 240423
+Comment: GQ 08小隊ヘルメット・バイザー付き
+Code: GQ EF combat helmet visor
+Name: GQ EF combat helmet visor
+===================================
+
+===================================
+ID: 240424
+Comment: GQ 08小隊隊服
+Code: GQ EF combat uniform
+Name: GQ EF combat uniform
+===================================
+
+===================================
+ID: 240425
+Comment: GQ 連邦手袋・指無し
+Code: GQ EF fingerless gloves
+Name: GQ EF fingerless gloves
+===================================
+
+===================================
+ID: 240426
+Comment: GQ ジオン略帽
+Code: GQ ZEON overseas cap A
+Name: GQ ZEON overseas cap A
+===================================
+
+===================================
+ID: 240427
+Comment: GQ ジオン特務隊服
+Code: GQ ZEON combat uniform
+Name: GQ ZEON combat uniform
+===================================
+
+===================================
+ID: 240428
+Comment: GQ ジオン手袋・特務隊仕様
+Code: GQ ZEON long gloves
+Name: GQ ZEON long gloves
+===================================
+
+===================================
+ID: 240429
+Comment: GQ イベント用オリジナルTシャツ・1
+Code: GQ T-shirt Claudia 01
+Name: GQ T-shirt Claudia 01
+===================================
+
+===================================
+ID: 240430
+Comment: GQ イベント用オリジナルTシャツ・2
+Code: GQ T-shirt Claudia 02
+Name: GQ T-shirt Claudia 02
+===================================
+
+===================================
+ID: 240431
+Comment: GQ イベント用オリジナルTシャツ・3
+Code: GQ T-shirt Claudia 03
+Name: GQ T-shirt Claudia 03
+===================================
+
+===================================
+ID: 240432
+Comment: GQ イベント用オリジナルTシャツ・4
+Code: GQ T-shirt Claudia 04
+Name: GQ T-shirt Claudia 04
+===================================
+
+===================================
+ID: 240433
+Comment: GQ イベント用オリジナルTシャツ・5
+Code: GQ T-shirt Claudia 05
+Name: GQ T-shirt Claudia 05
+===================================
+
+===================================
+ID: 240434
+Comment: GQ イベント用オリジナルTシャツ・6
+Code: GQ T-shirt Claudia 06
+Name: GQ T-shirt Claudia 06
+===================================
+
+===================================
+ID: 240435
+Comment: GQ イベント用オリジナルTシャツ・7
+Code: GQ T-shirt Claudia 07
+Name: GQ T-shirt Claudia 07
+===================================
+
+===================================
+ID: 240436
+Comment: GQ イベント用オリジナルTシャツ・8
+Code: GQ T-shirt Claudia 08
+Name: GQ T-shirt Claudia 08
+===================================
+
+===================================
+ID: 240437
+Comment: GQ イベント用オリジナルTシャツ・9
+Code: GQ T-shirt Claudia 09
+Name: GQ T-shirt Claudia 09
+===================================
+
+===================================
+ID: 240438
+Comment: GQ イベント用オリジナルTシャツ・10
+Code: GQ T-shirt Claudia 10
+Name: GQ T-shirt Claudia 10
+===================================
+
+===================================
+ID: 240439
+Comment: GQ ゴーグル眼鏡扱いバージョン
+Code: GQ goggles
+Name: GQ goggles
+===================================
+
+===================================
+ID: 240440
+Comment: GQ 白手袋
+Code: GQ goggles
+Name: GQ white gloves
+===================================
+
+===================================
+ID: 240441
+Comment: GQ 指輪・1
+Code: GQ ring
+Name: GQ ring
+===================================
+
+===================================
+ID: 240442
+Comment: GQ 指輪・2
+Code: GQ ring
+Name: GQ ring
+===================================
+
+===================================
+ID: 240443
+Comment: GQ 指輪・3
+Code: GQ ring
+Name: GQ ring
+===================================
+
+===================================
+ID: 240444
+Comment: GQ 指輪・4
+Code: GQ ring
+Name: GQ ring
+===================================
+
+===================================
+ID: 240445
+Comment: GQ 指輪・5
+Code: GQ ring
+Name: GQ ring
+===================================
+
+===================================
+ID: 240446
+Comment: GQ かっこいいサングラス
+Code: GQ Protective Sunglasses
+Name: GQ Protective Sunglasses
+===================================
+
+===================================
+ID: 240447
+Comment: GQ Tシャツ・アデレード
+Code: GQ T-shirt Adelaide
+Name: GQ T-shirt Adelaide
+===================================
+
+===================================
+ID: 240448
+Comment: GQ Tシャツ・メルボルン
+Code: GQ T-shirt Melbourne
+Name: GQ T-shirt Melbourne
+===================================
+
+===================================
+ID: 240449
+Comment: GQ Tシャツ・シドニー
+Code: GQ T-shirt Sydney
+Name: GQ T-shirt Sydney
+===================================
+
+===================================
+ID: 240450
+Comment: GQ Tシャツ・キャンベラ
+Code: GQ T-shirt Canberra
+Name: GQ T-shirt Canberra
+===================================
+
+===================================
+ID: 240451
+Comment: GQ Tシャツ・ダーウィン
+Code: GQ T-shirt Darwin
+Name: GQ T-shirt Darwin
+===================================
+
+===================================
+ID: 240452
+Comment: GQ Tシャツ・パース
+Code: GQ T-shirt Perth
+Name: GQ T-shirt Perth
+===================================
+
+===================================
+ID: 240453
+Comment: GQ Tシャツ・ブリスベン
+Code: GQ T-shirt Brisbane
+Name: GQ T-shirt Brisbane
+===================================
+
+===================================
+ID: 240454
+Comment: GQ Tシャツ・サザンクロス
+Code: GQ T-shirt Southern Cross
+Name: GQ T-shirt Southern Cross
+===================================
+
+===================================
+ID: 240455
+Comment: GQ 連邦軍コロニー駐留隊ベレー帽 赤
+Code: GQ EF beret A
+Name: GQ EF beret A
+===================================
+
+===================================
+ID: 240456
+Comment: GQ 連邦軍コロニー駐留隊ベレー帽 青
+Code: GQ EF beret B
+Name: GQ EF beret B
+===================================
+
+===================================
+ID: 240457
+Comment: GQ 連邦軍コロニー駐留隊ベレー帽 緑（指揮官用）
+Code: GQ EF beret S
+Name: GQ EF beret S
+===================================
+
+===================================
+ID: 240458
+Comment: GQ ジオン略帽 砂色
+Code: GQ ZEON overseas cap B
+Name: GQ ZEON overseas cap B
+===================================
+
+===================================
+ID: 240459
+Comment: GQ ジオン略帽 黒（指揮官用）
+Code: GQ ZEON overseas cap S
+Name: GQ ZEON overseas cap S
+===================================
+
+===================================
+ID: 240460
+Comment: GQ トゲ付リストバンド黒・シルバー
+Code: GQ stud wristband silver
+Name: GQ stud wristband silver
+===================================
+
+===================================
+ID: 240461
+Comment: GQ トゲ付リストバンド茶・ゴールド
+Code: GQ stud wristband gold
+Name: GQ stud wristband gold
+===================================
+
+===================================
+ID: 240462
+Comment: GQ モスコーキャップ　茶
+Code: GQ fur hat brown
+Name: GQ fur hat brown
+===================================
+
+===================================
+ID: 240463
+Comment: GQ モスコーキャップ　黒
+Code: GQ fur hat black
+Name: GQ fur hat black
+===================================
+
+===================================
+ID: 240464
+Comment: GQ モスコーキャップ　白
+Code: GQ fur hat white
+Name: GQ fur hat white
+===================================
+
+===================================
+ID: 240465
+Comment: GQ 連邦メカニックキャップ　後ろ被りタイプ
+Code: GQ EF work cap
+Name: GQ EF work cap
+===================================
+
+===================================
+ID: 240466
+Comment: GQ ジオンメカニックキャップ　後ろ被りタイプ
+Code: GQ ZEON work cap
+Name: GQ ZEON work cap
+===================================
+
+===================================
+ID: 240467
+Comment: GQ バンダナ・森林迷彩
+Code: GQ bandanna tiger stripe
+Name: GQ bandanna tiger stripe
+===================================
+
+===================================
+ID: 240468
+Comment: GQ バンダナ・砂漠迷彩
+Code: GQ bandanna three color
+Name: GQ bandanna three color
+===================================
+
+===================================
+ID: 240469
+Comment: GQ バンダナ・都市迷彩
+Code: GQ bandanna urban camo
+Name: GQ bandanna urban camo
+===================================
+
+===================================
+ID: 240470
+Comment: GQ アイパッチ
+Code: GQ eye patch
+Name: GQ eye patch
+===================================
+
+===================================
+ID: 240471
+Comment: GQ アイパッチ・ドクロマーク
+Code: GQ eye patch skull
+Name: GQ eye patch skull
+===================================
+
+===================================
+ID: 240472
+Comment: 240472
+Code: 240472
+Name: 240472
+===================================
+
+===================================
+ID: 240473
+Comment: 240473
+Code: 240473
+Name: 240473
+===================================
+
+===================================
+ID: 240474
+Comment: 240474
+Code: 240474
+Name: 240474
+===================================
+
+===================================
+ID: 240475
+Comment: 240475
+Code: 240475
+Name: 240475
+===================================
+
+===================================
+ID: 240476
+Comment: 240476
+Code: 240476
+Name: 240476
+===================================
+
+===================================
+ID: 240477
+Comment: 240477
+Code: 240477
+Name: 240477
+===================================
+
+===================================
+ID: 240478
+Comment: 240478
+Code: 240478
+Name: 240478
+===================================
+
+===================================
+ID: 240479
+Comment: 240479
+Code: 240479
+Name: 240479
+===================================
+
+===================================
+ID: 240480
+Comment: 240480
+Code: 240480
+Name: 240480
+===================================
+
+===================================
+ID: 240481
+Comment: 240481
+Code: 240481
+Name: 240481
+===================================
+
+===================================
+ID: 240482
+Comment: 240482
+Code: 240482
+Name: 240482
+===================================
+
+===================================
+ID: 240483
+Comment: 240483
+Code: 240483
+Name: 240483
+===================================
+
+===================================
+ID: 240484
+Comment: 240484
+Code: 240484
+Name: 240484
+===================================
+
+===================================
+ID: 240485
+Comment: 240485
+Code: 240485
+Name: 240485
+===================================
+
+===================================
+ID: 240486
+Comment: 240486
+Code: 240486
+Name: 240486
+===================================
+
+===================================
+ID: 240487
+Comment: 240487
+Code: 240487
+Name: 240487
+===================================
+
+===================================
+ID: 240488
+Comment: 240488
+Code: 240488
+Name: 240488
+===================================
+
+===================================
+ID: 240489
+Comment: 240489
+Code: 240489
+Name: 240489
+===================================
+
+===================================
+ID: 240490
+Comment: 240490
+Code: 240490
+Name: 240490
+===================================
+
+===================================
+ID: 240491
+Comment: 240491
+Code: 240491
+Name: 240491
+===================================
+
+===================================
+ID: 240492
+Comment: 240492
+Code: 240492
+Name: 240492
+===================================
+
+===================================
+ID: 240493
+Comment: 240493
+Code: 240493
+Name: 240493
+===================================
+
+===================================
+ID: 240494
+Comment: 240494
+Code: 240494
+Name: 240494
+===================================
+
+===================================
+ID: 240495
+Comment: 240495
+Code: 240495
+Name: 240495
+===================================
+
+===================================
+ID: 240496
+Comment: 240496
+Code: 240496
+Name: 240496
+===================================
+
+===================================
+ID: 240497
+Comment: 240497
+Code: 240497
+Name: 240497
+===================================
+
+===================================
+ID: 240498
+Comment: 240498
+Code: 240498
+Name: 240498
+===================================
+
+===================================
+ID: 240499
+Comment: 240499
+Code: 240499
+Name: 240499
+===================================
+
+===================================
+ID: 240500
+Comment: 240500
+Code: 240500
+Name: 240500
+===================================
+
+===================================
+ID: 240501
+Comment: 240501
+Code: 240501
+Name: 240501
+===================================
+
+===================================
+ID: 240502
+Comment: 240502
+Code: 240502
+Name: 240502
+===================================
+
+===================================
+ID: 240503
+Comment: 240503
+Code: 240503
+Name: 240503
+===================================
+
+===================================
+ID: 240504
+Comment: 240504
+Code: 240504
+Name: 240504
+===================================
+
+===================================
+ID: 240505
+Comment: 240505
+Code: 240505
+Name: 240505
+===================================
+
+===================================
+ID: 240506
+Comment: 240506
+Code: 240506
+Name: 240506
+===================================
+
+===================================
+ID: 240507
+Comment: 240507
+Code: 240507
+Name: 240507
+===================================
+
+===================================
+ID: 240508
+Comment: 240508
+Code: 240508
+Name: 240508
+===================================
+
+===================================
+ID: 240509
+Comment: 240509
+Code: 240509
+Name: 240509
+===================================
+
+===================================
+ID: 240510
+Comment: 240510
+Code: 240510
+Name: 240510
+===================================
+
+===================================
+ID: 240511
+Comment: 240511
+Code: 240511
+Name: 240511
+===================================
+
+===================================
+ID: 240512
+Comment: 240512
+Code: 240512
+Name: 240512
+===================================
+
+===================================
+ID: 240513
+Comment: 240513
+Code: 240513
+Name: 240513
+===================================
+
+===================================
+ID: 240514
+Comment: 240514
+Code: 240514
+Name: 240514
+===================================
+
+===================================
+ID: 240515
+Comment: 240515
+Code: 240515
+Name: 240515
+===================================
+
+===================================
+ID: 240516
+Comment: 240516
+Code: 240516
+Name: 240516
+===================================
+
+===================================
+ID: 240517
+Comment: 240517
+Code: 240517
+Name: 240517
+===================================
+
+===================================
+ID: 240518
+Comment: 240518
+Code: 240518
+Name: 240518
+===================================
+
+===================================
+ID: 240519
+Comment: 240519
+Code: 240519
+Name: 240519
+===================================
+
+===================================
+ID: 240520
+Comment: 240520
+Code: 240520
+Name: 240520
+===================================
+
+===================================
+ID: 240521
+Comment: 240521
+Code: 240521
+Name: 240521
+===================================
+
+===================================
+ID: 240522
+Comment: 240522
+Code: 240522
+Name: 240522
+===================================
+
+===================================
+ID: 240523
+Comment: 240523
+Code: 240523
+Name: 240523
+===================================
+
+===================================
+ID: 240524
+Comment: 240524
+Code: 240524
+Name: 240524
+===================================
+
+===================================
+ID: 240525
+Comment: 240525
+Code: 240525
+Name: 240525
+===================================
+
+===================================
+ID: 240526
+Comment: 240526
+Code: 240526
+Name: 240526
+===================================
+
+===================================
+ID: 240527
+Comment: 240527
+Code: 240527
+Name: 240527
+===================================
+
+===================================
+ID: 240528
+Comment: 240528
+Code: 240528
+Name: 240528
+===================================
+
+===================================
+ID: 240529
+Comment: 240529
+Code: 240529
+Name: 240529
+===================================
+
+===================================
+ID: 240530
+Comment: 240530
+Code: 240530
+Name: 240530
+===================================
+
+===================================
+ID: 240531
+Comment: 240531
+Code: 240531
+Name: 240531
+===================================
+
+===================================
+ID: 240532
+Comment: 240532
+Code: 240532
+Name: 240532
+===================================
+
+===================================
+ID: 240533
+Comment: 240533
+Code: 240533
+Name: 240533
+===================================
+
+===================================
+ID: 240534
+Comment: 240534
+Code: 240534
+Name: 240534
+===================================
+
+===================================
+ID: 240535
+Comment: 240535
+Code: 240535
+Name: 240535
+===================================
+
+===================================
+ID: 240536
+Comment: 240536
+Code: 240536
+Name: 240536
+===================================
+
+===================================
+ID: 240537
+Comment: 240537
+Code: 240537
+Name: 240537
+===================================
+
+===================================
+ID: 240538
+Comment: 240538
+Code: 240538
+Name: 240538
+===================================
+
+===================================
+ID: 240539
+Comment: 240539
+Code: 240539
+Name: 240539
+===================================
+
+===================================
+ID: 240540
+Comment: 240540
+Code: 240540
+Name: 240540
+===================================
+
+===================================
+ID: 240541
+Comment: 240541
+Code: 240541
+Name: 240541
+===================================
+
+===================================
+ID: 240542
+Comment: 240542
+Code: 240542
+Name: 240542
+===================================
+
+===================================
+ID: 240543
+Comment: 240543
+Code: 240543
+Name: 240543
+===================================
+
+===================================
+ID: 240544
+Comment: 240544
+Code: 240544
+Name: 240544
+===================================
+
+===================================
+ID: 240545
+Comment: 240545
+Code: 240545
+Name: 240545
+===================================
+
+===================================
+ID: 240546
+Comment: 240546
+Code: 240546
+Name: 240546
+===================================
+
+===================================
+ID: 240547
+Comment: 240547
+Code: 240547
+Name: 240547
+===================================
+
+===================================
+ID: 240548
+Comment: 240548
+Code: 240548
+Name: 240548
+===================================
+
+===================================
+ID: 240549
+Comment: 240549
+Code: 240549
+Name: 240549
+===================================
+
+===================================
+ID: 240550
+Comment: 240550
+Code: 240550
+Name: 240550
+===================================
+
+===================================
+ID: 240551
+Comment: 240551
+Code: 240551
+Name: 240551
+===================================
+
+===================================
+ID: 240552
+Comment: 240552
+Code: 240552
+Name: 240552
+===================================
+
+===================================
+ID: 240553
+Comment: 240553
+Code: 240553
+Name: 240553
+===================================
+
+===================================
+ID: 240554
+Comment: 240554
+Code: 240554
+Name: 240554
+===================================
+
+===================================
+ID: 240555
+Comment: 240555
+Code: 240555
+Name: 240555
+===================================
+
+===================================
+ID: 240556
+Comment: 240556
+Code: 240556
+Name: 240556
+===================================
+
+===================================
+ID: 240557
+Comment: 240557
+Code: 240557
+Name: 240557
+===================================
+
+===================================
+ID: 240558
+Comment: 240558
+Code: 240558
+Name: 240558
+===================================
+
+===================================
+ID: 240559
+Comment: 240559
+Code: 240559
+Name: 240559
+===================================
+
+===================================
+ID: 240560
+Comment: 240560
+Code: 240560
+Name: 240560
+===================================
+
+===================================
+ID: 240561
+Comment: 240561
+Code: 240561
+Name: 240561
+===================================
+
+===================================
+ID: 240562
+Comment: 240562
+Code: 240562
+Name: 240562
+===================================
+
+===================================
+ID: 240563
+Comment: 240563
+Code: 240563
+Name: 240563
+===================================
+
+===================================
+ID: 240564
+Comment: 240564
+Code: 240564
+Name: 240564
+===================================
+
+===================================
+ID: 240565
+Comment: 240565
+Code: 240565
+Name: 240565
+===================================
+
+===================================
+ID: 240566
+Comment: 240566
+Code: 240566
+Name: 240566
+===================================
+
+===================================
+ID: 240567
+Comment: 240567
+Code: 240567
+Name: 240567
+===================================
+
+===================================
+ID: 240568
+Comment: 240568
+Code: 240568
+Name: 240568
+===================================
+
+===================================
+ID: 240569
+Comment: 240569
+Code: 240569
+Name: 240569
+===================================
+
+===================================
+ID: 240570
+Comment: 240570
+Code: 240570
+Name: 240570
+===================================
+
+===================================
+ID: 240571
+Comment: 240571
+Code: 240571
+Name: 240571
+===================================
+
+===================================
+ID: 240572
+Comment: 240572
+Code: 240572
+Name: 240572
+===================================
+
+===================================
+ID: 240573
+Comment: 240573
+Code: 240573
+Name: 240573
+===================================
+
+===================================
+ID: 240574
+Comment: 240574
+Code: 240574
+Name: 240574
+===================================
+
+===================================
+ID: 240575
+Comment: 240575
+Code: 240575
+Name: 240575
+===================================
+
+===================================
+ID: 240576
+Comment: 240576
+Code: 240576
+Name: 240576
+===================================
+
+===================================
+ID: 240577
+Comment: 240577
+Code: 240577
+Name: 240577
+===================================
+
+===================================
+ID: 240578
+Comment: 240578
+Code: 240578
+Name: 240578
+===================================
+
+===================================
+ID: 240579
+Comment: 240579
+Code: 240579
+Name: 240579
+===================================
+
+===================================
+ID: 240580
+Comment: 240580
+Code: 240580
+Name: 240580
+===================================
+
+===================================
+ID: 240581
+Comment: 240581
+Code: 240581
+Name: 240581
+===================================
+
+===================================
+ID: 240582
+Comment: 240582
+Code: 240582
+Name: 240582
+===================================
+
+===================================
+ID: 240583
+Comment: 240583
+Code: 240583
+Name: 240583
+===================================
+
+===================================
+ID: 240584
+Comment: 240584
+Code: 240584
+Name: 240584
+===================================
+
+===================================
+ID: 240585
+Comment: 240585
+Code: 240585
+Name: 240585
+===================================
+
+===================================
+ID: 240586
+Comment: 240586
+Code: 240586
+Name: 240586
+===================================
+
+===================================
+ID: 240587
+Comment: 240587
+Code: 240587
+Name: 240587
+===================================
+
+===================================
+ID: 240588
+Comment: 240588
+Code: 240588
+Name: 240588
+===================================
+
+===================================
+ID: 240589
+Comment: 240589
+Code: 240589
+Name: 240589
+===================================
+
+===================================
+ID: 240590
+Comment: 240590
+Code: 240590
+Name: 240590
+===================================
+
+===================================
+ID: 240591
+Comment: 240591
+Code: 240591
+Name: 240591
+===================================
+
+===================================
+ID: 240592
+Comment: 240592
+Code: 240592
+Name: 240592
+===================================
+
+===================================
+ID: 240593
+Comment: 240593
+Code: 240593
+Name: 240593
+===================================
+
+===================================
+ID: 240594
+Comment: 240594
+Code: 240594
+Name: 240594
+===================================
+
+===================================
+ID: 240595
+Comment: 240595
+Code: 240595
+Name: 240595
+===================================
+
+===================================
+ID: 240596
+Comment: 240596
+Code: 240596
+Name: 240596
+===================================
+
+===================================
+ID: 240597
+Comment: 240597
+Code: 240597
+Name: 240597
+===================================
+
+===================================
+ID: 240598
+Comment: 240598
+Code: 240598
+Name: 240598
+===================================
+
+===================================
+ID: 240599
+Comment: 240599
+Code: 240599
+Name: 240599
+===================================
+
+===================================
+ID: 240600
+Comment: アムロ制服
+Code: Amuro uniform
+Name: Amuro uniform
+===================================
+
+===================================
+ID: 240601
+Comment: シャア制服
+Code: Char uniform
+Name: Char uniform
+===================================
+
+===================================
+ID: 240602
+Comment: マチルダ制服
+Code: Matilda uniform
+Name: Matilda uniform
+===================================
+
+===================================
+ID: 240603
+Comment: ガルマ制服
+Code: Garma uniform
+Name: Garma uniform
+===================================
+
+===================================
+ID: 240604
+Comment: ブライト制服
+Code: Bright uniform
+Name: Bright uniform
+===================================
+
+===================================
+ID: 240605
+Comment: キシリアスーツ
+Code: Kycilia uniform
+Name: Kycilia uniform
+===================================
+
+===================================
+ID: 240606
+Comment: セイラ制服
+Code: Sayla uniform
+Name: Sayla uniform
+===================================
+

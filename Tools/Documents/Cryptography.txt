@@ -1,0 +1,18 @@
+The cryposystem used by UCGO Is a mix of Blowfish in ECB Mode and a custom XORMask.
+
+Blowfish is fairly standard, the packet gets garbage added to the end to meet the 8 byte block requirements, so watch the sizes and whatnot
+mentioned in the Packet Protocol documents. The KEY used for blowfish is an ASCII String that is the KEYWORD is "chrTCPPassword"
+
+The XORMask is tricky. Its entirely custom made. They took all the numbers from 0 to 65535 and rearranged them in an array.
+The Array got stored hardcoded into the exe. I extracted this into XORTable.dat for JAVA and XORTable.h for C++
+The "KEY" for this system is randomly generated on encryption as a number betwen 0 to 65535. That is than used as the offset to LOOKUP
+the 2nd 2 bytes of the key from the mentioned table. KeyPartB = XORTABLE[KeyPartA];
+Than the 2 parts are attached into a 4 byte KEY as KeyPartA << 16 | KeyPartB (those are ShiftLeft and bitwise OR)
+resulting in a KEY that is a combination of PartA and B. [[KeyPartA][KeyPartB]]. A is in the HI B is the LOW bytes.
+
+This Key is then bitwise XOR'd with the packet data in groups of 8 bytes each with MMX instructions, than 4 bytes each.
+I implemented them as just all 4 bytes as the result is the same. The remaining bytes (0 to 3) arent really modified
+What happens is the next byte (so first remainder byte) gets XOR'd with 1 Byte of the Key REMAINDER number of times.
+Each XOR uses the next part of the key. I implemented this using a switch to go from 3 to 0, and each one "fell into" the other and it works perfectly.
+
+The password is also encrypted in Blowfish when sent using the UNICODE version of the USERNAME as the KEYWORD;

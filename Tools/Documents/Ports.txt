@@ -1,0 +1,4 @@
+InfoServer    = 24012
+LoginServer   = 24018
+CMSServer     = 24016
+GameServer    = 24010

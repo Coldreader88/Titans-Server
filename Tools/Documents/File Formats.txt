@@ -1,0 +1,43 @@
+Majority of the game files are compressed with ZLIB and have an appended Footer of 32 bytes in size.
+
+Most files are just singlely compressed, but there also exists an archive format with extensions .RFI and .RFP
+
+Compression Footer
+[INT FooterTag]		- Is always 0xFCC1C0F0
+[INT DataA]	        - 4 Bytes of Data from the uncompressed File
+[INT CompressedSize]	- 4 Bytes of the Compressed Filesize ONLY (excluding Footer stuff)
+[INT OriginalSize]	- 4 Bytes of the Original Filesize ONLY (excluding Footer stuff)
+[LONG DataB]		- 8 Bytes of more Data from the uncompressed File
+[INT ???]		- 4 Bytes seems to be irrelivent, I set it to 0 and its OK.
+[INT ???]		- 4 Bytes, also irrelivent, I set to 0 and its OK.
+
+Method to write Footer:
+Add 32 bytes to end of compressed data stream (I made my Compress function pre-allocate the room for this and I just fill it in after the call)
+Write in FooterTag
+Copy the Last 20 bytes of the original file
+Go Back, 4 Bytes after (so skipping DATA A) Write the CompressedSize, than the OriginalSize
+Skip 8 Bytes
+write 0
+Write 0
+
+I made and included a simple tool for decompressing/compressing single files with this format. It works fine and the client accepts the modded results.
+
+
+
+
+Archived Format:
+the RFI+RFP files create whats like a ZIP or RAR archive.
+I made a simple tool only for EXTRACTING them (not creating). Its provided with the rest of this stuff.
+First the RFI file contains the filenames and offsets used in the RFP file (which is essentially just the compressed files written back to back)
+
+RFI File Structure:
+[INT FileCount] - # of Files
+-------Repeats FileCount Times----------
+[INT NameLength] - Size of Filename
+[UNICODE FILENAME] - The Filename in UNICODE (UTF-16LE encoding again).
+[INT FILESIZE] - The CompressedSize of the File (used with the Offset to find positions and preallocate the buffers for decompression)
+[INT OFFSET] - The Offset in the RFP file where the compression chunk starts.
+----------------------------------------
+
+RFP File Structure:
+A bunch of back to back Compression Chunks (exactly same format as the Single File ones, just back to back)

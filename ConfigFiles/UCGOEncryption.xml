@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<UCGOEncryption>
+
+   <Encryption>
+     <Password defaultpassword="chrTCPPassword">
+       ""
+     </Password>
+   </Encryption>
+   
+</UCGOEncryption>
+

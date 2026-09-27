@@ -1,0 +1,3191 @@
+ID: 0x0445C0
+Code: A.E-Br.G-Sc-L(RGM-79)
+Name: A.E-Br.G-Sc-L(RGM-79)
+Price:9800
+Sell Price:7300
+UNK_DMG:8312
+Hitpoints:700
+AmmoItemId: 0x083D62
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 700
+
+ID: 0x0445C1
+Code: Hyper bazooka ground type
+Name: Hyper bazooka ground type
+Price:40000
+Sell Price:25000
+UNK_DMG:21656
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 840
+
+ID: 0x0445C2
+Code: Beam saber(RX-78)
+Name: Beam saber(RX-78)
+Price:12000
+Sell Price:7300
+UNK_DMG:1750
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445C3
+Code: MS head vulcan
+Name: MS head vulcan
+Price:5000
+Sell Price:4900
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 400
+
+ID: 0x0445C4
+Code: ZMP-47D(MS-05)
+Name: ZMP-47D(MS-05)
+Price:4400
+Sell Price:4000
+UNK_DMG:7437
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 3
+MaxAmmo: 90
+MaxRange: 680
+
+ID: 0x0445C5
+Code: HFW-GMG(RGM-79)
+Name: HFW-GMG(RGM-79)
+Price:150000
+Sell Price:76000
+UNK_DMG:9625
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 180
+MaxRange: 700
+
+ID: 0x0445C6
+Code: Magella top cannon
+Name: Magella top cannon
+Price:12000
+Sell Price:10000
+UNK_DMG:18703
+Hitpoints:600
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1050
+
+ID: 0x0445C7
+Code: MS beam gun(RGM-79)
+Name: MS beam gun(RGM-79)
+Price:160000
+Sell Price:80500
+UNK_DMG:9625
+Hitpoints:500
+AmmoItemId: 0x083D62
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x0445C8
+Code: BLASH XHB-L-03/N-STD(RX-78)
+Name: BLASH XHB-L-03/N-STD(RX-78)
+Price:3000000
+Sell Price:1340000
+UNK_DMG:11812
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 700
+
+ID: 0x0445C9
+Code: MS beam rifle (RX-77)
+Name: MS beam rifle (RX-77)
+Price:300000
+Sell Price:152000
+UNK_DMG:9625
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 176
+MaxRange: 1050
+
+ID: 0x0445CA
+Code: ZMP-50D(MS-06)
+Name: ZMP-50D(MS-06)
+Price:6500
+Sell Price:4000
+UNK_DMG:7656
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x0445CB
+Code: MMP-80(MS-06)
+Name: MMP-80(MS-06)
+Price:62000
+Sell Price:35000
+UNK_DMG:9406
+Hitpoints:600
+AmmoItemId: 0x083D60
+AmmoUsage: 7
+MaxAmmo: 175
+MaxRange: 700
+
+ID: 0x0445CC
+Code: MS cannon
+Name: MS cannon
+Price:4800
+Sell Price:4000
+UNK_DMG:546
+Hitpoints:500
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1050
+
+ID: 0x0445CD
+Code: Tank/Fighter cannon
+Name: Tank/Fighter cannon
+Price:0
+Sell Price:1
+UNK_DMG:218
+Hitpoints:800
+AmmoItemId: 0x083D63
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1050
+
+ID: 0x0445CE
+Code: Tank/Fighter machine gun
+Name: Tank/Fighter machine gun
+Price:1250
+Sell Price:830
+UNK_DMG:218
+Hitpoints:500
+AmmoItemId: 0x083D65
+AmmoUsage: 4
+MaxAmmo: 240
+MaxRange: 500
+
+ID: 0x0445CF
+Code: Long rifle(RGM-79C)
+Name: Long rifle(RGM-79C)
+Price:10000
+Sell Price:7300
+UNK_DMG:10429
+Hitpoints:500
+AmmoItemId: 0x083D60
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1450
+
+ID: 0x0445D0
+Code: Gun launcher(RX-75)
+Name: Gun launcher(RX-75)
+Price:5000
+Sell Price:4900
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D6B
+AmmoUsage: 4
+MaxAmmo: 120
+MaxRange: 500
+
+ID: 0x0445D1
+Code: BB mega particle beam cannon
+Name: BB mega particle beam cannon
+Price:65000
+Sell Price:40000
+UNK_DMG:1093
+Hitpoints:500
+AmmoItemId: 0x083D68
+AmmoUsage: 30
+MaxAmmo: 300
+MaxRange: 1750
+
+ID: 0x0445D2
+Code: 100mm machine gun(RGM-79G)
+Name: 100mm machine gun(RGM-79G)
+Price:400000
+Sell Price:179000
+UNK_DMG:10062
+Hitpoints:600
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 700
+
+ID: 0x0445D3
+Code: MS mega particle beam gun
+Name: MS mega particle beam gun
+Price:700000
+Sell Price:223000
+UNK_DMG:984
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 700
+
+ID: 0x0445D4
+Code: MS bias mega particle beam gun
+Name: MS bias mega particle beam gun
+Price:150000
+Sell Price:44600
+UNK_DMG:875
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 250
+MaxRange: 840
+
+ID: 0x0445D5
+Code: 180mm cannon(RX-79G)
+Name: 180mm cannon(RX-79G)
+Price:500000
+Sell Price:251000
+UNK_DMG:9843
+Hitpoints:400
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 980
+
+ID: 0x0445D6
+Code: MS beam rifle (RX-79G)
+Name: MS beam rifle (RX-79G)
+Price:2000000
+Sell Price:895000
+UNK_DMG:11156
+Hitpoints:350
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 168
+MaxRange: 720
+
+ID: 0x0445D7
+Code: Giant bazooka(MS-09)
+Name: Giant bazooka(MS-09)
+Price:280000
+Sell Price:140000
+UNK_DMG:31988
+Hitpoints:500
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 910
+
+ID: 0x0445D8
+Code: MS claw
+Name: MS claw
+Price:9800
+Sell Price:9750
+UNK_DMG:656
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445D9
+Code: MS beam rifle(RX-78)
+Name: MS beam rifle(RX-78)
+Price:950000
+Sell Price:425000
+UNK_DMG:10937
+Hitpoints:350
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 200
+MaxRange: 700
+
+ID: 0x0445DA
+Code: MA mega particle beam gun
+Name: MA mega particle beam gun
+Price:950000
+Sell Price:476000
+UNK_DMG:984
+Hitpoints:800
+AmmoItemId: 0x083D62
+AmmoUsage: 40
+MaxAmmo: 400
+MaxRange: 1750
+
+ID: 0x0445DB
+Code: MS longrange beam rifle
+Name: MS longrange beam rifle
+Price:350000
+Sell Price:175000
+UNK_DMG:9625
+Hitpoints:200
+AmmoItemId: 0x083D62
+AmmoUsage: 12
+MaxAmmo: 180
+MaxRange: 1500
+
+ID: 0x0445DC
+Code: Arm punch(MSM-08)
+Name: Arm punch(MSM-08)
+Price:7000
+Sell Price:4900
+UNK_DMG:437
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445DD
+Code: MS sniping beam rifle
+Name: MS sniping beam rifle
+Price:400000
+Sell Price:202000
+UNK_DMG:9625
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 14
+MaxAmmo: 210
+MaxRange: 1700
+
+ID: 0x0445DE
+Code: MS sniping beam rifle custom
+Name: MS sniping beam rifle custom
+Price:780000
+Sell Price:391000
+UNK_DMG:9625
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 16
+MaxAmmo: 240
+MaxRange: 1900
+
+ID: 0x0445DF
+Code: Boomerang cutter(MSM-08)
+Name: Boomerang cutter(MSM-08)
+Price:280000
+Sell Price:111500
+UNK_DMG:894
+Hitpoints:500
+AmmoItemId: 0x083D6A
+AmmoUsage: 2
+MaxAmmo: 20
+MaxRange: 400
+
+ID: 0x0445E0
+Code: MS beam rifle (RGM-79L)
+Name: MS beam rifle (RGM-79L)
+Price:1000000
+Sell Price:446000
+UNK_DMG:10718
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 7
+MaxAmmo: 175
+MaxRange: 650
+
+ID: 0x0445E1
+Code: MS rocket launcher
+Name: MS rocket launcher
+Price:100000
+Sell Price:53900
+UNK_DMG:875
+Hitpoints:1000
+AmmoItemId: 0x083D6B
+AmmoUsage: 3
+MaxAmmo: 60
+MaxRange: 840
+
+ID: 0x0445E2
+Code: MS grapple
+Name: MS grapple
+Price:4000
+Sell Price:3900
+UNK_DMG:414
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 60
+
+ID: 0x0445E3
+Code: MS beam rifle(MS-14)
+Name: MS beam rifle(MS-14)
+Price:2500000
+Sell Price:1115000
+UNK_DMG:11375
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 700
+
+ID: 0x0445E4
+Code: BB machine gun
+Name: BB machine gun
+Price:80000
+Sell Price:40400
+UNK_DMG:1093
+Hitpoints:500
+AmmoItemId: 0x083D6C
+AmmoUsage: 10
+MaxAmmo: 500
+MaxRange: 1400
+
+ID: 0x0445E5
+Code: Heat hawk
+Name: Heat hawk
+Price:6200
+Sell Price:4000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445E6
+Code: Heat saber(MS-09)
+Name: Heat saber(MS-09)
+Price:20000
+Sell Price:14000
+UNK_DMG:1750
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 80
+
+ID: 0x0445E7
+Code: Beam saber(RGM-79G)
+Name: Beam saber(RGM-79G)
+Price:20000
+Sell Price:14000
+UNK_DMG:1750
+Hitpoints:45
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445E8
+Code: Beam naginata(MS-14)
+Name: Beam naginata(MS-14)
+Price:950000
+Sell Price:425000
+UNK_DMG:2187
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445E9
+Code: ZAKU bazooka(MS-06)
+Name: ZAKU bazooka(MS-06)
+Price:22000
+Sell Price:14000
+UNK_DMG:19687
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 840
+
+ID: 0x0445EA
+Code: Heat sword(MS-07)
+Name: Heat sword(MS-07)
+Price:20000
+Sell Price:14000
+UNK_DMG:1750
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445EB
+Code: MS arm machine gun
+Name: MS arm machine gun
+Price:8000
+Sell Price:4900
+UNK_DMG:546
+Hitpoints:500
+AmmoItemId: 0x083D60
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 500
+
+ID: 0x0445EC
+Code: Beam saber(RX-79G)
+Name: Beam saber(RX-79G)
+Price:100000
+Sell Price:53900
+UNK_DMG:1968
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0445ED
+Code: Hyper bazooka
+Name: Hyper bazooka
+Price:45000
+Sell Price:25000
+UNK_DMG:22640
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 18
+MaxRange: 910
+
+ID: 0x0445EE
+Code: GM rifle(RGM-79C)
+Name: GM rifle(RGM-79C)
+Price:50000
+Sell Price:27000
+UNK_DMG:10937
+Hitpoints:300
+AmmoItemId: 0x083D60
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1250
+
+ID: 0x0445EF
+Code: Heat rod
+Name: Heat rod
+Price:10200
+Sell Price:9900
+UNK_DMG:875
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 100
+
+ID: 0x0445F0
+Code: 75mm machine gun(MS-07) 
+Name: 75mm machine gun(MS-07) 
+Price:7500
+Sell Price:4900
+UNK_DMG:9406
+Hitpoints:400
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 100
+MaxRange: 500
+
+ID: 0x0445F1
+Code: ZMP-50D custom(MS-06D)
+Name: ZMP-50D custom(MS-06D)
+Price:7000
+Sell Price:4000
+UNK_DMG:7875
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 155
+MaxRange: 770
+
+ID: 0x0445F2
+Code: EX A.E-Br.G-Sc-L(RGM-79)
+Name: EX A.E-Br.G-Sc-L(RGM-79)
+Price:100000000
+Sell Price:20000
+UNK_DMG:8312
+Hitpoints:700
+AmmoItemId: 0x083D62
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 770
+
+ID: 0x0445F3
+Code: EX Hyper bazooka ground type
+Name: EX Hyper bazooka ground type
+Price:100000000
+Sell Price:88000
+UNK_DMG:21656
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 924
+
+ID: 0x0445F4
+Code: EX Beam saber(RX-78)
+Name: EX Beam saber(RX-78)
+Price:100000000
+Sell Price:20000
+UNK_DMG:1750
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 80
+
+ID: 0x0445F5
+Code: EX MS head vulcan
+Name: EX MS head vulcan
+Price:100000000
+Sell Price:5200
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 500
+
+ID: 0x0445F6
+Code: EX ZMP-47D(MS-05)
+Name: EX ZMP-47D(MS-05)
+Price:100000000
+Sell Price:4400
+UNK_DMG:7437
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 3
+MaxAmmo: 90
+MaxRange: 748
+
+ID: 0x0445F7
+Code: EX HFW-GMG(RGM-79)
+Name: EX HFW-GMG(RGM-79)
+Price:100000000
+Sell Price:420000
+UNK_DMG:9625
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 180
+MaxRange: 770
+
+ID: 0x0445F8
+Code: EX Magella top cannon
+Name: EX Magella top cannon
+Price:100000000
+Sell Price:20000
+UNK_DMG:18703
+Hitpoints:600
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1155
+
+ID: 0x0445F9
+Code: EX MS beam gun(RGM-79)
+Name: EX MS beam gun(RGM-79)
+Price:100000000
+Sell Price:450000
+UNK_DMG:9625
+Hitpoints:500
+AmmoItemId: 0x083D62
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 847
+
+ID: 0x0445FA
+Code: EX BLASH XHB-L-03/N-STD(RX-78)
+Name: EX BLASH XHB-L-03/N-STD(RX-78)
+Price:100000000
+Sell Price:9000000
+UNK_DMG:11812
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 770
+
+ID: 0x0445FB
+Code: EX MS beam rifle (RX-77)
+Name: EX MS beam rifle (RX-77)
+Price:100000000
+Sell Price:780000
+UNK_DMG:9625
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 176
+MaxRange: 1155
+
+ID: 0x0445FC
+Code: EX ZMP-50D(MS-06)
+Name: EX ZMP-50D(MS-06)
+Price:100000000
+Sell Price:8000
+UNK_DMG:7656
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 150
+MaxRange: 847
+
+ID: 0x0445FD
+Code: EX MMP-80(MS-06)
+Name: EX MMP-80(MS-06)
+Price:100000000
+Sell Price:155000
+UNK_DMG:9406
+Hitpoints:600
+AmmoItemId: 0x083D60
+AmmoUsage: 7
+MaxAmmo: 210
+MaxRange: 770
+
+ID: 0x0445FE
+Code: EX MS cannon
+Name: EX MS cannon
+Price:100000000
+Sell Price:4400
+UNK_DMG:546
+Hitpoints:500
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1155
+
+ID: 0x0445FF
+Code: EX Tank/Fighter cannon
+Name: EX Tank/Fighter cannon
+Price:100000000
+Sell Price:700
+UNK_DMG:218
+Hitpoints:800
+AmmoItemId: 0x083D63
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1155
+
+ID: 0x044600
+Code: EX Tank/Fighter machine gun
+Name: EX Tank/Fighter machine gun
+Price:100000000
+Sell Price:1200
+UNK_DMG:218
+Hitpoints:500
+AmmoItemId: 0x083D65
+AmmoUsage: 4
+MaxAmmo: 240
+MaxRange: 550
+
+ID: 0x044601
+Code: EX Long rifle(RGM-79C)
+Name: EX Long rifle(RGM-79C)
+Price:100000000
+Sell Price:20000
+UNK_DMG:10429
+Hitpoints:500
+AmmoItemId: 0x083D60
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1450
+
+ID: 0x044602
+Code: EX Gun launcher(RX-75)
+Name: EX Gun launcher(RX-75)
+Price:100000000
+Sell Price:5400
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D6B
+AmmoUsage: 4
+MaxAmmo: 120
+MaxRange: 600
+
+ID: 0x044603
+Code: EX BB mega particle beam cannon
+Name: EX BB mega particle beam cannon
+Price:100000000
+Sell Price:170000
+UNK_DMG:1093
+Hitpoints:500
+AmmoItemId: 0x083D68
+AmmoUsage: 30
+MaxAmmo: 300
+MaxRange: 1925
+
+ID: 0x044604
+Code: EX 100mm machine gun(RGM-79G)
+Name: EX 100mm machine gun(RGM-79G)
+Price:100000000
+Sell Price:1200000
+UNK_DMG:10062
+Hitpoints:600
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x044605
+Code: EX MS Mega particle beam gun
+Name: EX MS Mega particle beam gun
+Price:100000000
+Sell Price:2000000
+UNK_DMG:984
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 176
+MaxRange: 770
+
+ID: 0x044606
+Code: EX MS Bias mega particle beam gun
+Name: EX MS Bias mega particle beam gun
+Price:100000000
+Sell Price:350000
+UNK_DMG:875
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 270
+MaxRange: 924
+
+ID: 0x044607
+Code: EX 180mm cannon(RX-79G)
+Name: EX 180mm cannon(RX-79G)
+Price:100000000
+Sell Price:1500000
+UNK_DMG:9843
+Hitpoints:400
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1078
+
+ID: 0x044608
+Code: EX MS beam rifle (RX-79G)
+Name: EX MS beam rifle (RX-79G)
+Price:100000000
+Sell Price:6000000
+UNK_DMG:11156
+Hitpoints:350
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 168
+MaxRange: 792
+
+ID: 0x044609
+Code: EX Giant bazooka(MS-09)
+Name: EX Giant bazooka(MS-09)
+Price:100000000
+Sell Price:750000
+UNK_DMG:31988
+Hitpoints:500
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 1001
+
+ID: 0x04460A
+Code: EX MS claw
+Name: EX MS claw
+Price:100000000
+Sell Price:22000
+UNK_DMG:656
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04460B
+Code: EX MS beam rifle(RX-78)
+Name: EX MS beam rifle(RX-78)
+Price:100000000
+Sell Price:2850000
+UNK_DMG:10937
+Hitpoints:350
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 250
+MaxRange: 770
+
+ID: 0x04460C
+Code: EX MA mega particle beam gun
+Name: EX MA mega particle beam gun
+Price:100000000
+Sell Price:2850000
+UNK_DMG:984
+Hitpoints:800
+AmmoItemId: 0x083D62
+AmmoUsage: 40
+MaxAmmo: 400
+MaxRange: 1925
+
+ID: 0x04460D
+Code: EX MS longrange beam rifle
+Name: EX MS longrange beam rifle
+Price:100000000
+Sell Price:930000
+UNK_DMG:9625
+Hitpoints:200
+AmmoItemId: 0x083D62
+AmmoUsage: 12
+MaxAmmo: 180
+MaxRange: 1700
+
+ID: 0x04460E
+Code: EX Arm punch(MSM-08)
+Name: EX Arm punch(MSM-08)
+Price:100000000
+Sell Price:8600
+UNK_DMG:437
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04460F
+Code: EX MS sniping beam rifle
+Name: EX MS sniping beam rifle
+Price:100000000
+Sell Price:1100000
+UNK_DMG:9625
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 14
+MaxAmmo: 210
+MaxRange: 1900
+
+ID: 0x044610
+Code: EX MS sniping beam rifle custom
+Name: EX MS sniping beam rifle custom
+Price:100000000
+Sell Price:2340000
+UNK_DMG:9625
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 16
+MaxAmmo: 240
+MaxRange: 2000
+
+ID: 0x044611
+Code: EX Boomerang cutter(MSM-08)
+Name: EX Boomerang cutter(MSM-08)
+Price:100000000
+Sell Price:515000
+UNK_DMG:894
+Hitpoints:500
+AmmoItemId: 0x083D6A
+AmmoUsage: 2
+MaxAmmo: 30
+MaxRange: 440
+
+ID: 0x044612
+Code: EX MS beam rifle (RGM-79L)
+Name: EX MS beam rifle (RGM-79L)
+Price:100000000
+Sell Price:3000000
+UNK_DMG:10718
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 7
+MaxAmmo: 175
+MaxRange: 715
+
+ID: 0x044613
+Code: EX MS rocket launcher
+Name: EX MS rocket launcher
+Price:100000000
+Sell Price:300000
+UNK_DMG:875
+Hitpoints:1000
+AmmoItemId: 0x083D6B
+AmmoUsage: 3
+MaxAmmo: 60
+MaxRange: 924
+
+ID: 0x044614
+Code: EX MS grapple
+Name: EX MS grapple
+Price:100000000
+Sell Price:4100
+UNK_DMG:414
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 60
+
+ID: 0x044615
+Code: EX MS beam rifle(MS-14)
+Name: EX MS beam rifle(MS-14)
+Price:100000000
+Sell Price:7500000
+UNK_DMG:11375
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 770
+
+ID: 0x044616
+Code: EX BB machine gun
+Name: EX BB machine gun
+Price:100000000
+Sell Price:182000
+UNK_DMG:1093
+Hitpoints:500
+AmmoItemId: 0x083D6C
+AmmoUsage: 10
+MaxAmmo: 500
+MaxRange: 1540
+
+ID: 0x044617
+Code: EX Heat hawk
+Name: EX Heat hawk
+Price:100000000
+Sell Price:8000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044618
+Code: EX Heat saber(MS-09)
+Name: EX Heat saber(MS-09)
+Price:100000000
+Sell Price:45000
+UNK_DMG:1750
+Hitpoints:35
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 80
+
+ID: 0x044619
+Code: EX Beam saber(RGM-79G)
+Name: EX Beam saber(RGM-79G)
+Price:100000000
+Sell Price:45000
+UNK_DMG:1750
+Hitpoints:45
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04461A
+Code: EX Beam naginata(MS-14)
+Name: EX Beam naginata(MS-14)
+Price:100000000
+Sell Price:2850000
+UNK_DMG:2187
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04461B
+Code: EX ZAKU bazooka(MS-06)
+Name: EX ZAKU bazooka(MS-06)
+Price:100000000
+Sell Price:45000
+UNK_DMG:19687
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 924
+
+ID: 0x04461C
+Code: EX Heat sword(MS-07)
+Name: EX Heat sword(MS-07)
+Price:100000000
+Sell Price:47000
+UNK_DMG:1750
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04461D
+Code: EX MS arm machine gun
+Name: EX MS arm machine gun
+Price:100000000
+Sell Price:14000
+UNK_DMG:546
+Hitpoints:500
+AmmoItemId: 0x083D60
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 600
+
+ID: 0x04461E
+Code: EX Beam saber(RX-79G)
+Name: EX Beam saber(RX-79G)
+Price:100000000
+Sell Price:270000
+UNK_DMG:1968
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04461F
+Code: EX Hyper bazooka
+Name: EX Hyper bazooka
+Price:100000000
+Sell Price:95000
+UNK_DMG:22640
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 18
+MaxRange: 1001
+
+ID: 0x044620
+Code: EX GM rifle(RGM-79C)
+Name: EX GM rifle(RGM-79C)
+Price:100000000
+Sell Price:100000
+UNK_DMG:10937
+Hitpoints:300
+AmmoItemId: 0x083D60
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1300
+
+ID: 0x044621
+Code: EX Heat rod
+Name: EX Heat rod
+Price:100000000
+Sell Price:25000
+UNK_DMG:875
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 100
+
+ID: 0x044622
+Code: EX 75mm machine gun(MS-07) 
+Name: EX 75mm machine gun(MS-07) 
+Price:100000000
+Sell Price:12000
+UNK_DMG:9406
+Hitpoints:400
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 100
+MaxRange: 550
+
+ID: 0x044623
+Code: EX ZMP-50D custom(MS-06D)
+Name: EX ZMP-50D custom(MS-06D)
+Price:100000000
+Sell Price:11000
+UNK_DMG:7875
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 155
+MaxRange: 847
+
+ID: 0x044624
+Code: HG MS cannon
+Name: HG MS cannon
+Price:100000000
+Sell Price:4800
+UNK_DMG:546
+Hitpoints:30
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 10
+MaxRange: 1000
+
+ID: 0x044625
+Code: HG BLASH XHB-L-03/N-STD(RX-78)
+Name: HG BLASH XHB-L-03/N-STD(RX-78)
+Price:100000000
+Sell Price:1608000
+UNK_DMG:11812
+Hitpoints:30
+AmmoItemId: 0x083D62
+AmmoUsage: 20
+MaxAmmo: 160
+MaxRange: 700
+
+ID: 0x044626
+Code: HG Gun launcher(RX-75)
+Name: HG Gun launcher(RX-75)
+Price:100000000
+Sell Price:5880
+UNK_DMG:437
+Hitpoints:40
+AmmoItemId: 0x083D6B
+AmmoUsage: 4
+MaxAmmo: 80
+MaxRange: 600
+
+ID: 0x044627
+Code: HG Heat hawk
+Name: HG Heat hawk
+Price:100000000
+Sell Price:4800
+UNK_DMG:1531
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044628
+Code: HG MS head vulcan
+Name: HG MS head vulcan
+Price:100000000
+Sell Price:5880
+UNK_DMG:437
+Hitpoints:70
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 500
+
+ID: 0x044629
+Code: HG Hyper bazooka ground type
+Name: HG Hyper bazooka ground type
+Price:100000000
+Sell Price:30000
+UNK_DMG:21656
+Hitpoints:70
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 924
+
+ID: 0x04462A
+Code: HG ZMP-47D(MS-05)
+Name: HG ZMP-47D(MS-05)
+Price:100000000
+Sell Price:4800
+UNK_DMG:7437
+Hitpoints:70
+AmmoItemId: 0x083D60
+AmmoUsage: 3
+MaxAmmo: 90
+MaxRange: 748
+
+ID: 0x04462B
+Code: HG HFW-GMG(RGM-79)
+Name: HG HFW-GMG(RGM-79)
+Price:100000000
+Sell Price:91200
+UNK_DMG:9625
+Hitpoints:70
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 180
+MaxRange: 770
+
+ID: 0x04462C
+Code: HG Magella top cannon
+Name: HG Magella top cannon
+Price:100000000
+Sell Price:12000
+UNK_DMG:18703
+Hitpoints:30
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1155
+
+ID: 0x04462D
+Code: HG MS beam gun(RGM-79)
+Name: HG MS beam gun(RGM-79)
+Price:100000000
+Sell Price:96600
+UNK_DMG:9625
+Hitpoints:30
+AmmoItemId: 0x083D62
+AmmoUsage: 7
+MaxAmmo: 175
+MaxRange: 847
+
+ID: 0x04462E
+Code: HG Tank/Fighter machine gun
+Name: HG Tank/Fighter machine gun
+Price:100000000
+Sell Price:996
+UNK_DMG:218
+Hitpoints:80
+AmmoItemId: 0x083D65
+AmmoUsage: 4
+MaxAmmo: 240
+MaxRange: 550
+
+ID: 0x04462F
+Code: HG 100mm machine gun(RGM-79G)
+Name: HG 100mm machine gun(RGM-79G)
+Price:100000000
+Sell Price:214800
+UNK_DMG:10062
+Hitpoints:70
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 700
+
+ID: 0x044630
+Code: HG MS mega particle beam gun
+Name: HG MS mega particle beam gun
+Price:100000000
+Sell Price:267600
+UNK_DMG:984
+Hitpoints:80
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 200
+MaxRange: 770
+
+ID: 0x044631
+Code: HG MS bias mega particle beam gun
+Name: HG MS bias mega particle beam gun
+Price:100000000
+Sell Price:53520
+UNK_DMG:875
+Hitpoints:80
+AmmoItemId: 0x083D62
+AmmoUsage: 11
+MaxAmmo: 275
+MaxRange: 924
+
+ID: 0x044632
+Code: HG 180mm cannon(RX-79G)
+Name: HG 180mm cannon(RX-79G)
+Price:100000000
+Sell Price:301200
+UNK_DMG:9843
+Hitpoints:50
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1078
+
+ID: 0x044633
+Code: HG MS claw
+Name: HG MS claw
+Price:100000000
+Sell Price:11700
+UNK_DMG:656
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044634
+Code: HG MS longrange beam rifle
+Name: HG MS longrange beam rifle
+Price:100000000
+Sell Price:210000
+UNK_DMG:9625
+Hitpoints:60
+AmmoItemId: 0x083D62
+AmmoUsage: 18
+MaxAmmo: 216
+MaxRange: 2000
+
+ID: 0x044635
+Code: HG Boomerang cutter(MSM-08)
+Name: HG Boomerang cutter(MSM-08)
+Price:100000000
+Sell Price:133800
+UNK_DMG:894
+Hitpoints:70
+AmmoItemId: 0x083D6A
+AmmoUsage: 2
+MaxAmmo: 30
+MaxRange: 440
+
+ID: 0x044636
+Code: HG MS beam rifle (RGM-79L)
+Name: HG MS beam rifle (RGM-79L)
+Price:100000000
+Sell Price:535200
+UNK_DMG:10718
+Hitpoints:70
+AmmoItemId: 0x083D62
+AmmoUsage: 10
+MaxAmmo: 230
+MaxRange: 715
+
+ID: 0x044637
+Code: HG MS rocket launcher
+Name: HG MS rocket launcher
+Price:100000000
+Sell Price:64680
+UNK_DMG:875
+Hitpoints:35
+AmmoItemId: 0x083D6B
+AmmoUsage: 3
+MaxAmmo: 60
+MaxRange: 924
+
+ID: 0x044638
+Code: HG Heat saber(MS-09)
+Name: HG Heat saber(MS-09)
+Price:100000000
+Sell Price:16800
+UNK_DMG:1750
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044639
+Code: HG Beam saber(RGM-79G)
+Name: HG Beam saber(RGM-79G)
+Price:100000000
+Sell Price:16800
+UNK_DMG:1750
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04463A
+Code: HG ZAKU bazooka(MS-06)
+Name: HG ZAKU bazooka(MS-06)
+Price:100000000
+Sell Price:16800
+UNK_DMG:19687
+Hitpoints:30
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 924
+
+ID: 0x04463B
+Code: HG Heat sword(MS-07)
+Name: HG Heat sword(MS-07)
+Price:100000000
+Sell Price:16800
+UNK_DMG:1750
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04463C
+Code: HG MS arm machine gun
+Name: HG MS arm machine gun
+Price:100000000
+Sell Price:5880
+UNK_DMG:546
+Hitpoints:100
+AmmoItemId: 0x083D60
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 600
+
+ID: 0x04463D
+Code: HG MS beam rifle(MS-14)
+Name: HG MS beam rifle(MS-14)
+Price:100000000
+Sell Price:1338000
+UNK_DMG:11375
+Hitpoints:30
+AmmoItemId: 0x083D62
+AmmoUsage: 20
+MaxAmmo: 160
+MaxRange: 700
+
+ID: 0x04463E
+Code: HG Arm punch(MSM-08)
+Name: HG Arm punch(MSM-08)
+Price:100000000
+Sell Price:5880
+UNK_DMG:437
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04463F
+Code: HG Heat rod
+Name: HG Heat rod
+Price:100000000
+Sell Price:11880
+UNK_DMG:875
+Hitpoints:15
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 100
+
+ID: 0x044640
+Code: HG MMP-78(MS-06)
+Name: HG MMP-78(MS-06)
+Price:100000000
+Sell Price:16800
+UNK_DMG:9406
+Hitpoints:70
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 180
+MaxRange: 770
+
+ID: 0x044641
+Code: HG MS torpedo 
+Name: HG MS torpedo 
+Price:100000000
+Sell Price:14280
+UNK_DMG:984
+Hitpoints:30
+AmmoItemId: 0x083D6B
+AmmoUsage: 2
+MaxAmmo: 30
+MaxRange: 900
+
+ID: 0x044642
+Code: HG MS chest vulcan
+Name: HG MS chest vulcan
+Price:100000000
+Sell Price:5880
+UNK_DMG:437
+Hitpoints:70
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 500
+
+ID: 0x044643
+Code: HG Ball Cannon
+Name: HG Ball Cannon
+Price:100000000
+Sell Price:4800
+UNK_DMG:9843
+Hitpoints:50
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1000
+
+ID: 0x044644
+Code: HG MS beam cannon
+Name: HG MS beam cannon
+Price:100000000
+Sell Price:376800
+UNK_DMG:546
+Hitpoints:80
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 320
+MaxRange: 1250
+
+ID: 0x044645
+Code: HG Hammer gun
+Name: HG Hammer gun
+Price:100000000
+Sell Price:16800
+UNK_DMG:1531
+Hitpoints:18
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 770
+
+ID: 0x044646
+Code: HG Giant bazooka(MS-09)
+Name: HG Giant bazooka(MS-09)
+Price:100000000
+Sell Price:168000
+UNK_DMG:31988
+Hitpoints:30
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 924
+
+ID: 0x044647
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044648
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044649
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464A
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464B
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464C
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464D
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464E
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04464F
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044650
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044651
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044652
+Code: HG weapon
+Name: HG weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044653
+Code: mining drill parts
+Name: mining drill parts
+Price:2000
+Sell Price:830
+UNK_DMG:218
+Hitpoints:300
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044654
+Code: EF flag
+Name: EF flag
+Price:100000000
+Sell Price:1000
+UNK_DMG:0
+Hitpoints:1000
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044655
+Code: Zeon flag
+Name: Zeon flag
+Price:100000000
+Sell Price:1000
+UNK_DMG:0
+Hitpoints:1000
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044656
+Code: Beam spray gun(RGM-79C)
+Name: Beam spray gun(RGM-79C)
+Price:10000
+Sell Price:7300
+UNK_DMG:8312
+Hitpoints:700
+AmmoItemId: 0x083D62
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 800
+
+ID: 0x044657
+Code: MMP-78(MS-06)
+Name: MMP-78(MS-06)
+Price:30000
+Sell Price:14000
+UNK_DMG:9406
+Hitpoints:550
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 162
+MaxRange: 750
+
+ID: 0x044658
+Code: Beam saber(RGM-79C)
+Name: Beam saber(RGM-79C)
+Price:21000
+Sell Price:14000
+UNK_DMG:1750
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044659
+Code: Giant heat hawk
+Name: Giant heat hawk
+Price:100000000
+Sell Price:14000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04465A
+Code: MS prototype beam rifle(MS-14)
+Name: MS prototype beam rifle(MS-14)
+Price:1000000
+Sell Price:446000
+UNK_DMG:11375
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 9
+MaxAmmo: 162
+MaxRange: 700
+
+ID: 0x04465B
+Code: Great heat hawk
+Name: Great heat hawk
+Price:100000000
+Sell Price:34000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04465C
+Code: MS torpedo 
+Name: MS torpedo 
+Price:12000
+Sell Price:11900
+UNK_DMG:984
+Hitpoints:500
+AmmoItemId: 0x083D6B
+AmmoUsage: 2
+MaxAmmo: 30
+MaxRange: 900
+
+ID: 0x04465D
+Code: MS chest vulcan
+Name: MS chest vulcan
+Price:5000
+Sell Price:4900
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 400
+
+ID: 0x04465E
+Code: Ball cannon
+Name: Ball cannon
+Price:100000000
+Sell Price:4000
+UNK_DMG:9843
+Hitpoints:600
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1000
+
+ID: 0x04465F
+Code: MS beam cannon
+Name: MS beam cannon
+Price:710000
+Sell Price:314000
+UNK_DMG:546
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 320
+MaxRange: 1200
+
+ID: 0x044660
+Code: Hammer gun
+Name: Hammer gun
+Price:20000
+Sell Price:14000
+UNK_DMG:1531
+Hitpoints:90
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 700
+
+ID: 0x044661
+Code: MS beam rifle(MS-06R-2P)
+Name: MS beam rifle(MS-06R-2P)
+Price:65000
+Sell Price:40000
+UNK_DMG:9406
+Hitpoints:500
+AmmoItemId: 0x083D62
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x044662
+Code: Beam bazooka
+Name: Beam bazooka
+Price:500000
+Sell Price:251000
+UNK_DMG:31988
+Hitpoints:150
+AmmoItemId: 0x083D62
+AmmoUsage: 15
+MaxAmmo: 225
+MaxRange: 1200
+
+ID: 0x044663
+Code: Beam saber(YMS-14)
+Name: Beam saber(YMS-14)
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044664
+Code: Tank/Fighter missile
+Name: Tank/Fighter missile
+Price:1250
+Sell Price:830
+UNK_DMG:218
+Hitpoints:800
+AmmoItemId: 0x083D66
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1100
+
+ID: 0x044665
+Code: EF throwing device
+Name: EF throwing device
+Price:10200
+Sell Price:9900
+UNK_DMG:437
+Hitpoints:50
+AmmoItemId: 0x083D6E
+AmmoUsage: 1
+MaxAmmo: 5
+MaxRange: 450
+
+ID: 0x044666
+Code: ZEON throwing device
+Name: ZEON throwing device
+Price:10200
+Sell Price:9900
+UNK_DMG:437
+Hitpoints:50
+AmmoItemId: 0x083D6D
+AmmoUsage: 1
+MaxAmmo: 5
+MaxRange: 450
+
+ID: 0x044667
+Code: MS/MA MR tool kit Lv.1
+Name: MS/MA MR tool kit Lv.1
+Price:1500
+Sell Price:750
+UNK_DMG:3
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044668
+Code: MS/MA MR tool kit Lv.2
+Name: MS/MA MR tool kit Lv.2
+Price:3000
+Sell Price:1500
+UNK_DMG:3
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044669
+Code: MS/MA MR tool kit Lv.3
+Name: MS/MA MR tool kit Lv.3
+Price:6000
+Sell Price:3000
+UNK_DMG:3
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466A
+Code: MS/MA MR tool kit Lv.4
+Name: MS/MA MR tool kit Lv.4
+Price:12000
+Sell Price:6000
+UNK_DMG:3
+Hitpoints:10
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466B
+Code: Tank/Fighter MR tool kit Lv.1
+Name: Tank/Fighter MR tool kit Lv.1
+Price:500
+Sell Price:250
+UNK_DMG:3
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466C
+Code: Tank/Fighter MR tool kit Lv.2
+Name: Tank/Fighter MR tool kit Lv.2
+Price:1000
+Sell Price:500
+UNK_DMG:3
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466D
+Code: Tank/Fighter MR tool kit Lv.3
+Name: Tank/Fighter MR tool kit Lv.3
+Price:2000
+Sell Price:1000
+UNK_DMG:3
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466E
+Code: Tank/Fighter MR tool kit Lv.4
+Name: Tank/Fighter MR tool kit Lv.4
+Price:4000
+Sell Price:2000
+UNK_DMG:3
+Hitpoints:10
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04466F
+Code: MS machine gun(RGM-79D)
+Name: MS machine gun(RGM-79D)
+Price:150000
+Sell Price:76000
+UNK_DMG:7656
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x044670
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044671
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044672
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044673
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044674
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044675
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044676
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044677
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044678
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044679
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467A
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467B
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467C
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467D
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467E
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04467F
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044680
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044681
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044682
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044683
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044684
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044685
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044686
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044687
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x044688
+Code: EX Beam spray gun(RGM-79C)
+Name: EX Beam spray gun(RGM-79C)
+Price:100000000
+Sell Price:20000
+UNK_DMG:8312
+Hitpoints:700
+AmmoItemId: 0x083D62
+AmmoUsage: 4
+MaxAmmo: 100
+MaxRange: 880
+
+ID: 0x044689
+Code: EX MMP-78(MS-06)
+Name: EX MMP-78(MS-06)
+Price:100000000
+Sell Price:47000
+UNK_DMG:9406
+Hitpoints:550
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 162
+MaxRange: 825
+
+ID: 0x04468A
+Code: EX Beam saber(RGM-79C)
+Name: EX Beam saber(RGM-79C)
+Price:100000000
+Sell Price:47000
+UNK_DMG:1750
+Hitpoints:50
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04468B
+Code: EX Giant heat hawk
+Name: EX Giant heat hawk
+Price:100000000
+Sell Price:47000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04468C
+Code: EX MS prototype beam rifle(MS-14)
+Name: EX MS prototype beam rifle(MS-14)
+Price:100000000
+Sell Price:3000000
+UNK_DMG:11375
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 9
+MaxAmmo: 162
+MaxRange: 770
+
+ID: 0x04468D
+Code: EX Great heat hawk
+Name: EX Great heat hawk
+Price:100000000
+Sell Price:150000
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x04468E
+Code: EX MS torpedo 
+Name: EX MS torpedo 
+Price:100000000
+Sell Price:40000
+UNK_DMG:984
+Hitpoints:500
+AmmoItemId: 0x083D6B
+AmmoUsage: 2
+MaxAmmo: 30
+MaxRange: 950
+
+ID: 0x04468F
+Code: EX MS chest vulcan
+Name: EX MS chest vulcan
+Price:100000000
+Sell Price:5400
+UNK_DMG:437
+Hitpoints:500
+AmmoItemId: 0x083D61
+AmmoUsage: 4
+MaxAmmo: 200
+MaxRange: 400
+
+ID: 0x044690
+Code: EX Ball Cannon
+Name: EX Ball Cannon
+Price:100000000
+Sell Price:6000
+UNK_DMG:9843
+Hitpoints:600
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1000
+
+ID: 0x044691
+Code: EX MS beam cannon
+Name: EX MS beam cannon
+Price:100000000
+Sell Price:2130000
+UNK_DMG:546
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 320
+MaxRange: 1250
+
+ID: 0x044692
+Code: EX Hammer gun
+Name: EX Hammer gun
+Price:100000000
+Sell Price:45000
+UNK_DMG:1531
+Hitpoints:90
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 770
+
+ID: 0x044693
+Code: EX MS beam rifle(MS-06R-2P)
+Name: EX MS beam rifle(MS-06R-2P)
+Price:100000000
+Sell Price:160000
+UNK_DMG:9406
+Hitpoints:500
+AmmoItemId: 0x083D62
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 770
+
+ID: 0x044694
+Code: EX Beam bazooka
+Name: EX Beam bazooka
+Price:100000000
+Sell Price:1500000
+UNK_DMG:31988
+Hitpoints:150
+AmmoItemId: 0x083D62
+AmmoUsage: 15
+MaxAmmo: 225
+MaxRange: 1300
+
+ID: 0x044695
+Code: EX Beam saber(YMS-14)
+Name: EX Beam saber(YMS-14)
+Price:100000000
+Sell Price:0
+UNK_DMG:0
+Hitpoints:40
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x044696
+Code: EX Tank/Fighter missile
+Name: EX Tank/Fighter missile
+Price:100000000
+Sell Price:1100
+UNK_DMG:218
+Hitpoints:800
+AmmoItemId: 0x083D66
+AmmoUsage: 1
+MaxAmmo: 40
+MaxRange: 1200
+
+ID: 0x044697
+Code: EX EF throwing device
+Name: EX EF throwing device
+Price:100000000
+Sell Price:25000
+UNK_DMG:218
+Hitpoints:50
+AmmoItemId: 0x083D6E
+AmmoUsage: 1
+MaxAmmo: 5
+MaxRange: 450
+
+ID: 0x044698
+Code: EX ZEON throwing device
+Name: EX ZEON throwing device
+Price:100000000
+Sell Price:25000
+UNK_DMG:218
+Hitpoints:50
+AmmoItemId: 0x083D6D
+AmmoUsage: 1
+MaxAmmo: 5
+MaxRange: 450
+
+ID: 0x044699
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469A
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469B
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469C
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469D
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469E
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x04469F
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A0
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A1
+Code: EX MS machine gun(RGM-79D)
+Name: EX MS machine gun(RGM-79D)
+Price:100000000
+Sell Price:420000
+UNK_DMG:1531
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 150
+MaxRange: 847
+
+ID: 0x0446A2
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A3
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A4
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A5
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A6
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A7
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A8
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446A9
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AA
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AB
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AC
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AD
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AE
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446AF
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B0
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B1
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B2
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B3
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B4
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B5
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B6
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B7
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B8
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446B9
+Code: normal weapon
+Name: normal weapon
+Price:0
+Sell Price:0
+UNK_DMG:0
+Hitpoints:0
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 0
+
+ID: 0x0446BA
+Code: SP BLASH XHB-L-03/N-STD
+Name: SP BLASH XHB-L-03/N-STD
+Price:5000000
+Sell Price:1500000
+UNK_DMG:11812
+Hitpoints:400
+AmmoItemId: 0x083D62
+AmmoUsage: 8
+MaxAmmo: 160
+MaxRange: 770
+
+ID: 0x0446BB
+Code: SP 180mm cannon
+Name: SP 180mm cannon
+Price:1000000
+Sell Price:250000
+UNK_DMG:9843
+Hitpoints:400
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1078
+
+ID: 0x0446BC
+Code: SP MS longrange beam rifle
+Name: SP MS longrange beam rifle
+Price:700000
+Sell Price:175000
+UNK_DMG:9625
+Hitpoints:200
+AmmoItemId: 0x083D62
+AmmoUsage: 12
+MaxAmmo: 180
+MaxRange: 1700
+
+ID: 0x0446BD
+Code: SP Hyper bazooka
+Name: SP Hyper bazooka
+Price:150000
+Sell Price:22500
+UNK_DMG:22640
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 18
+MaxRange: 1001
+
+ID: 0x0446BE
+Code: SP Long rifle
+Name: SP Long rifle
+Price:140000
+Sell Price:5000
+UNK_DMG:10429
+Hitpoints:500
+AmmoItemId: 0x083D60
+AmmoUsage: 1
+MaxAmmo: 30
+MaxRange: 1450
+
+ID: 0x0446BF
+Code: SP HFW-GMG
+Name: SP HFW-GMG
+Price:300000
+Sell Price:75000
+UNK_DMG:9625
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 6
+MaxAmmo: 180
+MaxRange: 770
+
+ID: 0x0446C0
+Code: SP Ball cannon
+Name: SP Ball cannon
+Price:100000
+Sell Price:5000
+UNK_DMG:9843
+Hitpoints:600
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1000
+
+ID: 0x0446C1
+Code: SP Hyper bazooka ground type
+Name: SP Hyper bazooka ground type
+Price:150000
+Sell Price:20000
+UNK_DMG:21656
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 924
+
+ID: 0x0446C2
+Code: SP ZMP-50D
+Name: SP ZMP-50D
+Price:100000
+Sell Price:3250
+UNK_DMG:7656
+Hitpoints:700
+AmmoItemId: 0x083D60
+AmmoUsage: 5
+MaxAmmo: 150
+MaxRange: 847
+
+ID: 0x0446C3
+Code: SP MS prototype beam rifle
+Name: SP MS prototype beam rifle
+Price:4000000
+Sell Price:500000
+UNK_DMG:11375
+Hitpoints:300
+AmmoItemId: 0x083D62
+AmmoUsage: 9
+MaxAmmo: 162
+MaxRange: 770
+
+ID: 0x0446C4
+Code: SP Giant bazooka
+Name: SP Giant bazooka
+Price:1000000
+Sell Price:140000
+UNK_DMG:31988
+Hitpoints:500
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 20
+MaxRange: 1001
+
+ID: 0x0446C5
+Code: SP Heat hawk
+Name: SP Heat hawk
+Price:50000
+Sell Price:3100
+UNK_DMG:1531
+Hitpoints:30
+AmmoItemId: 0x000000
+AmmoUsage: 0
+MaxAmmo: 0
+MaxRange: 70
+
+ID: 0x0446C6
+Code: SP MMP-80
+Name: SP MMP-80
+Price:150000
+Sell Price:31000
+UNK_DMG:9406
+Hitpoints:600
+AmmoItemId: 0x083D60
+AmmoUsage: 7
+MaxAmmo: 210
+MaxRange: 770
+
+ID: 0x0446C7
+Code: SP ZAKU bazooka
+Name: SP ZAKU bazooka
+Price:150000
+Sell Price:11000
+UNK_DMG:19687
+Hitpoints:400
+AmmoItemId: 0x083D69
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 924
+
+ID: 0x0446C8
+Code: SP Magella top cannon
+Name: SP Magella top cannon
+Price:800000
+Sell Price:6000
+UNK_DMG:18703
+Hitpoints:30
+AmmoItemId: 0x083D64
+AmmoUsage: 1
+MaxAmmo: 25
+MaxRange: 1155
+
+ID: 0x0446C9
+Code: SP MS beam rifle
+Name: SP MS beam rifle
+Price:500000
+Sell Price:32500
+UNK_DMG:9406
+Hitpoints:500
+AmmoItemId: 0x083D62
+AmmoUsage: 6
+MaxAmmo: 150
+MaxRange: 770

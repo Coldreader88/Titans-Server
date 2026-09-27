@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<NineRays.ILOMD.Options.Project>
+  <AssemblyList>
+    <NineRays.ILOMD.Options.AssemblyFileName>
+      <ObfuscationOptions>
+        <NineRays.ILOMD.Options.Options>
+          <SoftwareWatermark>
+          </SoftwareWatermark>
+        </NineRays.ILOMD.Options.Options>
+      </ObfuscationOptions>
+      <Name>.\XArchiver.exe</Name>
+    </NineRays.ILOMD.Options.AssemblyFileName>
+  </AssemblyList>
+  <StrongNameKeyFile>
+  </StrongNameKeyFile>
+  <LayoutInfo>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;Layout&gt;
+  &lt;Window Guid="cca8cbc8-3faf-4129-b414-729e1bf2168e" FloatingSize="550, 400" FloatingLocation="-1, -1" Docked="1" PopupSize="0" DockedSize="200" LastFixedDockLocation="Center" LastFixedLayoutGuid="06aec89f-888b-44e0-853d-9f58dd34dbb3" LastLayoutGuid="06aec89f-888b-44e0-853d-9f58dd34dbb3" /&gt;
+  &lt;Window Guid="1ab51f96-7428-4b68-9f25-0af0d8415f26" FloatingSize="250, 400" FloatingLocation="-1, -1" Docked="1" PopupSize="0" DockedSize="351" LastFixedDockLocation="Left" LastFixedLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" LastLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" /&gt;
+  &lt;Window Guid="16bbe2d2-5504-4cd4-82f2-6737d26493b8" FloatingSize="250, 400" FloatingLocation="-1, -1" Docked="1" PopupSize="0" DockedSize="351" LastFixedDockLocation="Left" LastFixedLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" LastLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" /&gt;
+  &lt;Window Guid="d011ae1a-b131-40cb-8ce1-4454c2694fcd" FloatingSize="250, 400" FloatingLocation="-1, -1" Docked="1" PopupSize="0" DockedSize="351" LastFixedDockLocation="Left" LastFixedLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" LastLayoutGuid="730d52ac-9314-438b-97dc-45db38f99800" /&gt;
+  &lt;Container Dock="3" ContentSize="351"&gt;
+    &lt;SplitLayoutSystem WorkingSize="351, 855" SplitMode="0"&gt;
+      &lt;ControlLayoutSystem WorkingSize="351, 855" Guid="730d52ac-9314-438b-97dc-45db38f99800" Collapsed="0" SelectedControl="1ab51f96-7428-4b68-9f25-0af0d8415f26"&gt;
+        &lt;Controls&gt;
+          &lt;Control Guid="1ab51f96-7428-4b68-9f25-0af0d8415f26" /&gt;
+          &lt;Control Guid="d011ae1a-b131-40cb-8ce1-4454c2694fcd" /&gt;
+          &lt;Control Guid="16bbe2d2-5504-4cd4-82f2-6737d26493b8" /&gt;
+        &lt;/Controls&gt;
+      &lt;/ControlLayoutSystem&gt;
+    &lt;/SplitLayoutSystem&gt;
+  &lt;/Container&gt;
+&lt;/Layout&gt;</LayoutInfo>
+</NineRays.ILOMD.Options.Project>

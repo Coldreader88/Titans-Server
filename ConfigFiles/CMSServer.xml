@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ChatServer>
+	
+  <!-- The Port the Chat-Server will listen on for incoming clients. -->
+  <Port>42016</Port>
+  
+    <!-- 
+            日志等级：（加法）
+            Info = 1,
+            Warning = 2,
+            Error = 4,
+            SQL = 8,
+            Debug = 16       
+  -->
+  <LogLevel>31</LogLevel>
+</ChatServer>

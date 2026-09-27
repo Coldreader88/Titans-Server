@@ -1,0 +1,32 @@
+
+準備
+
+(1) Java をインストールしてください。
+    不明な場合は → http://www.java.com/ja/
+
+インストール
+
+(1) zip を展開します。(もう展開してありますね ^^;)
+
+(2) 展開して出来たフォルダ (DummuyDNS) を適当な場所に移動します。
+
+(3) DummuyDNS フォルダの中にある、DummyDNS.bat を書き換えます。
+　　「SET INSTALL_DIR=C:\DummuyDNS」の「C:\DummyDNS」を (1) で置いた場所に書き換えます。
+    C:\ 直下に置いた場合はそのままで o.k. です。
+
+設定 (UCGO の gameclient.cfg をオリジナルのまま使う場合です。)
+
+(1) C:\WINDOWS\system32\drivers\etc\hosts を書き換えます。
+    「127.0.0.1       localhost」の横に「dns.universalcentury.net」を追加します。
+    「127.0.0.1       localhost dns.universalcentury.net」のようになります。
+
+実行
+
+(1)  DummyDNS.bat をダブルクリックするなどして実行します。
+     止めるときは Ctrl+C で強制終了させてください。
+
+エラーになったら？
+
+コマンドプロンプトに出たメッセージを
+コミュのフォーラムか、メールで tongpoo までお知らせください。
+できるだけサポートしたいと思います。

@@ -31,6 +31,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+[Bb]in2/
+[Dd]ist/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -399,3 +401,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+
+#user
+*.exe
+*.jar

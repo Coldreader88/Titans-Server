@@ -1,0 +1,48 @@
+Some Interesting Offsets for any future reversers:
+
+007D925C - Blowfish Initialize/SetPassword
+0070DFF4 - Blowfish Encrypt()
+0070E07C - Blowfish Decrypt()
+
+
+0070E264 - XORMask Decrypt()
+0070E120 - XORMask Encrypt()
+0090FBA0 - XORMask Table[];
+
+00704D50 - RecvPacket()
+
+
+- WriteFile() calls (used with IO Completion Port)
+00706051
+007032ED
+00808DC6
+
+- ReadFile() do an Xref for offsets is used to Send packets via IO Completion Port
+
+You can Trace the XORMask Table and Blowfish Initialization back to any of the
+Packet handlers and watch how the packets are dealt with.
+
+Notice there are 2 "sockets areas" used. one in the 00800000 offset range for the INFOServer
+another (or 2 or so) in the 00700000 for Login/Game Servers.
+
+
+OPCODES
+Here are the 2 functions used for debug output when send/recv packets are done.
+If you do an XREF trace (in IDA) on these addresses, you will see 83+6 recv and 58 send calls
+totaling the 147 types of packets possible. When you trace back to a function you will see
+a PUSH 38000h in green (or w/e number the ocpode is), this is a hardcoded value.
+That is the opcode number. It may variate..
+It should be at least 4 digits and within 2-3 lines before the call to the function.
+For the Packet Name, scroll up or down and look for a hardcoded string (they are gray)
+Write down anything that resembles a name.
+Example  "-[ UCC_Eternal::NotifyFreeReload ] ..."
+This packet is obviously named "NotifyFreeReload"
+
+Follow each refrenced call and get names if possible as well as opcode number.
+This will give you a list of possible packets so you know what to sniff and how much
+there is to reverse. Its your light at the end of the packet tunnel!
+
+Offsets:
+Recv: 007D7A0C    83 Calls
+      007D7B58    6 Calls
+Send: 007D7CEC    58 Calls

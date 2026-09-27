@@ -1,0 +1,24 @@
+# Name, Type(A), Class(IN), TTL, Address (ホスト名も指定可?)
+#
+# OK, this is quite simple. Change your ip here.
+#
+#server.universalcentury.org				A IN 1800 markdns.no-ip.org
+server.universalcentury.org				A IN 1800 127.0.0.1
+#server.universalcentury.org				A IN 1800 174.48.98.48
+#server.universalcentury.org				A IN 1800 98.231.46.133
+
+# Name, Type(SRV), Class(IN), TTL, Priority, Weight, Port, Target
+UC-InfoServer00.universalcentury.org	SRV IN 1800 1 1 24012 server.universalcentury.org
+UC-LoginServer00.universalcentury.org	SRV IN 1800 1 1 24018 server.universalcentury.org
+UC-SystemLoadServer00.universalcentury.org	SRV IN 1800 1 1 99999 server.universalcentury.org
+UC-GameFEServer00.universalcentury.org	SRV IN 1800 1 1 24010 server.universalcentury.org
+UC-ItemFEServer00.universalcentury.org	SRV IN 1800 1 1 99999 server.universalcentury.org
+UC-CmsServer00.universalcentury.org		SRV IN 1800 1 1 24016 server.universalcentury.org
+
+# Name, Type(SRV), Class(IN), TTL, Priority, Weight, Port, Target
+TCP-InfoServer00.universalcentury.org	SRV IN 1800 1 1 24012 server.universalcentury.org
+TCP-LoginServer00.universalcentury.org	SRV IN 1800 1 1 24018 server.universalcentury.org
+TCP-SystemLoadServer00.universalcentury.org	SRV IN 1800 1 1 99999 server.universalcentury.org
+TCP-GameFEServer00.universalcentury.org	SRV IN 1800 1 1 24010 server.universalcentury.org
+TCP-ItemFEServer00.universalcentury.org	SRV IN 1800 1 1 99999 server.universalcentury.org
+TCP-CmsServer00.universalcentury.org		SRV IN 1800 1 1 24016 server.universalcentury.org

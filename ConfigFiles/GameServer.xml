@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<GameServer>
+  <Port>42010</Port>
+
+  <!-- 帐号服务器域名或IP -->
+  <AccountHost>127.0.0.1</AccountHost>
+  
+  <!-- 帐号服务器端口 -->
+  <AccountPort>42020</AccountPort>
+
+  <!-- 帐号服务器内部通讯验证密码 -->
+  <AccountPassword>titans_account</AccountPassword>
+
+  <!-- 聊天服务器域名或IP -->
+  <ChatHost>127.0.0.1</ChatHost>
+  
+  <!-- 聊天服务器端口 -->
+  <ChatPort>10241</ChatPort>
+
+  <!-- 人物服务器域名或IP -->
+  <CharacterHost>127.0.0.1</CharacterHost>
+  
+  <!-- 人物服务器端口 -->
+  <CharacterPort>42021</CharacterPort>
+
+  <!-- 人物服务器内部通讯验证密码 -->
+  <CharacterPassword>titans_character</CharacterPassword>
+  
+  <!-- Specify whether to enable the server to dynamically compile packet's as scripts. true/false -->
+  <Scripted-Packets-Enabled>false</Scripted-Packets-Enabled>
+
+  <!-- 
+            日志等级：（加法）
+            Info = 1,
+            Warning = 2,
+            Error = 4,
+            SQL = 8,
+            Debug = 16       
+  -->
+  <LogLevel>31</LogLevel>
+  
+ </GameServer>
