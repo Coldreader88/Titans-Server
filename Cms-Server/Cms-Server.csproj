@@ -7,7 +7,7 @@
     <ProjectGuid>{44CB3D5B-254C-435A-A2A4-ECAC05B27D00}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Cms_Server</RootNamespace>
+    <RootNamespace>TitansUC.CmsServer</RootNamespace>
     <AssemblyName>Cms-Server</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -35,6 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data">
+      <HintPath>..\Dependencies\MySql.Data\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -44,7 +47,62 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="CmsServer.cs" />
+    <Compile Include="Commands\CommandMap.cs" />
+    <Compile Include="Configuration\Configuration.cs" />
+    <Compile Include="Database\CmsDatabase.cs" />
+    <Compile Include="Manager\CmsClientManager.cs" />
+    <Compile Include="Manager\GameLinkManager.cs" />
+    <Compile Include="Network\Client\GameLinkSession.cs" />
+    <Compile Include="Network\Client\UCCmsSession.cs" />
+    <Compile Include="Network\Packets\Client\CM_ADD_FRIEND.cs" />
+    <Compile Include="Network\Packets\Client\CM_CHAT_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_CHAT_MSG.cs" />
+    <Compile Include="Network\Packets\Client\CM_COMMUNITY_LIST.cs" />
+    <Compile Include="Network\Packets\Client\CM_CREATE_TEAM.cs" />
+    <Compile Include="Network\Packets\Client\CM_DELETE_FRIEND.cs" />
+    <Compile Include="Network\Packets\Client\CM_FRIEND_STATUS.cs" />
+    <Compile Include="Network\Packets\Client\CM_FRIENDS_REGISTER_ONLINE.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_ADD_MEMBER.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_CREATE.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_LEAVE.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_MEMBERS.cs" />
+    <Compile Include="Network\Packets\Client\CM_HEARTBEAT.cs" />
+    <Compile Include="Network\Packets\Client\CM_LOGIN_CMS.cs" />
+    <Compile Include="Network\Packets\Client\CM_LOGOUT_CMS.cs" />
+    <Compile Include="Network\Packets\Client\CM_RELAY.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_ADD_MEMBER.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_KICK.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_LEAVE.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_MEMBER_STATUS.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_NAME.cs" />
+    <Compile Include="Network\Packets\Client\CM_TEAM_REGISTER_ONLINE.cs" />
+    <Compile Include="Network\Packets\CmsPacket.cs" />
+    <Compile Include="Network\Packets\Link\LinkHandlers.cs" />
+    <Compile Include="Network\Packets\Server\SM_CHAT_INFO.cs" />
+    <Compile Include="Network\Packets\Server\SM_CHAT_MSG.cs" />
+    <Compile Include="Network\Packets\Server\SM_COMMUNITY_LIST.cs" />
+    <Compile Include="Network\Packets\Server\SM_CREATE_TEAM.cs" />
+    <Compile Include="Network\Packets\Server\SM_FRIEND_CHANGE.cs" />
+    <Compile Include="Network\Packets\Server\SM_FRIEND_ONLINE.cs" />
+    <Compile Include="Network\Packets\Server\SM_GROUP_CHAT_CREATE.cs" />
+    <Compile Include="Network\Packets\Server\SM_GROUP_CHAT_MEMBER.cs" />
+    <Compile Include="Network\Packets\Server\SM_GROUP_CHAT_MEMBERS.cs" />
+    <Compile Include="Network\Packets\Server\SM_HEARTBEAT.cs" />
+    <Compile Include="Network\Packets\Server\SM_LOGIN_CMS.cs" />
+    <Compile Include="Network\Packets\Server\SM_LOGOUT_CMS.cs" />
+    <Compile Include="Network\Packets\Server\SM_ONLINE_STATUS.cs" />
+    <Compile Include="Network\Packets\Server\SM_RELAY.cs" />
+    <Compile Include="Network\Packets\Server\SM_TEAM_INFO.cs" />
+    <Compile Include="Network\Packets\Server\SM_TEAM_MEMBER.cs" />
+    <Compile Include="Network\Packets\Server\SM_TEAM_NAME.cs" />
+    <Compile Include="Network\Packets\Server\SM_TEAM_ONLINE.cs" />
+    <Compile Include="World\AccessLevel.cs" />
+    <Compile Include="World\CmsWorld.cs" />
+    <Compile Include="World\GroupChat.cs" />
+    <Compile Include="World\Maintenance.cs" />
+    <Compile Include="World\Member.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

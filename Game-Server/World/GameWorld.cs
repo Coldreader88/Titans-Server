@@ -19,6 +19,11 @@ namespace TitansUC.GameServer.World
         private readonly Dictionary<uint, UCGameSession> players = new Dictionary<uint, UCGameSession>();
 
         /// <summary>
+        /// Set while the server is closed for maintenance (#shutdown on the CMS server); logins are refused.
+        /// </summary>
+        public bool Closed { get; set; }
+
+        /// <summary>
         /// Adds a player. Returns the session that was already playing this character, if any, so the
         /// caller can disconnect it.
         /// </summary>
