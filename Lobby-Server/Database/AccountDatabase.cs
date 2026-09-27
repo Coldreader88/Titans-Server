@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Common.Account;
+using Common.Database;
 using MySql.Data.MySqlClient;
 using SmartEngine.Core;
 
@@ -21,21 +22,9 @@ namespace TitansUC.LobbyServer.Database
 
         public static AccountDatabase Instance { get { return instance; } }
 
-        private string connectionString;
-
         public void Init(string host, int port, string database, string user, string password)
         {
-            var builder = new MySqlConnectionStringBuilder
-            {
-                Server = host,
-                Port = (uint)port,
-                Database = database,
-                UserID = user,
-                Password = password,
-                CharacterSet = "utf8",
-                Pooling = true,
-            };
-            connectionString = builder.ConnectionString;
+            DatabaseConnection.Init(host, port, database, user, password);
         }
 
         /// <summary>
@@ -43,18 +32,7 @@ namespace TitansUC.LobbyServer.Database
         /// </summary>
         public bool TestConnection()
         {
-            try
-            {
-                using (var connection = Open())
-                {
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.ShowError(ex);
-                return false;
-            }
+            return DatabaseConnection.TestConnection();
         }
 
         /// <summary>
@@ -154,14 +132,7 @@ namespace TitansUC.LobbyServer.Database
 
         internal MySqlConnection Open()
         {
-            if (connectionString == null)
-            {
-                throw new InvalidOperationException("AccountDatabase.Init has not been called.");
-            }
-
-            var connection = new MySqlConnection(connectionString);
-            connection.Open();
-            return connection;
+            return DatabaseConnection.Open();
         }
     }
 }

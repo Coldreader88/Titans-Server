@@ -170,5 +170,16 @@ namespace Common.Characters
             Tuple.Create("swappack", SwapPack, Multi),
             Tuple.Create("credit", Credit, Singleton),
         };
+
+        /// <summary>
+        /// The unique id of one of a character's containers: character id + static id. Money and credit
+        /// share the static id 500000, so credit gets one more to keep the ids apart (the client asks
+        /// for each container by its unique id, and the official server used different ones).
+        /// </summary>
+        public static uint GetUniqueID(uint characterClientID, Tuple<string, int, int> container)
+        {
+            uint id = unchecked(characterClientID + (uint)container.Item2);
+            return container.Item1 == "credit" ? id + 1 : id;
+        }
     }
 }

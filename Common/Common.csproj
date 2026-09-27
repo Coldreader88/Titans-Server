@@ -36,6 +36,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.QualityTools.Testing.Fakes, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="MySql.Data">
+      <HintPath>..\Dependencies\MySql.Data\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Net" />
@@ -47,6 +50,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Characters\Character.cs" />
+    <Compile Include="Characters\CharacterLooks.cs" />
+    <Compile Include="Database\CharacterDatabase.cs" />
+    <Compile Include="Database\DatabaseConnection.cs" />
+    <Compile Include="Database\LoginSessionDatabase.cs" />
     <Compile Include="Characters\CharacterData.cs" />
     <Compile Include="Characters\CharacterTypes.cs" />
     <Compile Include="Characters\StarterKit.cs" />

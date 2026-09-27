@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Common.Account;
 using Common.Characters;
+using Common.Database;
 using Common.Network.Packets;
 using SmartEngine.Core;
 using SmartEngine.Network;
@@ -71,6 +72,19 @@ namespace TitansUC.LobbyServer.Network.Client
 
                 // The plain password is only needed to check it.
                 this.account.Password = null;
+
+                if (this.account.Authenticated)
+                {
+                    try
+                    {
+                        this.account.SessionKey = LoginSessionDatabase.Instance.Begin(this.account.AccountID);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.ShowError(ex);
+                        this.account.Status = Account.AuthenticationStatus.WRONG_INPUT;
+                    }
+                }
 
                 if (this.account.Authenticated)
                 {
@@ -223,6 +237,95 @@ namespace TitansUC.LobbyServer.Network.Client
             catch (Exception ex)
             {
                 Logger.ShowError(ex);
+            }
+        }
+
+        /// <summary>
+        /// 0x30004: delete one of the account's characters, then confirm.
+        /// Java reference: RequestDeleteCharacter.java. Nothing is sent back when the request is refused.
+        /// </summary>
+        public void OnRequestDeleteCharacter(CM_REQUEST_DELETE_CHARACTER p)
+        {
+            if (!CheckAuthenticated("Character deletion"))
+            {
+                return;
+            }
+
+            try
+            {
+                var character = this.characters.Find(c => c.ClientID == p.CharacterID);
+                if (character == null || p.AccountID != this.account.AccountID)
+                {
+                    Logger.ShowWarning(string.Format("Refused to delete character {0} for {1}: not one of their characters.",
+                        p.CharacterID, account.UserName));
+                    return;
+                }
+
+                if (!CharacterDatabase.Instance.Delete(this.account.AccountID, character))
+                {
+                    Logger.ShowWarning(string.Format("Refused to delete character {0} for {1}: it is no longer in the database.",
+                        character.Name, account.UserName));
+                    return;
+                }
+
+                this.characters = CharacterDatabase.Instance.LoadCharacters(this.account.AccountID);
+
+                Logger.ShowInfo(string.Format("Deleted character {0} (id {1}) of {2}.", character.Name, character.ID, account.UserName));
+
+                this.Network.SendPacket(new SM_DELETE_CHARACTER());
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+        }
+
+        /// <summary>
+        /// 0x30005: the player entered the game with a character; send the game server address.
+        /// Java reference: RequestGameServerIP.java. The Java server picked the Earth or Space server by
+        /// the character's zone; this server has one game server, set in LobbyServer.xml.
+        /// </summary>
+        public void OnRequestGameServer(CM_REQUEST_GAME_SERVER p)
+        {
+            if (!CheckAuthenticated("Game server address"))
+            {
+                return;
+            }
+
+            try
+            {
+                var character = this.characters.Find(c => c.ClientID == p.CharacterID);
+                string refusal = null;
+                if (character == null || p.AccountID != this.account.AccountID)
+                {
+                    refusal = "not one of their characters";
+                }
+                else if (p.SessionKey != this.account.SessionKey ||
+                    !LoginSessionDatabase.Instance.SelectCharacter(this.account.AccountID, p.SessionKey, character.ClientID))
+                {
+                    refusal = "wrong session key";
+                }
+
+                if (refusal != null)
+                {
+                    Logger.ShowWarning(string.Format("Refused game server handoff of character {0} for {1}: {2}.",
+                        p.CharacterID, account.UserName, refusal));
+                    this.Network.SendPacket(new SM_GAME_SERVER(SM_GAME_SERVER.Refuse, string.Empty, 0));
+                    return;
+                }
+
+                string address = Configuration.Instance.GameServerIP;
+                int port = Configuration.Instance.GameServerPort;
+
+                Logger.ShowInfo(string.Format("Sending {0} with character {1} to the game server at {2}:{3}.",
+                    account.UserName, character.Name, address, port));
+
+                this.Network.SendPacket(new SM_GAME_SERVER(SM_GAME_SERVER.Allow, address, port));
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+                this.Network.SendPacket(new SM_GAME_SERVER(SM_GAME_SERVER.Refuse, string.Empty, 0));
             }
         }
 

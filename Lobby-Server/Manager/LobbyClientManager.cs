@@ -21,6 +21,8 @@ namespace TitansUC.LobbyServer.Manager
             RegisterPacketHandler(LSOpcode.CM_REQUEST_CHARACTER_LIST, new CM_REQUEST_CHARACTER_LIST());
             RegisterPacketHandler(LSOpcode.CM_REQUEST_PLAYER_INFO, new CM_REQUEST_PLAYER_INFO());
             RegisterPacketHandler(LSOpcode.CM_REQUEST_CREATE_CHARACTER, new CM_REQUEST_CREATE_CHARACTER());
+            RegisterPacketHandler(LSOpcode.CM_REQUEST_DELETE_CHARACTER, new CM_REQUEST_DELETE_CHARACTER());
+            RegisterPacketHandler(LSOpcode.CM_REQUEST_GAME_SERVER, new CM_REQUEST_GAME_SERVER());
 
         }
 

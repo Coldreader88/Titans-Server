@@ -24,6 +24,8 @@ namespace TitansUC.LobbyServer
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
         bool autoCreateAccounts;
+        string gameServerIP = "127.0.0.1";
+        int gameServerPort = 42010;
         int defaultMoney = 50000;
 
         private List<WorldInfo> worlds = new List<WorldInfo>();
@@ -42,6 +44,16 @@ namespace TitansUC.LobbyServer
         /// GameServer port.
         /// </summary>
         public int GamePort { get { return gameport; } }
+
+        /// <summary>
+        /// Game server address sent to the client when it enters the game (0x38005).
+        /// </summary>
+        public string GameServerIP { get { return gameServerIP; } }
+
+        /// <summary>
+        /// Game server port sent to the client when it enters the game (0x38005).
+        /// </summary>
+        public int GameServerPort { get { return gameServerPort; } }
 
         /// <summary>
         /// 日志等级
@@ -97,6 +109,12 @@ namespace TitansUC.LobbyServer
                             break;
                         case "autocreateaccounts":
                             this.autoCreateAccounts = bool.Parse(i.InnerText.Trim());
+                            break;
+                        case "gameserverip":
+                            this.gameServerIP = i.InnerText.Trim();
+                            break;
+                        case "gameserverport":
+                            this.gameServerPort = int.Parse(i.InnerText.Trim());
                             break;
                         case "defaultmoney":
                             this.defaultMoney = int.Parse(i.InnerText.Trim());
