@@ -30,7 +30,7 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
-[Ll]ogs/
+#[Ll]ogs/
 [Bb]in2/
 [Dd]ist/
 
