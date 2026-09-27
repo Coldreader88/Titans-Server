@@ -30,6 +30,16 @@ namespace TitansUC.GameServer.Network.Client
         private static int nextMachineID;
 
         public ushort MachineID { get; private set; }
+
+        /// <summary>
+        /// The session key the client logged in with; a flight between Earth and Space reuses it.
+        /// </summary>
+        private uint sessionKey;
+
+        /// <summary>
+        /// What the client sent when it last bought a vehicle to ride away (a shuttle's take-off point).
+        /// </summary>
+        private Common.Characters.Transport lastTransport;
         private DateTime lastSave = DateTime.UtcNow;
 
         /// <summary>
@@ -117,6 +127,15 @@ namespace TitansUC.GameServer.Network.Client
                 this.MachineID = (ushort)(0x1000 + (System.Threading.Interlocked.Increment(ref nextMachineID) % 0xE000));
                 this.Coord = CoordData.FromCharacter(character, AccountLevel);
                 this.Coord.MachineID = MachineID;
+                this.sessionKey = p.SessionKey;
+
+                // Arriving from a flight between Earth and Space: still in the shuttle.
+                var flight = GameWorld.Instance.GetFlight(character.ClientID);
+                if (flight != null && flight.Shuttle != null)
+                {
+                    Inventory.Resume(flight.Shuttle);
+                    SetVehicle(Inventory.Piloting);
+                }
 
                 // Vehicles left on the ground were saved in the hangar; they are back there now.
                 foreach (var vehicle in GameWorld.Instance.TakeGroundVehicles(character.ClientID))
@@ -474,23 +493,23 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            bool ride = p.Service == CM_BUY_ITEM.ServiceVehicleRide;
             long total = (long)template.Price * p.Amount;
-            if (total > int.MaxValue || template.IsVehicle != (ride || p.Service == CM_BUY_ITEM.ServiceVehicleToHangar))
+            if (total > int.MaxValue)
             {
-                RefuseShop("buy", p.StaticID, "service " + p.Service + ", amount " + p.Amount);
+                RefuseShop("buy", p.StaticID, "amount " + p.Amount);
                 return;
             }
 
-            var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total, ride);
+            var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total);
             if (result == null)
             {
                 RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money");
                 return;
             }
-            if (ride)
+            if (result.Item == Inventory.Piloting)
             {
                 SetVehicle(result.Item);
+                lastTransport = p.Transport;
             }
 
             Logger.ShowInfo(string.Format("{0} bought {1} x {2} for {3}.", Character.Name, template.Name, p.Amount, total));
@@ -610,6 +629,57 @@ namespace TitansUC.GameServer.Network.Client
 
             this.Network.SendPacket(new SM_PAY_REPAIR(p, price));
             SaveItems();
+        }
+
+        /// <summary>
+        /// 0x40: the player takes off for the other side (Earth or Space). This server handles both, so the
+        /// client is sent back here (TransferHost / TransferPort); it logs in again with the same session key
+        /// and arrives in the other cluster.
+        /// </summary>
+        public void OnReserveAnotherGameFE(CM_RESERVE_ANOTHER_GAME_FE p)
+        {
+            if (!CheckInGame("Flight"))
+            {
+                return;
+            }
+            if (p.CharacterID != CharacterID || (p.Cluster != 1 && p.Cluster != 2) || p.Cluster == (ushort)Character.Zone)
+            {
+                Logger.ShowWarning(string.Format("{0}: flight to cluster {1} refused (in cluster {2}).", Character.Name, p.Cluster, Character.Zone));
+                return;
+            }
+
+            GameWorld.Instance.StartFlight(CharacterID, new Flight
+            {
+                Cluster = p.Cluster,
+                Shuttle = Inventory.Piloting,
+                Transport = lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 },
+            });
+            Character.Zone = (Common.Characters.Zone)p.Cluster;
+            if (Configuration.Instance.CheckSessionKey)
+            {
+                LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
+            }
+
+            Logger.ShowInfo(string.Format("{0} takes off for {1}.", Character.Name, p.Cluster == 2 ? "Space" : "Earth"));
+            this.Network.SendPacket(new SM_RESERVE_ANOTHER_GAME_FE(CharacterID, p.Cluster,
+                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
+            Save();
+        }
+
+        /// <summary>
+        /// 0x5F: the player info, asked for after a flight.
+        /// </summary>
+        public void OnGCPlayerInfo(CM_GC_PLAYER_INFO p)
+        {
+            if (!CheckInGame("Player info"))
+            {
+                return;
+            }
+
+            var flight = GameWorld.Instance.GetFlight(CharacterID);
+            GameWorld.Instance.EndFlight(CharacterID);
+            int vehicle = flight != null && flight.Shuttle != null ? flight.Shuttle.StaticID : 0;
+            this.Network.SendPacket(new SM_GC_PLAYER_INFO(AccountID, Character, vehicle, flight != null ? flight.Transport : null));
         }
 
         private void RefuseShop(string what, int id, string reason)
@@ -827,7 +897,10 @@ namespace TitansUC.GameServer.Network.Client
         {
             try
             {
-                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows(GameWorld.Instance.GroundVehicles(CharacterID)));
+                // The shuttle of a flight is not saved: it is thrown away on arrival.
+                var flight = GameWorld.Instance.GetFlight(CharacterID);
+                bool flying = flight != null && flight.Shuttle != null && flight.Shuttle == Inventory.Piloting;
+                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows(GameWorld.Instance.GroundVehicles(CharacterID), flying));
                 var money = Inventory.Money;
                 if (money != null && money.Amount != Character.Money)
                 {

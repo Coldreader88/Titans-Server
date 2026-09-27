@@ -20,6 +20,7 @@ namespace TitansUC.GameServer.World
         private readonly Dictionary<uint, UCGameSession> players = new Dictionary<uint, UCGameSession>();
         private readonly Dictionary<uint, GroundItem> ground = new Dictionary<uint, GroundItem>();
         private ushort groundCounter;
+        private readonly Dictionary<uint, Flight> flights = new Dictionary<uint, Flight>();
 
         /// <summary>
         /// Set while the server is closed for maintenance (#shutdown on the CMS server); logins are refused.
@@ -197,6 +198,38 @@ namespace TitansUC.GameServer.World
                 {
                     player.Network.SendPacket(build());
                 }
+            }
+        }
+
+        /// <summary>
+        /// Records a shuttle flight between Earth and Space until the character logs in on the other side.
+        /// </summary>
+        public void StartFlight(uint characterID, Flight flight)
+        {
+            lock (sync)
+            {
+                flights[characterID] = flight;
+            }
+        }
+
+        /// <summary>
+        /// The character's flight, if they are on one (it stays until <see cref="EndFlight"/>).
+        /// </summary>
+        public Flight GetFlight(uint characterID)
+        {
+            lock (sync)
+            {
+                Flight flight;
+                flights.TryGetValue(characterID, out flight);
+                return flight;
+            }
+        }
+
+        public void EndFlight(uint characterID)
+        {
+            lock (sync)
+            {
+                flights.Remove(characterID);
             }
         }
 

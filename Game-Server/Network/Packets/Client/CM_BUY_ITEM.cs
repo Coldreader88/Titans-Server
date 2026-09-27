@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
 
@@ -8,8 +8,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// 0x21: buys from a shop.
     ///
     /// <code>
-    /// uint16 BE   service: 1 = shop (items), 2 = shop (seen once, same layout), 3 = a vehicle into the hangar,
-    ///             4 = a vehicle to ride away at once (car, shuttle)
+    /// uint16 BE   service: 1 = shop (items), 2 = shop (seen once, same layout), 3 = a shuttle,
+    ///             4 = a car; vehicles bought into weared are ridden away at once
     /// uint16 BE   0
     /// uint32 BE   character id
     /// 8 bytes    0
@@ -28,8 +28,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     {
         public const int ServiceItems = 1;
         public const int ServiceItems2 = 2;
-        public const int ServiceVehicleToHangar = 3;
-        public const int ServiceVehicleRide = 4;
+        public const int ServiceShuttle = 3;
+        public const int ServiceCar = 4;
 
         public CM_BUY_ITEM()
         {
@@ -48,6 +48,12 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public int Amount { get; private set; }
         public int StaticID { get; private set; }
 
+        /// <summary>
+        /// Bytes 52-59 and the position after the 0x81 (bytes 66-77): for a shuttle, what the player info
+        /// carries on arrival (see Common.Characters.Transport).
+        /// </summary>
+        public Common.Characters.Transport Transport { get; private set; }
+
         public override void OnProcess(Session<GSOpcode> client)
         {
             if (this.Remaining < 36)
@@ -61,6 +67,17 @@ namespace TitansUC.GameServer.Network.Packets.Client
             DestFormat = (int)Bytes.U32(body, 20);
             Amount = (int)Bytes.U32(body, 28);
             StaticID = (int)Bytes.U32(body, 32);
+            if (body.Length >= 78)
+            {
+                Transport = new Common.Characters.Transport
+                {
+                    A = (int)Bytes.U32(body, 52),
+                    B = (int)Bytes.U32(body, 56),
+                    X = (int)Bytes.U32(body, 66),
+                    Y = (int)Bytes.U32(body, 70),
+                    Z = (int)Bytes.U32(body, 74),
+                };
+            }
 
             ((UCGameSession)client).OnBuyItem(this);
         }

@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+﻿<?xml version="1.0"?>
 <GameServer>
   <Port>42010</Port>
 
@@ -10,6 +10,11 @@
 
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
+
+  <!-- Where the client reconnects after a shuttle flight between Earth and Space. This server handles both,
+       so this is its own address as the client sees it (like GameServerIP in LobbyServer.xml); 0 = Port. -->
+  <TransferHost>127.0.0.1</TransferHost>
+  <TransferPort>0</TransferPort>
 
   <!-- MySQL database shared with the Lobby server (DB/SQL/accounts.sql, DB/SQL/characters.sql). -->
   <Database>

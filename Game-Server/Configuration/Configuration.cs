@@ -16,6 +16,8 @@ namespace TitansUC.GameServer
         int dbPort = 3306;
         string chatHost = "127.0.0.1", chatPassword = "";
         int chatPort = 10241;
+        string transferHost = "127.0.0.1";
+        int transferPort;
 
         /// <summary>
         /// Port the game server listens on (the Lobby sends it to the client, see LobbyServer.xml GameServerPort).
@@ -51,6 +53,13 @@ namespace TitansUC.GameServer
         /// Must match CMSServer.xml GameLinkPassword. Empty turns the link off.
         /// </summary>
         public string ChatPassword { get { return chatPassword; } }
+
+        /// <summary>
+        /// Where a shuttle flight between Earth and Space reconnects the client (0x8040). This server handles
+        /// both sides, so by default the client comes back here; 0 as the port means <see cref="Port"/>.
+        /// </summary>
+        public string TransferHost { get { return transferHost; } }
+        public int TransferPort { get { return transferPort > 0 ? transferPort : port; } }
 
         public string DBHost { get { return dbHost; } }
         public int DBPort { get { return dbPort; } }
@@ -90,6 +99,12 @@ namespace TitansUC.GameServer
                             break;
                         case "chatport":
                             chatPort = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "transferhost":
+                            transferHost = i.InnerText.Trim();
+                            break;
+                        case "transferport":
+                            transferPort = int.Parse(i.InnerText.Trim());
                             break;
                         case "chatpassword":
                             chatPassword = i.InnerText;

@@ -275,10 +275,10 @@ namespace TitansUC.GameServer.World
         /// <summary>
         /// Buys <paramref name="amount"/> of an item into a container (0x21), paying <paramref name="price"/>
         /// from the money. Items that stack join a stack of the same item there (<see cref="BuyResult.Added"/>).
-        /// Vehicles go in the hangar, or with <paramref name="ride"/> straight into weared's vehicle slot.
+        /// Vehicles go in the hangar, or into weared's vehicle slot to ride away at once (cars and shuttles).
         /// Returns null when the container cannot take it or the money is short.
         /// </summary>
-        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price, bool ride)
+        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price)
         {
             lock (sync)
             {
@@ -293,8 +293,8 @@ namespace TitansUC.GameServer.World
                 bool added = false;
                 if (template.IsVehicle)
                 {
-                    bool toHangar = !ride && dest.StaticID == PlayerContainers.Hangar && dest.Parent == null;
-                    bool toWeared = ride && dest.StaticID == PlayerContainers.Weared && Piloting == null;
+                    bool toHangar = dest.StaticID == PlayerContainers.Hangar && dest.Parent == null;
+                    bool toWeared = dest.StaticID == PlayerContainers.Weared && Piloting == null;
                     if (amount != 1 || !(toHangar || toWeared))
                     {
                         return null;
@@ -400,6 +400,24 @@ namespace TitansUC.GameServer.World
                 container.Remove(item);
                 UnregisterTree(item);
                 return item;
+            }
+        }
+
+        /// <summary>
+        /// Puts the player back in the vehicle they flew in with (a shuttle between Earth and Space): it keeps
+        /// its unique id, which the client goes on using.
+        /// </summary>
+        public void Resume(ItemNode vehicle)
+        {
+            lock (sync)
+            {
+                if (Piloting != null)
+                {
+                    return;
+                }
+                Find(PlayerContainers.Weared).SetSlot(PilotSlot, vehicle);
+                RegisterTree(vehicle);
+                Piloting = vehicle;
             }
         }
 
@@ -570,7 +588,7 @@ namespace TitansUC.GameServer.World
         /// weared (clothes are in the garments table). A piloted vehicle, and the player's vehicles left on
         /// the ground (<paramref name="groundVehicles"/>), are saved in the hangar, with their inventories.
         /// </summary>
-        public List<CharacterItem> ToRows(IEnumerable<ItemNode> groundVehicles = null)
+        public List<CharacterItem> ToRows(IEnumerable<ItemNode> groundVehicles = null, bool skipPiloting = false)
         {
             var rows = new List<CharacterItem>();
             lock (sync)
@@ -591,7 +609,7 @@ namespace TitansUC.GameServer.World
                     }
                 }
 
-                if (Piloting != null)
+                if (Piloting != null && !skipPiloting)
                 {
                     rows.Add(ToRow(PlayerContainers.Hangar, Piloting));
                 }

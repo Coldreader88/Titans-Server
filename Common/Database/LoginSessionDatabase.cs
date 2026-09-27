@@ -97,6 +97,23 @@ namespace Common.Database
         }
 
         /// <summary>
+        /// Starts the <see cref="HandoffLifetime"/> again for a game server login with this key (a shuttle flight
+        /// between Earth and Space reconnects with the same key).
+        /// </summary>
+        public void Refresh(uint key, uint characterClientID)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand(
+                "UPDATE login_sessions SET updated = @now WHERE session_key = @key AND char_id = @char", connection))
+            {
+                cmd.Parameters.AddWithValue("@now", Now());
+                cmd.Parameters.AddWithValue("@key", key);
+                cmd.Parameters.AddWithValue("@char", characterClientID);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
         /// Checks that an account took this character to the game server in its current Lobby session
         /// (the CMS login carries no session key, so this is the best the CMS server can check).
         /// </summary>
