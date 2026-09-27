@@ -46,6 +46,10 @@ namespace TitansUC.GameServer
             GameClientManager.Instance.Port = Configuration.Instance.Port;
             Encryption.KeyExchangeImplementation = new SmartEngine.Network.DefaultEncryptionKeyExchange();
             Encryption.Implementation = new Common.Network.Encryption.UCEncryption();
+            // The official game server numbered its own packets 1, 2, 3, ...: once the client sends packets
+            // that get no reply (0x02 moves), its numbers run ahead (UCGOZone-Login.pcap: the reply to the
+            // client's packet 98 is the server's packet 97).
+            UCNetwork<GSOpcode>.CountServerSequence = true;
             Network<GSOpcode>.Implementation = new UCNetwork<GSOpcode>();
 
             if (!GameClientManager.Instance.Start())

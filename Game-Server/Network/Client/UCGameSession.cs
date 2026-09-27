@@ -22,6 +22,14 @@ namespace TitansUC.GameServer.Network.Client
     public class UCGameSession : Session<GSOpcode>
     {
         private readonly object sync = new object();
+
+        /// <summary>
+        /// Source of machine ids. The official server filled in its own nonzero id per entity in the
+        /// position records (0x1268, 0x1269, ... in UCGOZone-Login.pcap); the client sends 0xFFFF.
+        /// </summary>
+        private static int nextMachineID;
+
+        public ushort MachineID { get; private set; }
         private DateTime lastSave = DateTime.UtcNow;
 
         /// <summary>
@@ -106,7 +114,9 @@ namespace TitansUC.GameServer.Network.Client
                 this.AccountID = character.AccountID;
                 this.AccountLevel = character.Access > 0 ? (byte)character.Access : (byte)Common.Account.Account.AccountLevel.PLAYER;
                 this.Inventory = new PlayerInventory(character, items);
+                this.MachineID = (ushort)(0x1000 + (System.Threading.Interlocked.Increment(ref nextMachineID) % 0xE000));
                 this.Coord = CoordData.FromCharacter(character, AccountLevel);
+                this.Coord.MachineID = MachineID;
 
                 var previous = GameWorld.Instance.Add(this);
                 if (previous != null)
@@ -331,7 +341,7 @@ namespace TitansUC.GameServer.Network.Client
             }
 
             // Fields the server owns: the client sends 0xFFFF for the machine id and cannot promote itself.
-            coord.MachineID = 0;
+            coord.MachineID = MachineID;
             coord.AccountLevel = AccountLevel;
             coord.ClusterID = (ushort)Character.Zone;
 
