@@ -39,6 +39,20 @@ namespace LoginServer
 
         public List<WorldInfo> Worlds { get { return worlds; } }
 
+        /// <summary>
+        /// Reads an integer setting, ignoring surrounding whitespace and quotes.
+        /// Keeps the current value and logs a warning when the setting is not a number.
+        /// </summary>
+        static int ParseInt(XmlElement element, int fallback)
+        {
+            string text = element.InnerText.Trim().Trim('"', '\'').Trim();
+            int value;
+            if (int.TryParse(text, out value))
+                return value;
+            Logger.ShowWarning("Config setting <{0}> has invalid number \"{1}\", using {2}", element.Name, element.InnerText, fallback);
+            return fallback;
+        }
+
         public void Initialization(string path)
         {
             XmlDocument xml = new XmlDocument();
@@ -57,13 +71,13 @@ namespace LoginServer
                     switch (i.Name.ToLower())
                     {
                         case "required-client-version":
-                            this.client_version = int.Parse(i.InnerText);
+                            this.client_version = ParseInt(i, this.client_version);
                             break;
                         case "port":
-                            this.port = int.Parse(i.InnerText);
+                            this.port = ParseInt(i, this.port);
                             break;
                         case "loglevel":
-                            this.loglevel = int.Parse(i.InnerText);
+                            this.loglevel = ParseInt(i, this.loglevel);
                             break;
                         case "world":
                             {
