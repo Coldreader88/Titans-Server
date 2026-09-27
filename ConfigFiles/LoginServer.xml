@@ -2,7 +2,7 @@
 <LoginServer>
   <Port>42012</Port>
 
-  <required-client-version>"0"</required-client-version>
+  <required-client-version>0</required-client-version>
 
   <!-- 
             日志等级：（加法）

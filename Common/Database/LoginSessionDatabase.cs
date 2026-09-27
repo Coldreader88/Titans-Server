@@ -96,6 +96,20 @@ namespace Common.Database
             }
         }
 
+        /// <summary>
+        /// Checks that an account took this character to the game server in its current Lobby session
+        /// (the CMS login carries no session key, so this is the best the CMS server can check).
+        /// </summary>
+        public bool IsSelected(uint characterClientID)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM login_sessions WHERE char_id = @char", connection))
+            {
+                cmd.Parameters.AddWithValue("@char", characterClientID);
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+            }
+        }
+
         private uint NewKey()
         {
             var bytes = new byte[4];

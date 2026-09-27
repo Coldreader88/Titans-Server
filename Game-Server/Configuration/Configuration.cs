@@ -14,6 +14,8 @@ namespace TitansUC.GameServer
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
+        string chatHost = "127.0.0.1", chatPassword = "";
+        int chatPort = 10241;
 
         /// <summary>
         /// Port the game server listens on (the Lobby sends it to the client, see LobbyServer.xml GameServerPort).
@@ -38,6 +40,17 @@ namespace TitansUC.GameServer
         /// Seconds between saves of a player's position while they play (they are also saved on logout).
         /// </summary>
         public int SaveInterval { get { return saveInterval; } }
+
+        /// <summary>
+        /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
+        /// </summary>
+        public string ChatHost { get { return chatHost; } }
+        public int ChatPort { get { return chatPort; } }
+
+        /// <summary>
+        /// Must match CMSServer.xml GameLinkPassword. Empty turns the link off.
+        /// </summary>
+        public string ChatPassword { get { return chatPassword; } }
 
         public string DBHost { get { return dbHost; } }
         public int DBPort { get { return dbPort; } }
@@ -71,6 +84,15 @@ namespace TitansUC.GameServer
                             break;
                         case "saveinterval":
                             saveInterval = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "chathost":
+                            chatHost = i.InnerText.Trim();
+                            break;
+                        case "chatport":
+                            chatPort = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "chatpassword":
+                            chatPassword = i.InnerText;
                             break;
                         case "database":
                             foreach (object l in i.ChildNodes)

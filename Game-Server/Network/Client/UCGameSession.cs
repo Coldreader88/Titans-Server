@@ -69,6 +69,12 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
+            if (GameWorld.Instance.Closed)
+            {
+                RefuseLogin(string.Format("the server is closed for maintenance (character {0})", p.CharacterID));
+                return;
+            }
+
             try
             {
                 uint accountID = 0;
@@ -333,6 +339,42 @@ namespace TitansUC.GameServer.Network.Client
             {
                 Coord = coord;
             }
+        }
+
+        /// <summary>
+        /// Moves the player (GM #tele, #bookmark and #tp through the CMS server) and tells the client.
+        /// </summary>
+        public void Teleport(int x, int y, int z)
+        {
+            if (!InGame)
+            {
+                return;
+            }
+
+            CoordData coord;
+            lock (sync)
+            {
+                Coord.X = x;
+                Coord.Y = y;
+                Coord.Z = z;
+                coord = Coord;
+            }
+            Logger.ShowInfo(string.Format("{0} was teleported to {1}, {2}, {3}.", Character.Name, x, y, z));
+            this.Network.SendPacket(new SM_COMPULSION_MOVE(coord));
+            Save();
+        }
+
+        /// <summary>
+        /// Saves the player and tells the client to log out (maintenance). The client then disconnects.
+        /// </summary>
+        public void ForceLogout()
+        {
+            if (!InGame)
+            {
+                return;
+            }
+            Save();
+            this.Network.SendPacket(new SM_FORCE_LOGOUT(CharacterID));
         }
 
         private void SaveIfDue()
