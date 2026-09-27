@@ -59,6 +59,10 @@
     <Compile Include="Network\Packets\Client\CM_CLIENT_MSG.cs" />
     <Compile Include="Network\Packets\Client\CM_ITEM_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_MOVE_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\CM_RESERVE_ANOTHER_GAME_FE.cs" />
+    <Compile Include="Network\Packets\Client\SM_RESERVE_ANOTHER_GAME_FE.cs" />
+    <Compile Include="Network\Packets\Client\CM_GC_PLAYER_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_GC_PLAYER_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_BUY_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_BUY_ITEM.cs" />
     <Compile Include="Network\Packets\Client\CM_SELL_ITEM.cs" />
@@ -76,6 +80,7 @@
     <Compile Include="Network\Packets\Client\SM_SPACE_PICKUP_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_UPDATE_ITEM_INFO.cs" />
     <Compile Include="World\GroundItem.cs" />
+    <Compile Include="World\Flight.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GAME_FE.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GS.cs" />

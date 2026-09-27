@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="Characters\Character.cs" />
     <Compile Include="Characters\CharacterLooks.cs" />
+    <Compile Include="Characters\PlayerInfoWriter.cs" />
     <Compile Include="Database\CharacterDatabase.cs" />
     <Compile Include="Database\DatabaseConnection.cs" />
     <Compile Include="Database\LoginSessionDatabase.cs" />
