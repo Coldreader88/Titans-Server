@@ -18,6 +18,11 @@ namespace TitansUC.GameServer.Manager
             RegisterPacketHandler(GSOpcode.CM_SERVER_TIME, new CM_SERVER_TIME());
             RegisterPacketHandler(GSOpcode.CM_ITEM_INFO, new CM_ITEM_INFO());
             RegisterPacketHandler(GSOpcode.CM_MOVE_ITEM, new CM_MOVE_ITEM());
+            RegisterPacketHandler(GSOpcode.CM_DELETE_ITEM, new CM_DELETE_ITEM());
+            RegisterPacketHandler(GSOpcode.CM_PAY_REPAIR, new CM_PAY_REPAIR());
+            RegisterPacketHandler(GSOpcode.CM_UPDATE_DEPOSIT, new CM_UPDATE_DEPOSIT());
+            RegisterPacketHandler(GSOpcode.CM_BUY_ITEM, new CM_BUY_ITEM());
+            RegisterPacketHandler(GSOpcode.CM_SELL_ITEM, new CM_SELL_ITEM());
             RegisterPacketHandler(GSOpcode.CM_SPACE_PLACED_ITEM, new CM_SPACE_PLACED_ITEM());
             RegisterPacketHandler(GSOpcode.CM_SPACE_PICKUP_ITEM, new CM_SPACE_PICKUP_ITEM());
             RegisterPacketHandler(GSOpcode.CM_OCCUPATION_CITY_INFO_LIST, new CM_OCCUPATION_CITY_INFO_LIST());
