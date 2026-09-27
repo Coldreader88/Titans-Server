@@ -3,7 +3,31 @@
 	
   <!-- The Port the Chat-Server will listen on for incoming clients. -->
   <Port>42016</Port>
-  
+
+  <!-- Only accept characters that the Lobby took to the game server in their account's current session
+       (the CMS login carries no session key). Turn off only for testing. -->
+  <CheckLoginSession>true</CheckLoginSession>
+
+  <!-- System message each player gets after logging in, one message per line. Leave empty for none. -->
+  <Welcome>
+    Welcome to Titans Server.
+  </Welcome>
+
+  <!-- Game servers connect here (GameServer.xml ChatHost / ChatPort) so GM commands can act in the game world. -->
+  <GameLinkPort>10241</GameLinkPort>
+
+  <!-- Must match GameServer.xml ChatPassword. Empty turns the game link off. -->
+  <GameLinkPassword>titans_chat</GameLinkPassword>
+
+  <!-- MySQL database shared with the Lobby and Game servers (DB/SQL/accounts.sql, characters.sql, cms.sql). -->
+  <Database>
+    <Host>127.0.0.1</Host>
+    <Port>3306</Port>
+    <Name>titans-server</Name>
+    <User>root</User>
+    <Password>titans</Password>
+  </Database>
+
     <!-- 
             日志等级：（加法）
             Info = 1,

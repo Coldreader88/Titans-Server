@@ -35,6 +35,9 @@
   <!-- 聊天服务器端口 -->
   <ChatPort>10241</ChatPort>
 
+  <!-- CMS server game link password, must match CMSServer.xml GameLinkPassword (GM commands like #tele and #shutdown). Empty turns the link off. -->
+  <ChatPassword>titans_chat</ChatPassword>
+
   <!-- 人物服务器域名或IP -->
   <CharacterHost>127.0.0.1</CharacterHost>
   

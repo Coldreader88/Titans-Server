@@ -7,6 +7,7 @@ using SmartEngine.Core;
 using SmartEngine.Network;
 using TitansUC.GameServer.Manager;
 using TitansUC.GameServer.Network.Client;
+using TitansUC.GameServer.Network.Link;
 using TitansUC.GameServer.World;
 
 namespace TitansUC.GameServer
@@ -59,6 +60,18 @@ namespace TitansUC.GameServer
 
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
+
+            if (string.IsNullOrEmpty(Configuration.Instance.ChatPassword))
+            {
+                Logger.ShowWarning("ChatPassword is empty: not connecting to the CMS server, so GM commands from chat will not work.");
+            }
+            else
+            {
+                Network<CGOpcode>.SuppressPacketPrintOut = true;
+                Network<CGOpcode>.SuppressPacketHeaderPrintOut = true;
+                Network<CGOpcode>.Implementation = new UCNetwork<CGOpcode>();
+                CmsLink.Start();
+            }
 
             while (true)
             {
