@@ -85,6 +85,27 @@ namespace TitansUC.GameServer.World
         public int EngineID { get; set; }
 
         /// <summary>
+        /// For a vehicle: its current and maximum health (also in its stats field), for the ground item records.
+        /// </summary>
+        public int Health { get; set; }
+        public int MaxHealth { get; set; }
+
+        /// <summary>
+        /// This node and everything under it.
+        /// </summary>
+        public IEnumerable<ItemNode> Descendants()
+        {
+            yield return this;
+            foreach (var child in Children)
+            {
+                foreach (var node in child.Descendants())
+                {
+                    yield return node;
+                }
+            }
+        }
+
+        /// <summary>
         /// True for an <see cref="EmptySlot"/>.
         /// </summary>
         public bool IsEmptySlot { get { return UniqueID == 0; } }

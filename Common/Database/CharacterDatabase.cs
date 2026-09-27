@@ -164,6 +164,20 @@ namespace Common.Database
         }
 
         /// <summary>
+        /// Saves the character's money.
+        /// </summary>
+        public void SaveMoney(Character character)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand("UPDATE characters SET char_money = @money WHERE char_id = @id", connection))
+            {
+                cmd.Parameters.AddWithValue("@money", character.Money);
+                cmd.Parameters.AddWithValue("@id", character.ID);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
         /// The character's items (container table rows), in insertion order.
         /// </summary>
         public List<CharacterItem> LoadItems(Character character)
@@ -171,7 +185,7 @@ namespace Common.Database
             var result = new List<CharacterItem>();
             using (var connection = DatabaseConnection.Open())
             using (var cmd = new MySqlCommand(
-                "SELECT container_id, item_id, item_name, item_amount FROM container WHERE char_id = @id", connection))
+                "SELECT container_id, item_id, item_name, item_amount, child FROM container WHERE char_id = @id", connection))
             {
                 cmd.Parameters.AddWithValue("@id", character.ClientID);
                 using (var reader = cmd.ExecuteReader())
@@ -184,6 +198,7 @@ namespace Common.Database
                             ItemID = GetInt(reader, "item_id", -1),
                             Name = GetString(reader, "item_name"),
                             Amount = GetInt(reader, "item_amount", 0),
+                            Children = GetString(reader, "child"),
                         });
                     }
                 }
@@ -210,7 +225,7 @@ namespace Common.Database
                 {
                     using (var cmd = new MySqlCommand(
                         "INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) " +
-                        "VALUES (@id, @container, @containerName, @item, @itemName, @amount, '')", connection, transaction))
+                        "VALUES (@id, @container, @containerName, @item, @itemName, @amount, @child)", connection, transaction))
                     {
                         cmd.Parameters.AddWithValue("@id", character.ClientID);
                         cmd.Parameters.AddWithValue("@container", item.ContainerID);
@@ -218,6 +233,7 @@ namespace Common.Database
                         cmd.Parameters.AddWithValue("@item", item.ItemID);
                         cmd.Parameters.AddWithValue("@itemName", item.Name ?? string.Empty);
                         cmd.Parameters.AddWithValue("@amount", item.Amount);
+                        cmd.Parameters.AddWithValue("@child", item.Children ?? string.Empty);
                         cmd.ExecuteNonQuery();
                     }
                 }

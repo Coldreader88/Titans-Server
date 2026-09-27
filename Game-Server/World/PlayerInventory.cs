@@ -55,6 +55,11 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public ItemNode Piloting { get; private set; }
 
+        /// <summary>
+        /// The money container; its amount is the character's money.
+        /// </summary>
+        public ItemNode Money { get { return Containers.Find(c => c.Name == "money"); } }
+
         public PlayerInventory(Character character, IEnumerable<CharacterItem> items)
         {
             Containers = new List<ItemNode>();
@@ -251,11 +256,119 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The rows to write back to the container table: every item in the top-level containers except
-        /// weared (clothes are in the garments table). A piloted vehicle is saved in the hangar. Items inside
-        /// vehicles are not saved yet.
+        /// Takes <paramref name="amount"/> of an item out of a container to drop it on the ground (0x23 item).
+        /// Money is dropped from the money container itself (the client sends container 0). Returns the new
+        /// ground item (the official server gave it a new unique id), or null when it cannot.
         /// </summary>
-        public List<CharacterItem> ToRows()
+        public ItemNode TakeForDrop(uint itemUID, uint containerUID, int amount)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                if (item == null || amount <= 0 || item.Format != ItemNode.Singleton || amount > item.Amount)
+                {
+                    return null;
+                }
+
+                if (item == Money)
+                {
+                    item.Amount -= amount;
+                    return NewItem(PlayerContainers.Money, amount, "money");
+                }
+
+                var container = GetLocked(containerUID);
+                if (container == null || item.Parent != container || !CanHoldItems(container))
+                {
+                    return null;
+                }
+
+                if (amount >= item.Amount)
+                {
+                    container.Remove(item);
+                    Unregister(item);
+                }
+                else
+                {
+                    item.Amount -= amount;
+                    Touch(item);
+                }
+                var dropped = NewItem(item.StaticID, amount, item.Name);
+                dropped.Created = item.Created;
+                return dropped;
+            }
+        }
+
+        /// <summary>
+        /// Gets out of the piloted vehicle, leaving it on the ground (0x23 mini op 2). The vehicle keeps its
+        /// unique id. Returns null when the player is not piloting it.
+        /// </summary>
+        public ItemNode GetOff(uint vehicleUID)
+        {
+            lock (sync)
+            {
+                var vehicle = Piloting;
+                if (vehicle == null || vehicle.UniqueID != vehicleUID)
+                {
+                    return null;
+                }
+                Find(PlayerContainers.Weared).SetSlot(PilotSlot, ItemNode.EmptySlot(-1));
+                UnregisterTree(vehicle);
+                Piloting = null;
+                return vehicle;
+            }
+        }
+
+        /// <summary>
+        /// Puts an item picked up from the ground in a container (0x24 item). Money goes to the money
+        /// container. False when the container cannot take it.
+        /// </summary>
+        public bool PickUp(ItemNode item, uint destUID)
+        {
+            lock (sync)
+            {
+                if (item.StaticID == PlayerContainers.Money && item.Format == ItemNode.Singleton)
+                {
+                    Money.Amount += item.Amount;
+                    return true;
+                }
+
+                var dest = GetLocked(destUID);
+                if (dest == null || !CanHoldItems(dest))
+                {
+                    return false;
+                }
+                Touch(item);
+                dest.Add(item);
+                RegisterTree(item);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets in a vehicle on the ground (0x24 mini op 3); it goes in weared's vehicle slot.
+        /// </summary>
+        public bool Board(ItemNode vehicle, uint wearedUID)
+        {
+            lock (sync)
+            {
+                var weared = Find(PlayerContainers.Weared);
+                if (Piloting != null || weared == null || weared.UniqueID != wearedUID)
+                {
+                    return false;
+                }
+                weared.SetSlot(PilotSlot, vehicle);
+                RegisterTree(vehicle);
+                Piloting = vehicle;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// The rows to write back to the container table: every item in the top-level containers except
+        /// weared (clothes are in the garments table). A piloted vehicle, and the player's vehicles left on
+        /// the ground (<paramref name="groundVehicles"/>), are saved in the hangar, with their inventories.
+        /// </summary>
+        public List<CharacterItem> ToRows(IEnumerable<ItemNode> groundVehicles = null)
         {
             var rows = new List<CharacterItem>();
             lock (sync)
@@ -280,6 +393,13 @@ namespace TitansUC.GameServer.World
                 {
                     rows.Add(ToRow(PlayerContainers.Hangar, Piloting));
                 }
+                if (groundVehicles != null)
+                {
+                    foreach (var vehicle in groundVehicles)
+                    {
+                        rows.Add(ToRow(PlayerContainers.Hangar, vehicle));
+                    }
+                }
                 rows.AddRange(kept);
             }
             return rows;
@@ -287,23 +407,33 @@ namespace TitansUC.GameServer.World
 
         private static CharacterItem ToRow(int containerID, ItemNode item)
         {
+            bool vehicle = containerID == PlayerContainers.Hangar;
             return new CharacterItem
             {
                 ContainerID = containerID,
                 ItemID = item.StaticID,
                 Name = item.Name,
-                Amount = containerID == PlayerContainers.Hangar ? item.EngineID : item.Amount,
+                Amount = vehicle ? item.EngineID : item.Amount,
+                Children = vehicle ? VehicleChildren(item) : null,
             };
         }
 
         /// <summary>
         /// Containers items can be moved in and out of with section 7: the player's own top-level list
-        /// containers other than weared and the hangar (those have their own sections). Containers inside
-        /// others (trade pack, vehicle inventories) are not saved yet, so moves into them are refused.
+        /// containers other than weared and the hangar (those have their own sections), and vehicle
+        /// inventories (saved in container.child). The trade pack is not saved yet, so moves into it are refused.
         /// </summary>
         private static bool CanHoldItems(ItemNode container)
         {
-            return container.Parent == null && container.Format == ItemNode.Multi &&
+            if (container.Format != ItemNode.Multi)
+            {
+                return false;
+            }
+            if (container.StaticID == VehicleInventory)
+            {
+                return container.Parent != null;
+            }
+            return container.Parent == null &&
                 container.StaticID != PlayerContainers.Weared && container.StaticID != PlayerContainers.Hangar;
         }
 
@@ -319,12 +449,38 @@ namespace TitansUC.GameServer.World
                 EngineID = item.Amount > 0 ? item.Amount : -1,
             });
             vehicle.Created = UnixNow();
+            vehicle.Health = health;
+            vehicle.MaxHealth = health;
             vehicle.Options = new byte[6][];
             vehicle.Options[5] = VehicleStats(health, health, engine);
             Register(vehicle);
 
             Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleArmaments) { Name = "armaments", Modified = -1, Created = -1 }));
-            Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 }));
+            var inventory = Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 }));
+
+            // Java's container.child format: "itemID-amount" separated by spaces.
+            foreach (var entry in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                var parts = entry.Split('-');
+                int itemID, amount;
+                if (parts.Length == 2 && int.TryParse(parts[0], out itemID) && int.TryParse(parts[1], out amount) && itemID > 0)
+                {
+                    Register(inventory.Add(NewItem(itemID, amount > 0 ? amount : 1, null)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The container.child value for a vehicle: the items in its inventory.
+        /// </summary>
+        private static string VehicleChildren(ItemNode vehicle)
+        {
+            var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
+            if (inventory == null)
+            {
+                return null;
+            }
+            return string.Join(" ", inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount));
         }
 
         /// <summary>
@@ -353,7 +509,7 @@ namespace TitansUC.GameServer.World
             return bytes;
         }
 
-        private static ItemNode NewItem(int templateID, int amount, string name)
+        public static ItemNode NewItem(int templateID, int amount, string name)
         {
             int now = UnixNow();
             return new ItemNode(NewUniqueID(), ItemNode.Singleton, templateID)
@@ -377,12 +533,13 @@ namespace TitansUC.GameServer.World
             return node;
         }
 
-        private void Register(ItemNode node)
+        private ItemNode Register(ItemNode node)
         {
             lock (sync)
             {
                 nodes[node.UniqueID] = node;
             }
+            return node;
         }
 
         private void Unregister(ItemNode node)
@@ -390,7 +547,26 @@ namespace TitansUC.GameServer.World
             nodes.Remove(node.UniqueID);
         }
 
-        private static uint NewUniqueID()
+        private void RegisterTree(ItemNode node)
+        {
+            foreach (var n in node.Descendants())
+            {
+                nodes[n.UniqueID] = n;
+            }
+        }
+
+        private void UnregisterTree(ItemNode node)
+        {
+            foreach (var n in node.Descendants())
+            {
+                nodes.Remove(n.UniqueID);
+            }
+        }
+
+        /// <summary>
+        /// A new unique id for an item, from the server-wide counter (also used for items on the ground).
+        /// </summary>
+        public static uint NewUniqueID()
         {
             return (uint)Interlocked.Increment(ref nextUniqueID);
         }
