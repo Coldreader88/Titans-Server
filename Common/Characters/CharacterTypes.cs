@@ -145,6 +145,7 @@ namespace Common.Characters
         public const int Bank = 110002;
         public const int Hangar = 110003;
         public const int SwapPack = 110004;
+        public const int TradePack = 110005;
         public const int Productive = 110006;
         public const int SelfStorage = 110007;
         public const int House = 110008;
