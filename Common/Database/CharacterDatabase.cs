@@ -191,6 +191,41 @@ namespace Common.Database
             return result;
         }
 
+        /// <summary>
+        /// Replaces the character's container table rows with <paramref name="items"/> (the Java game server
+        /// also rewrote them all). item_amount is the stack size, or for a vehicle its engine id.
+        /// </summary>
+        public void SaveItems(Character character, IList<CharacterItem> items)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var transaction = connection.BeginTransaction())
+            {
+                using (var cmd = new MySqlCommand("DELETE FROM container WHERE char_id = @id", connection, transaction))
+                {
+                    cmd.Parameters.AddWithValue("@id", character.ClientID);
+                    cmd.ExecuteNonQuery();
+                }
+
+                foreach (var item in items)
+                {
+                    using (var cmd = new MySqlCommand(
+                        "INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) " +
+                        "VALUES (@id, @container, @containerName, @item, @itemName, @amount, '')", connection, transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@id", character.ClientID);
+                        cmd.Parameters.AddWithValue("@container", item.ContainerID);
+                        cmd.Parameters.AddWithValue("@containerName", PlayerContainers.GetName(item.ContainerID));
+                        cmd.Parameters.AddWithValue("@item", item.ItemID);
+                        cmd.Parameters.AddWithValue("@itemName", item.Name ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@amount", item.Amount);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                transaction.Commit();
+            }
+        }
+
         private static void ExecuteForID(MySqlConnection connection, string sql, object id)
         {
             using (var cmd = new MySqlCommand(sql, connection))

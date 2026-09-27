@@ -180,6 +180,95 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// 0x17: move an item between containers, or get in or out of a vehicle at the hangar.
+        /// Nothing is sent back when the move is refused (as the Java server).
+        /// </summary>
+        public void OnMoveItem(CM_MOVE_ITEM p)
+        {
+            if (!CheckInGame("Move item"))
+            {
+                return;
+            }
+
+            switch (p.Section)
+            {
+                case CM_MOVE_ITEM.SectionRide:
+                {
+                    var vehicle = Inventory.Ride(p.ItemUniqueID, p.SourceUniqueID);
+                    if (vehicle == null)
+                    {
+                        RefuseMove(p, "cannot get in that vehicle");
+                        return;
+                    }
+                    SetVehicle(vehicle);
+                    Logger.ShowInfo(string.Format("{0} got in {1} ({2}).", Character.Name, vehicle.Name, vehicle.StaticID));
+                    this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Rode, p, null, -1));
+                    SaveItems();
+                    return;
+                }
+                case CM_MOVE_ITEM.SectionPutBack:
+                {
+                    var vehicle = Inventory.PutBack(p.ItemUniqueID, p.DestUniqueID);
+                    if (vehicle == null)
+                    {
+                        RefuseMove(p, "is not piloting that vehicle");
+                        return;
+                    }
+                    SetVehicle(null);
+                    Logger.ShowInfo(string.Format("{0} put {1} back in the hangar.", Character.Name, vehicle.Name));
+                    this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.PutBack, p, null, -1));
+                    SaveItems();
+                    return;
+                }
+                case CM_MOVE_ITEM.SectionContainers:
+                {
+                    var result = Inventory.Move(p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, p.Amount);
+                    if (result == null)
+                    {
+                        RefuseMove(p, "invalid move");
+                        return;
+                    }
+                    uint kind;
+                    switch (result.Kind)
+                    {
+                        case MoveKind.Split: kind = SM_MOVE_ITEM.Split; break;
+                        case MoveKind.Merged: kind = SM_MOVE_ITEM.Merged; break;
+                        case MoveKind.AddedToStack: kind = SM_MOVE_ITEM.AddedToStack; break;
+                        default: kind = SM_MOVE_ITEM.Moved; break;
+                    }
+                    this.Network.SendPacket(new SM_MOVE_ITEM(kind, p, result.Target, result.Item.StaticID));
+                    SaveItems();
+                    return;
+                }
+                default:
+                    RefuseMove(p, "section " + p.Section + " is not implemented");
+                    return;
+            }
+        }
+
+        private void RefuseMove(CM_MOVE_ITEM p, string reason)
+        {
+            Logger.ShowWarning(string.Format("{0}: move of {1:X8} from {2:X8} to {3:X8} refused: {4}.",
+                Character.Name, p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, reason));
+        }
+
+        /// <summary>
+        /// Updates the position record for getting in or out of a vehicle, as the official server did before
+        /// the client's next 0x02 ("TGM-79 GM TRAINER in out of Hanger.pcap"): vehicle unique id and template,
+        /// the update counter raised so other clients ask for the new looks, and the damage byte (0xFF on foot).
+        /// </summary>
+        private void SetVehicle(ItemNode vehicle)
+        {
+            lock (sync)
+            {
+                Coord.VehicleUniqueID = vehicle != null ? vehicle.UniqueID : 0;
+                Coord.VehicleTemplateID = vehicle != null ? vehicle.StaticID : -1;
+                Coord.Damage = vehicle != null ? (byte)0 : (byte)0xFF;
+                Coord.UpdateCounter++;
+            }
+        }
+
+        /// <summary>
         /// 0x70: send the occupation cities.
         /// </summary>
         public void OnOccupationCityInfoList(CM_OCCUPATION_CITY_INFO_LIST p)
@@ -277,7 +366,10 @@ namespace TitansUC.GameServer.Network.Client
                 Logger.ShowWarning(string.Format("Looks asked for {0}, who is not in the game.", p.CharacterID));
                 return;
             }
-            this.Network.SendPacket(new SM_PLAYER_LOOKS(other.Character));
+            var vehicle = other.Inventory.Piloting;
+            this.Network.SendPacket(vehicle != null
+                ? new SM_PLAYER_LOOKS(other.Character, vehicle.StaticID)
+                : new SM_PLAYER_LOOKS(other.Character));
         }
 
         /// <summary>
@@ -345,6 +437,14 @@ namespace TitansUC.GameServer.Network.Client
             coord.AccountLevel = AccountLevel;
             coord.ClusterID = (ushort)Character.Zone;
 
+            // The client cannot claim a vehicle it is not piloting.
+            var vehicle = Inventory.Piloting;
+            if (vehicle == null ? coord.VehicleUniqueID != 0 : coord.VehicleUniqueID != vehicle.UniqueID)
+            {
+                coord.VehicleUniqueID = vehicle != null ? vehicle.UniqueID : 0;
+                coord.VehicleTemplateID = vehicle != null ? vehicle.StaticID : -1;
+            }
+
             lock (sync)
             {
                 Coord = coord;
@@ -396,7 +496,7 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// Writes the player's position back to the database.
+        /// Writes the player's position and items back to the database.
         /// </summary>
         private void Save()
         {
@@ -415,6 +515,22 @@ namespace TitansUC.GameServer.Network.Client
                 Character.RotX = coord.Roll;
                 Character.Direction = coord.Direction;
                 CharacterDatabase.Instance.SavePosition(Character);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+            SaveItems();
+        }
+
+        /// <summary>
+        /// Writes the player's items back to the container table.
+        /// </summary>
+        private void SaveItems()
+        {
+            try
+            {
+                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows());
             }
             catch (Exception ex)
             {

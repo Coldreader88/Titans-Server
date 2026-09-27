@@ -55,8 +55,10 @@
     <Compile Include="World\GameWorld.cs" />
     <Compile Include="World\ItemNode.cs" />
     <Compile Include="World\PlayerInventory.cs" />
+    <Compile Include="World\VehicleTemplates.cs" />
     <Compile Include="Network\Packets\Client\CM_CLIENT_MSG.cs" />
     <Compile Include="Network\Packets\Client\CM_ITEM_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_MOVE_ITEM.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GAME_FE.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GS.cs" />
@@ -75,6 +77,7 @@
     <Compile Include="Network\Packets\Client\SM_COMPULSION_MOVE.cs" />
     <Compile Include="Network\Packets\Client\SM_FORCE_LOGOUT.cs" />
     <Compile Include="Network\Packets\Client\SM_ITEM_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_MOVE_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\SM_LOGOUT_GAME_FE.cs" />
     <Compile Include="Network\Packets\Client\SM_LOGOUT_GS.cs" />

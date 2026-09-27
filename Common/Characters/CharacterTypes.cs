@@ -173,6 +173,21 @@ namespace Common.Characters
         };
 
         /// <summary>
+        /// The name of a top-level container, as the container table's container_name column stores it.
+        /// </summary>
+        public static string GetName(int staticID)
+        {
+            foreach (var c in PlayerInfoList)
+            {
+                if (c.Item2 == staticID)
+                {
+                    return c.Item1;
+                }
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
         /// The unique id of one of a character's containers: character id + static id. Money and credit
         /// share the static id 500000, so credit gets one more to keep the ids apart (the client asks
         /// for each container by its unique id, and the official server used different ones).

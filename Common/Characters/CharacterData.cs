@@ -126,7 +126,10 @@ namespace Common.Characters
             return (b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3];
         }
 
-        private static string FindFile(string folder, string fileName)
+        /// <summary>
+        /// Finds DB/<folder>/<fileName> next to the executable or the working directory.
+        /// </summary>
+        public static string FindFile(string folder, string fileName)
         {
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var candidates = new[]
