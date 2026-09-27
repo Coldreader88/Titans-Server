@@ -2,6 +2,21 @@
 <LobbyServer>
   <Port>42018</Port>
 
+  <!-- Client version the server accepts (Java reference: client_version = 4265). 0 accepts any version. -->
+  <Required-Client-Version>4265</Required-Client-Version>
+
+  <!-- Create an account on first login when the user name does not exist yet. -->
+  <AutoCreateAccounts>true</AutoCreateAccounts>
+
+  <!-- MySQL database with the accounts table (DB/SQL/accounts.sql). -->
+  <Database>
+    <Host>127.0.0.1</Host>
+    <Port>3306</Port>
+    <Name>titans-server</Name>
+    <User>root</User>
+    <Password></Password>
+  </Database>
+
   <!-- 帐号服务器域名或IP -->
   <AccountHost>127.0.0.1</AccountHost>
   

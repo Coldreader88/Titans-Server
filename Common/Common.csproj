@@ -57,6 +57,7 @@
     <Compile Include="Network\UCNetwork.cs" />
     <Compile Include="Network\Packets\UCOpcodes.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Network\Packets\Packet\UCHeader.cs" />
     <Compile Include="Network\Packets\Packet\UCPacket.cs" />
     <Compile Include="Server\ServerInfo.cs" />
     <Compile Include="Utils.cs" />

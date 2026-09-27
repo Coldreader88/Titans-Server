@@ -18,7 +18,7 @@ namespace TitansUC.LobbyServer.Manager
         public LobbyClientManager()
         {
             RegisterPacketHandler(LSOpcode.CM_REQUEST_LOGIN, new CM_REQUEST_LOGIN());
-
+            RegisterPacketHandler(LSOpcode.CM_REQUEST_CHARACTER_LIST, new CM_REQUEST_CHARACTER_LIST());
 
         }
 

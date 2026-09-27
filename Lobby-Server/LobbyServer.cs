@@ -7,6 +7,7 @@ using Common.Network.Packets;
 using Common.Server;
 using SmartEngine.Core;
 using SmartEngine.Network;
+using TitansUC.LobbyServer.Database;
 using TitansUC.LobbyServer.Manager;
 
 namespace TitansUC.LobbyServer
@@ -87,6 +88,15 @@ namespace TitansUC.LobbyServer
             }
             Logger.ShowInfo("Login to character server successful");
             */
+
+            Logger.ShowInfo(string.Format("Connecting to MySQL database {0} at {1}:{2}",
+                Configuration.Instance.DBName, Configuration.Instance.DBHost, Configuration.Instance.DBPort));
+            AccountDatabase.Instance.Init(Configuration.Instance.DBHost, Configuration.Instance.DBPort,
+                Configuration.Instance.DBName, Configuration.Instance.DBUser, Configuration.Instance.DBPass);
+            if (!AccountDatabase.Instance.TestConnection())
+            {
+                Logger.ShowError("Cannot connect to the account database, logins will fail until it is reachable.");
+            }
 
             LobbyClientManager.Instance.Port = Configuration.Instance.Port;
             Encryption.KeyExchangeImplementation = new SmartEngine.Network.DefaultEncryptionKeyExchange();

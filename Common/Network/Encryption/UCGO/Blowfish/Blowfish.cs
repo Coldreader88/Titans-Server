@@ -1,33 +1,38 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using SmartEngine.Core;
 
 namespace Common.Network.Encryption.UCGO.Blowfish
 {
-
+    /// <summary>
+    /// Blowfish as used by UCGO ("host byte order" Blowfish).
+    ///
+    /// This is standard 16 round Blowfish in ECB mode, except that every 8 byte block is read
+    /// and written as two little-endian 32 bit words. The key schedule uses the same byte order,
+    /// so the resulting subkeys differ from a textbook big-endian implementation.
+    ///
+    /// Ported from the Java reference (mina_common crypto/Blowfish.java). Only whole 8 byte
+    /// blocks are processed; any trailing bytes are left untouched.
+    /// </summary>
     public class Blowfish
-{
-    private static int MAXKEYLENGTH = 56;
-    private static int BLOCKSIZE = 8;
-    private static int PBOX_ENTRIES = 18;
-    private static int SBOX_ENTRIES = 256;
-    private uint[] pbox = new uint[PBOX_ENTRIES];
-    private uint[] sbox1 = new uint[SBOX_ENTRIES];
-    private uint[] sbox2 = new uint[SBOX_ENTRIES];
-    private uint[] sbox3 = new uint[SBOX_ENTRIES];
-    private uint[] sbox4 = new uint[SBOX_ENTRIES];
-    private byte[] block_buf = new byte[BLOCKSIZE];
+    {
+        public const int BLOCKSIZE = 8;
+        private const int PBOX_ENTRIES = 18;
+        private const int SBOX_ENTRIES = 256;
 
-        private static uint[] PBOX_INIT =
+        private readonly uint[] pbox = new uint[PBOX_ENTRIES];
+        private readonly uint[] sbox1 = new uint[SBOX_ENTRIES];
+        private readonly uint[] sbox2 = new uint[SBOX_ENTRIES];
+        private readonly uint[] sbox3 = new uint[SBOX_ENTRIES];
+        private readonly uint[] sbox4 = new uint[SBOX_ENTRIES];
+
+        private static readonly uint[] PBOX_INIT =
             {
                 0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344, 0xa4093822, 0x299f31d0,
                 0x082efa98, 0xec4e6c89, 0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c,
                 0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917, 0x9216d5d9, 0x8979fb1b
             };
 
-    private static uint[] SBOX1_INIT =
+    private static readonly uint[] SBOX1_INIT =
     {
         0xd1310ba6, 0x98dfb5ac, 0x2ffd72db, 0xd01adfb7, 0xb8e1afed, 0x6a267e96,
         0xba7c9045, 0xf12c7f99, 0x24a19947, 0xb3916cf7, 0x0801f2e2, 0x858efc16,
@@ -74,7 +79,7 @@ namespace Common.Network.Encryption.UCGO.Blowfish
         0x53b02d5d, 0xa99f8fa1, 0x08ba4799, 0x6e85076a
 	};
 
-    private static uint[] SBOX2_INIT =
+    private static readonly uint[] SBOX2_INIT =
     {
         0x4b7a70e9, 0xb5b32944,
         0xdb75092e, 0xc4192623, 0xad6ea6b0, 0x49a7df7d, 0x9cee60b8, 0x8fedb266,
@@ -122,7 +127,7 @@ namespace Common.Network.Encryption.UCGO.Blowfish
         0xe6e39f2b, 0xdb83adf7
     };
 
-    private static uint[] SBOX3_INIT =
+    private static readonly uint[] SBOX3_INIT =
     {
         0xe93d5a68, 0x948140f7, 0xf64c261c, 0x94692934,
         0x411520f7, 0x7602d4f7, 0xbcf46b2e, 0xd4a20068, 0xd4082471, 0x3320f46a,
@@ -169,7 +174,7 @@ namespace Common.Network.Encryption.UCGO.Blowfish
         0x362abfce, 0xddc6c837, 0xd79a3234, 0x92638212, 0x670efa8e, 0x406000e0
     };
 
-    private static uint[] SBOX4_INIT =
+    private static readonly uint[] SBOX4_INIT =
     {
         0x3a39ce37, 0xd3faf5cf, 0xabc27737, 0x5ac52d1b, 0x5cb0679e, 0x4fa33742,
         0xd3822740, 0x99bc9bbe, 0xd5118e9d, 0xbf0f7315, 0xd62d1c7e, 0xc700c47b,
@@ -216,246 +221,168 @@ namespace Common.Network.Encryption.UCGO.Blowfish
         0xb74e6132, 0xce77e25b, 0x578fdfe3, 0x3ac372e6
     };
 
-    private int byteArrayToInt(byte[] buf, int ofs)
-    {
-        return (buf[ofs+3]<<24) | ((buf[ofs+2] & 0x0ff)<<16) | ((buf[ofs+1] & 0x0ff)<<8) | ( buf[ofs] & 0x0ff);
-    }
-
-    private void Reset()
-    {
-        Array.Copy(PBOX_INIT, 0, this.pbox, 0, 18);
-        Array.Copy(SBOX1_INIT, 0, this.sbox1, 0, 256);
-        Array.Copy(SBOX2_INIT, 0, this.sbox2, 0, 256);
-        Array.Copy(SBOX3_INIT, 0, this.sbox3, 0, 256);
-        Array.Copy(SBOX4_INIT, 0, this.sbox4, 0, 256);
-    }
-
-    public Blowfish()
-    {
-        Reset();
-    }
-
-    public Blowfish(byte[] Password)
-    {
-        SetPassword(Password);
-    }
-
-    public Blowfish(String Password)
-    {
-        SetPassword(Password);
-    }
-    
-    public void SetPassword(String Password)
-    {
-        try {
-            var PasswordBytes = Encoding.GetEncoding("US-ASCII").GetBytes(Password);
-            SetPassword(PasswordBytes);
-        }
-        catch(Exception ex){
-            Logger.ShowError(ex);
-        }
-    }
-
-    public void SetPassword(byte[] Password)
-    {
-        Reset();
-        uint i = 0;
-        uint j = 0;
-        uint k = 0;
-        uint XOR = 0;
-        int length = Password.Length;
-        if(length == 0)
+        public Blowfish()
         {
-            return;
+            Reset();
         }
-        for(i = 0; i < PBOX_ENTRIES; i++)
+
+        public Blowfish(byte[] password)
         {
-            for(j = 0; j < 4; j++)
+            SetPassword(password);
+        }
+
+        /// <summary>
+        /// Creates a Blowfish instance keyed with the ASCII bytes of <paramref name="password"/>.
+        /// </summary>
+        public Blowfish(string password)
+        {
+            SetPassword(password);
+        }
+
+        public void SetPassword(string password)
+        {
+            SetPassword(Encoding.ASCII.GetBytes(password));
+        }
+
+        public void SetPassword(byte[] password)
+        {
+            Reset();
+
+            if (password == null || password.Length == 0)
             {
-                XOR = (XOR << 8) | (((uint) Password[k]) & 0x0FF);
-                if(++k == length)
-                    k = 0;
+                return;
             }
-            pbox[i] ^= XOR;
+
+            int k = 0;
+            for (int i = 0; i < PBOX_ENTRIES; i++)
+            {
+                uint data = 0;
+                for (int j = 0; j < 4; j++)
+                {
+                    data = (data << 8) | password[k];
+                    if (++k == password.Length)
+                    {
+                        k = 0;
+                    }
+                }
+                pbox[i] ^= data;
+            }
+
+            var block = new byte[BLOCKSIZE];
+            Rekey(block, pbox);
+            Rekey(block, sbox1);
+            Rekey(block, sbox2);
+            Rekey(block, sbox3);
+            Rekey(block, sbox4);
         }
-        for(i = 0; i < BLOCKSIZE; i++)
-            block_buf[i] = 0;
-        for(i = 0; i < PBOX_ENTRIES;)
+
+        /// <summary>
+        /// Encrypts the first <paramref name="length"/> bytes of <paramref name="data"/> in place.
+        /// </summary>
+        public void Encrypt(byte[] data, int length)
         {
-           Encrypt(block_buf,BLOCKSIZE);
-           pbox[i++] = (uint)byteArrayToInt(block_buf, 0);
-           pbox[i++] = (uint)byteArrayToInt(block_buf, 4);
+            Encrypt(data, 0, length);
         }
-        for (i = 0; i < SBOX_ENTRIES;)
+
+        /// <summary>
+        /// Encrypts <paramref name="length"/> bytes of <paramref name="data"/> starting at
+        /// <paramref name="offset"/>, in place. The length is rounded down to a multiple of 8.
+        /// </summary>
+        public void Encrypt(byte[] data, int offset, int length)
         {
-           Encrypt(block_buf,BLOCKSIZE);
-            sbox1[i++] = (uint)byteArrayToInt(block_buf, 0);
-            sbox1[i++] = (uint)byteArrayToInt(block_buf, 4);
+            int end = offset + (length / BLOCKSIZE) * BLOCKSIZE;
+            for (int pos = offset; pos < end; pos += BLOCKSIZE)
+            {
+                uint hi = ReadUInt32(data, pos);
+                uint lo = ReadUInt32(data, pos + 4);
+                EncryptBlock(ref hi, ref lo);
+                WriteUInt32(lo, data, pos);
+                WriteUInt32(hi, data, pos + 4);
+            }
         }
-        for (i = 0; i < SBOX_ENTRIES;)
+
+        /// <summary>
+        /// Decrypts the first <paramref name="length"/> bytes of <paramref name="data"/> in place.
+        /// </summary>
+        public void Decrypt(byte[] data, int length)
         {
-           Encrypt(block_buf,BLOCKSIZE);
-            sbox2[i++] = (uint)byteArrayToInt(block_buf, 0);
-            sbox2[i++] = (uint)byteArrayToInt(block_buf, 4);
+            Decrypt(data, 0, length);
         }
-        for (i = 0; i < SBOX_ENTRIES;)
+
+        /// <summary>
+        /// Decrypts <paramref name="length"/> bytes of <paramref name="data"/> starting at
+        /// <paramref name="offset"/>, in place. The length is rounded down to a multiple of 8.
+        /// </summary>
+        public void Decrypt(byte[] data, int offset, int length)
         {
-           Encrypt(block_buf,BLOCKSIZE);
-            sbox3[i++] = (uint)byteArrayToInt(block_buf, 0);
-            sbox3[i++] = (uint)byteArrayToInt(block_buf, 4);
+            int end = offset + (length / BLOCKSIZE) * BLOCKSIZE;
+            for (int pos = offset; pos < end; pos += BLOCKSIZE)
+            {
+                uint hi = ReadUInt32(data, pos);
+                uint lo = ReadUInt32(data, pos + 4);
+                DecryptBlock(ref hi, ref lo);
+                WriteUInt32(lo, data, pos);
+                WriteUInt32(hi, data, pos + 4);
+            }
         }
-        for (i = 0; i < SBOX_ENTRIES;)
+
+        private void Reset()
         {
-           Encrypt(block_buf,BLOCKSIZE);
-            sbox4[i++] = (uint)byteArrayToInt(block_buf, 0);
-            sbox4[i++] = (uint)byteArrayToInt(block_buf, 4);
+            Array.Copy(PBOX_INIT, pbox, PBOX_ENTRIES);
+            Array.Copy(SBOX1_INIT, sbox1, SBOX_ENTRIES);
+            Array.Copy(SBOX2_INIT, sbox2, SBOX_ENTRIES);
+            Array.Copy(SBOX3_INIT, sbox3, SBOX_ENTRIES);
+            Array.Copy(SBOX4_INIT, sbox4, SBOX_ENTRIES);
+        }
+
+        private void Rekey(byte[] block, uint[] box)
+        {
+            for (int i = 0; i < box.Length; i += 2)
+            {
+                Encrypt(block, 0, BLOCKSIZE);
+                box[i] = ReadUInt32(block, 0);
+                box[i + 1] = ReadUInt32(block, 4);
+            }
+        }
+
+        private uint F(uint x)
+        {
+            return ((sbox1[x >> 24] + sbox2[(x >> 16) & 0xFF]) ^ sbox3[(x >> 8) & 0xFF]) + sbox4[x & 0xFF];
+        }
+
+        private void EncryptBlock(ref uint hi, ref uint lo)
+        {
+            hi ^= pbox[0];
+            for (int i = 1; i <= 16; i += 2)
+            {
+                lo ^= F(hi) ^ pbox[i];
+                hi ^= F(lo) ^ pbox[i + 1];
+            }
+            lo ^= pbox[17];
+        }
+
+        private void DecryptBlock(ref uint hi, ref uint lo)
+        {
+            hi ^= pbox[17];
+            for (int i = 16; i >= 1; i -= 2)
+            {
+                lo ^= F(hi) ^ pbox[i];
+                hi ^= F(lo) ^ pbox[i - 1];
+            }
+            lo ^= pbox[0];
+        }
+
+        private static uint ReadUInt32(byte[] buf, int ofs)
+        {
+            return (uint)(buf[ofs] | (buf[ofs + 1] << 8) | (buf[ofs + 2] << 16) | (buf[ofs + 3] << 24));
+        }
+
+        private static void WriteUInt32(uint value, byte[] buf, int ofs)
+        {
+            buf[ofs] = (byte)value;
+            buf[ofs + 1] = (byte)(value >> 8);
+            buf[ofs + 2] = (byte)(value >> 16);
+            buf[ofs + 3] = (byte)(value >> 24);
         }
     }
-
-    public void Encrypt(byte[] input, int length)
-    {
-        uint pos = 0;
-        uint hi, lo;
-        //force length to multiple of BLOCKSIZE
-        length /= 8;
-        length *= 8;
-        var pbox00 = pbox[0];
-        var pbox01 = pbox[1];
-        var pbox02 = pbox[2];
-        var pbox03 = pbox[3];
-        var pbox04 = pbox[4];
-        var pbox05 = pbox[5];
-        var pbox06 = pbox[6];
-        var pbox07 = pbox[7];
-        var pbox08 = pbox[8];
-        var pbox09 = pbox[9];
-        var pbox10 = pbox[10];
-        var pbox11 = pbox[11];
-        var pbox12 = pbox[12];
-        var pbox13 = pbox[13];
-        var pbox14 = pbox[14];
-        var pbox15 = pbox[15];
-        var pbox16 = pbox[16];
-        var pbox17 = pbox[17];
-        var sbox1 = this.sbox1;
-        var sbox2 = this.sbox2;
-        var sbox3 = this.sbox3;
-        var sbox4 = this.sbox4;
-        while (pos < length)
-        {
-            hi  =  (uint)input[pos+3] << 24;
-            hi |= (uint)(input[pos+2] << 16) & 0x0ff0000;
-            hi |= (uint)(input[pos+1] <<  8) & 0x000ff00;
-            hi |=  (uint)input[pos+0]        & 0x00000ff;
-
-            lo  =  (uint)input[pos+7] << 24;
-            lo |= (uint)(input[pos+6] << 16) & 0x0ff0000;
-            lo |= (uint)(input[pos+5] <<  8) & 0x000ff00;
-            lo |=  (uint)input[pos+4]        & 0x00000ff;
-
-            hi ^= pbox00;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox01;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox02;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox03;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox04;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox05;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox06;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox07;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox08;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox09;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox10;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox11;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox12;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox13;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox14;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox15;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox16;
-            lo ^= pbox17;
-
-            input[pos+3] = (byte)(lo >> 24);
-            input[pos+2] = (byte)(lo >> 16);
-            input[pos+1] = (byte)(lo >>  8);
-            input[pos+0] = (byte) lo;
-            input[pos+7] = (byte)(hi >> 24);
-            input[pos+6] = (byte)(hi >> 16);
-            input[pos+5] = (byte)(hi >>  8);
-            input[pos+4] = (byte) hi;
-            pos += 8;
-        }
-    }
-
-    public void Decrypt(byte[] input, int offset, int length)
-    {
-        int pos = offset;
-        uint hi, lo;
-        //force length to multiple of BLOCKSIZE
-        length /= 8;
-        length *= 8;
-        var pbox00 = pbox[0];
-        var pbox01 = pbox[1];
-        var pbox02 = pbox[2];
-        var pbox03 = pbox[3];
-        var pbox04 = pbox[4];
-        var pbox05 = pbox[5];
-        var pbox06 = pbox[6];
-        var pbox07 = pbox[7];
-        var pbox08 = pbox[8];
-        var pbox09 = pbox[9];
-        var pbox10 = pbox[10];
-        var pbox11 = pbox[11];
-        var pbox12 = pbox[12];
-        var pbox13 = pbox[13];
-        var pbox14 = pbox[14];
-        var pbox15 = pbox[15];
-        var pbox16 = pbox[16];
-        var pbox17 = pbox[17];
-        uint[] sbox1 = this.sbox1;
-        uint[] sbox2 = this.sbox2;
-        uint[] sbox3 = this.sbox3;
-        uint[] sbox4 = this.sbox4;
-        while (pos < length)
-        {
-            hi  =  (uint)input[pos+3] << 24;
-            hi |= (uint)(input[pos+2] << 16) & 0x0ff0000;
-            hi |= (uint)(input[pos+1] <<  8) & 0x000ff00;
-            hi |=  (uint)input[pos+0]        & 0x00000ff;
-
-            lo  =  (uint)input[pos+7] << 24;
-            lo |= (uint)(input[pos+6] << 16) & 0x0ff0000;
-            lo |= (uint)(input[pos+5] <<  8) & 0x000ff00;
-            lo |=  (uint)input[pos+4]        & 0x00000ff;
-
-            hi ^= pbox17;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox16;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox15;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox14;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox13;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox12;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox11;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox10;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox09;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox08;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox07;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox06;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox05;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox04;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox03;
-            lo ^= (((sbox1[hi >> 24] + sbox2[(hi >> 16) & 0x0ff]) ^ sbox3[(hi >> 8) & 0x0ff]) + sbox4[hi & 0x0ff]) ^ pbox02;
-            hi ^= (((sbox1[lo >> 24] + sbox2[(lo >> 16) & 0x0ff]) ^ sbox3[(lo >> 8) & 0x0ff]) + sbox4[lo & 0x0ff]) ^ pbox01;
-            lo ^= pbox00;
-
-            input[pos+3] = (byte)(lo >> 24);
-            input[pos+2] = (byte)(lo >> 16);
-            input[pos+1] = (byte)(lo >>  8);
-            input[pos+0] = (byte) lo;
-            input[pos+7] = (byte)(hi >> 24);
-            input[pos+6] = (byte)(hi >> 16);
-            input[pos+5] = (byte)(hi >>  8);
-            input[pos+4] = (byte) hi;
-            pos += 8;
-        }
-    }
-
-}
-
 }

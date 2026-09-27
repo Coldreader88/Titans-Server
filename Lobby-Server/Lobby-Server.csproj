@@ -35,6 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data">
+      <HintPath>..\Dependencies\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -45,10 +48,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration\Configuration.cs" />
+    <Compile Include="Database\AccountDatabase.cs" />
     <Compile Include="LobbyServer.cs" />
     <Compile Include="Manager\LobbyClientManager.cs" />
     <Compile Include="Network\Client\UCLobbySession.cs" />
+    <Compile Include="Network\Packets\Client\CM_REQUEST_CHARACTER_LIST.cs" />
     <Compile Include="Network\Packets\Client\CM_REQUEST_LOGIN.cs" />
+    <Compile Include="Network\Packets\Client\SM_CHARACTER_LIST.cs" />
     <Compile Include="Network\Packets\Client\SM_REQUEST_LOGIN.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

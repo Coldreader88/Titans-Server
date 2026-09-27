@@ -1,65 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Common.Account;
 using Common.Network.Packets;
-using SmartEngine.Core;
-using SmartEngine.Network;
 using TitansUC.LobbyServer.Network.Client;
 
 namespace TitansUC.LobbyServer.Network.Packets.Client
 {
+    /// <summary>
+    /// 0x38000: the login result.
+    ///
+    /// <code>
+    /// Success:  uint32 BE 1, uint32 BE 0, uint32 BE account id, uint32 BE account level (GM tag)
+    /// Failure:  uint32 BE error code, 0xFFFFFFFF, 0xFFFFFFFF, uint32 BE 0
+    /// </code>
+    /// Java reference: mina_loginserver NotifyUserInfo.java.
+    /// </summary>
     public class SM_REQUEST_LOGIN : UCPacket<LSOpcode>
     {
-        private UCLobbySession client = null;
-
         public SM_REQUEST_LOGIN(UCLobbySession client)
         {
             this.ID = LSOpcode.SM_REQUEST_LOGIN;
 
-            this.client = client;
+            var account = client.account;
 
-            this.BuildResponse();
-        }
+            this.PutUIntBE((uint)account.Status);
 
-        private void BuildResponse()
-        {
-            //00 00 00 15 FF FF FF FF FF FF FF FF 00 00 00 00
-
-            try
+            if (account.Status == Account.AuthenticationStatus.SUCCESS)
             {
-
-                switch (client.account.Status)
-                {
-                    case Common.Account.Account.AuthenticationStatus.SUCCESS:
-                        {
-
-                            this.PutUInt((uint)client.account.Status, true);
-                            this.PutInt(client.Network.Socket.Handle.ToInt32(), true); //login ticket?
-                            this.PutUInt(client.account.AccountID, true);
-                            this.PutUInt(client.account.GMLevel, true);
-                            break;
-                        }
-
-                    case Common.Account.Account.AuthenticationStatus.WRONG_VERSION:
-                    case Common.Account.Account.AuthenticationStatus.BLOCKED:
-                    case Common.Account.Account.AuthenticationStatus.BAD_CREDENTIALS:
-                    default:
-                        {
-                            this.PutUInt((uint)client.account.Status - 1, true);
-                            this.PutLong(-1);
-                            this.PutUInt(0);
-                            break;
-                        }
-                }
-
-                //Logger.ShowWarning(DumpData2());
-
-            }catch(Exception e)
-            {
-                Logger.ShowError(e);
+                this.PutUIntBE(0);
+                this.PutUIntBE(account.AccountID);
+                this.PutUIntBE(account.GMLevel);
             }
-
+            else
+            {
+                this.PutUIntBE(0xFFFFFFFF);
+                this.PutUIntBE(0xFFFFFFFF);
+                this.PutUIntBE(0);
+            }
         }
     }
 }
