@@ -155,5 +155,11 @@ namespace Common.Characters
         /// Stack size, or for a vehicle its engine id (-1 = the template's engine).
         /// </summary>
         public int Amount { get; set; }
+
+        /// <summary>
+        /// For a vehicle: the items in its inventory, as the Java server stored them in container.child
+        /// ("itemID-amount" separated by spaces). Null or empty for anything else.
+        /// </summary>
+        public string Children { get; set; }
     }
 }

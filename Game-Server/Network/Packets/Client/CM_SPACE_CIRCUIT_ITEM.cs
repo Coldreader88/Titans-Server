@@ -26,6 +26,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
             return new CM_SPACE_CIRCUIT_ITEM();
         }
 
+        public int X { get; private set; }
+        public int Y { get; private set; }
+        public int Z { get; private set; }
+        public float Radius { get; private set; }
         public byte List { get; private set; }
 
         public override void OnProcess(Session<GSOpcode> client)
@@ -37,7 +41,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
 
         public void Read()
         {
-            this.GetBytes(16);
+            X = this.GetIntBE();
+            Y = this.GetIntBE();
+            Z = this.GetIntBE();
+            Radius = System.BitConverter.ToSingle(System.BitConverter.GetBytes(this.GetUIntBE()), 0);
             List = (byte)this.GetUIntBE();
         }
     }

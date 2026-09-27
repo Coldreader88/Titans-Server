@@ -118,6 +118,14 @@ namespace TitansUC.GameServer.Network.Client
                 this.Coord = CoordData.FromCharacter(character, AccountLevel);
                 this.Coord.MachineID = MachineID;
 
+                // Vehicles left on the ground were saved in the hangar; they are back there now.
+                foreach (var vehicle in GameWorld.Instance.TakeGroundVehicles(character.ClientID))
+                {
+                    var taken = vehicle;
+                    GameWorld.Instance.SendNear(taken.ClusterID, taken.X, taken.Y, BroadcastDistance,
+                        () => new SM_UPDATE_ITEM_INFO(SM_UPDATE_ITEM_INFO.VehicleTaken, taken, character.ClientID));
+                }
+
                 var previous = GameWorld.Instance.Add(this);
                 if (previous != null)
                 {
@@ -334,11 +342,138 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x05: ground items near the player. None yet.
+        /// 0x05: the items of one list lying around a point.
         /// </summary>
         public void OnSpaceCircuitItem(CM_SPACE_CIRCUIT_ITEM p)
         {
-            this.Network.SendPacket(new SM_SPACE_CIRCUIT_ITEM(p.List));
+            if (!CheckInGame("Ground item list"))
+            {
+                return;
+            }
+            int radius = p.Radius > 0 && p.Radius < int.MaxValue ? (int)p.Radius : BroadcastDistance;
+            var items = GameWorld.Instance.GroundNear((ushort)Character.Zone, p.X, p.Y, radius, p.List);
+            this.Network.SendPacket(new SM_SPACE_CIRCUIT_ITEM(p.List, items));
+        }
+
+        /// <summary>
+        /// 0x23: drop an item on the ground, or get out of the vehicle and leave it there.
+        /// Nothing is sent back when it is refused.
+        /// </summary>
+        public void OnSpacePlacedItem(CM_SPACE_PLACED_ITEM p)
+        {
+            if (!CheckInGame("Drop item"))
+            {
+                return;
+            }
+
+            ItemNode placed = null;
+            uint action = 0;
+            if (p.CharacterID != CharacterID)
+            {
+                RefuseGround("drop", p.ItemUniqueID, "not their character");
+                return;
+            }
+            if (p.MiniOp == CM_SPACE_PLACED_ITEM.GetOff)
+            {
+                placed = Inventory.GetOff(p.ItemUniqueID);
+                action = SM_UPDATE_ITEM_INFO.VehicleLeft;
+            }
+            else if (p.MiniOp == CM_SPACE_PLACED_ITEM.DropItem)
+            {
+                placed = Inventory.TakeForDrop(p.ItemUniqueID, p.ContainerUniqueID, p.Amount);
+                action = SM_UPDATE_ITEM_INFO.ItemDropped;
+            }
+            if (placed == null)
+            {
+                RefuseGround("drop", p.ItemUniqueID, "mini op " + p.MiniOp + ", invalid item, container or amount");
+                return;
+            }
+
+            var ground = new GroundItem(placed, (ushort)Character.Zone, p.X, p.Y, p.Z, p.Rotation, CharacterID);
+            GameWorld.Instance.Place(ground);
+            if (action == SM_UPDATE_ITEM_INFO.VehicleLeft)
+            {
+                SetVehicle(null);
+                Logger.ShowInfo(string.Format("{0} got out of {1} and left it at {2}, {3}, {4}.", Character.Name, placed.Name, p.X, p.Y, p.Z));
+            }
+            else
+            {
+                Logger.ShowInfo(string.Format("{0} dropped {1} x {2} at {3}, {4}, {5}.", Character.Name, placed.StaticID, placed.Amount, p.X, p.Y, p.Z));
+            }
+
+            this.Network.SendPacket(new SM_SPACE_PLACED_ITEM(p, placed));
+            BroadcastGround(action, ground);
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x24: pick an item up from the ground, or get in one of the player's vehicles standing there.
+        /// Anyone can pick up items; only the owner can take a vehicle. Nothing is sent back when it is refused.
+        /// </summary>
+        public void OnSpacePickupItem(CM_SPACE_PICKUP_ITEM p)
+        {
+            if (!CheckInGame("Pick up item"))
+            {
+                return;
+            }
+            if (p.CharacterID != CharacterID ||
+                (p.MiniOp != CM_SPACE_PICKUP_ITEM.PickUpItem && p.MiniOp != CM_SPACE_PICKUP_ITEM.GetIn))
+            {
+                RefuseGround("pick up", p.ItemUniqueID, "mini op " + p.MiniOp + " for character " + p.CharacterID);
+                return;
+            }
+
+            bool vehicle = p.MiniOp == CM_SPACE_PICKUP_ITEM.GetIn;
+            var zone = (ushort)Character.Zone;
+            var ground = GameWorld.Instance.Take(p.ItemUniqueID, g => g.ClusterID == zone &&
+                (vehicle ? g.IsVehicle && g.OwnerID == CharacterID : !g.IsVehicle));
+            if (ground == null)
+            {
+                RefuseGround("pick up", p.ItemUniqueID, "nothing there they can take");
+                return;
+            }
+
+            bool ok = vehicle ? Inventory.Board(ground.Node, p.DestUniqueID) : Inventory.PickUp(ground.Node, p.DestUniqueID);
+            if (!ok)
+            {
+                GameWorld.Instance.Place(ground);
+                RefuseGround("pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it");
+                return;
+            }
+
+            if (vehicle)
+            {
+                SetVehicle(ground.Node);
+                Logger.ShowInfo(string.Format("{0} got in {1} ({2}).", Character.Name, ground.Node.Name, ground.Node.StaticID));
+            }
+            else
+            {
+                Logger.ShowInfo(string.Format("{0} picked up {1} x {2}.", Character.Name, ground.Node.StaticID, ground.Node.Amount));
+            }
+
+            this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, ground.Node));
+            BroadcastGround(vehicle ? SM_UPDATE_ITEM_INFO.VehicleTaken : SM_UPDATE_ITEM_INFO.ItemPickedUp, ground);
+            SaveItems();
+        }
+
+        /// <summary>
+        /// How far ground item events reach (and the 0x05 radius when the client sends none).
+        /// </summary>
+        private static int BroadcastDistance
+        {
+            get { return Configuration.Instance.ViewDistance > 0 ? Configuration.Instance.ViewDistance : 8000; }
+        }
+
+        private void BroadcastGround(uint action, GroundItem ground)
+        {
+            uint actor = CharacterID;
+            GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance,
+                () => new SM_UPDATE_ITEM_INFO(action, ground, actor));
+        }
+
+        private void RefuseGround(string what, uint uniqueID, string reason)
+        {
+            Logger.ShowWarning(string.Format("{0}: {1} of {2:X8} refused: {3}.", Character.Name, what, uniqueID, reason));
         }
 
         /// <summary>
@@ -524,13 +659,20 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// Writes the player's items back to the container table.
+        /// Writes the player's items back to the container table (with the vehicles they left on the ground),
+        /// and their money when it changed.
         /// </summary>
         private void SaveItems()
         {
             try
             {
-                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows());
+                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows(GameWorld.Instance.GroundVehicles(CharacterID)));
+                var money = Inventory.Money;
+                if (money != null && money.Amount != Character.Money)
+                {
+                    Character.Money = money.Amount;
+                    CharacterDatabase.Instance.SaveMoney(Character);
+                }
             }
             catch (Exception ex)
             {

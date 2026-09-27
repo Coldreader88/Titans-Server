@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Common.Network.Packets;
 using TitansUC.GameServer.Network.Client;
 
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// The players in the game. Java reference: mina_gameserver GameWorld.java (without NPCs, ground
-    /// items and the spatial index yet).
+    /// The players in the game and the items and vehicles lying on the ground. Java reference:
+    /// mina_gameserver GameWorld.java (without NPCs and the spatial index yet).
     /// </summary>
     public class GameWorld
     {
@@ -17,6 +18,8 @@ namespace TitansUC.GameServer.World
 
         private readonly object sync = new object();
         private readonly Dictionary<uint, UCGameSession> players = new Dictionary<uint, UCGameSession>();
+        private readonly Dictionary<uint, GroundItem> ground = new Dictionary<uint, GroundItem>();
+        private ushort groundCounter;
 
         /// <summary>
         /// Set while the server is closed for maintenance (#shutdown on the CMS server); logins are refused.
@@ -95,6 +98,119 @@ namespace TitansUC.GameServer.World
             var coord = viewer.Coord;
             return Players.Where(p => p != viewer && p.Coord != null &&
                 p.Coord.ClusterID == coord.ClusterID && coord.IsNear(p.Coord, radius)).ToList();
+        }
+
+        /// <summary>
+        /// Puts an item or vehicle on the ground and raises the ground item counter.
+        /// </summary>
+        public void Place(GroundItem item)
+        {
+            lock (sync)
+            {
+                item.Counter = ++groundCounter;
+                ground[item.UniqueID] = item;
+            }
+        }
+
+        /// <summary>
+        /// Takes an item or vehicle off the ground; null when it is not there (any more).
+        /// <paramref name="canTake"/> decides, under the lock, whether this player may take it.
+        /// </summary>
+        public GroundItem Take(uint uniqueID, Func<GroundItem, bool> canTake)
+        {
+            lock (sync)
+            {
+                GroundItem item;
+                if (!ground.TryGetValue(uniqueID, out item) || IsExpired(item) || !canTake(item))
+                {
+                    return null;
+                }
+                ground.Remove(uniqueID);
+                item.Counter = ++groundCounter;
+                return item;
+            }
+        }
+
+        public GroundItem GetGround(uint uniqueID)
+        {
+            lock (sync)
+            {
+                GroundItem item;
+                ground.TryGetValue(uniqueID, out item);
+                return item;
+            }
+        }
+
+        /// <summary>
+        /// Items and vehicles of one list lying within <paramref name="radius"/> of a point. Expired items are
+        /// removed first.
+        /// </summary>
+        public List<GroundItem> GroundNear(ushort clusterID, int x, int y, int radius, byte list)
+        {
+            lock (sync)
+            {
+                RemoveExpired();
+                return ground.Values.Where(g => g.ClusterID == clusterID && g.List == list &&
+                    Math.Abs((long)g.X - x) <= radius && Math.Abs((long)g.Y - y) <= radius).ToList();
+            }
+        }
+
+        /// <summary>
+        /// The vehicles a character left on the ground (saved as hangar rows).
+        /// </summary>
+        public List<ItemNode> GroundVehicles(uint ownerID)
+        {
+            lock (sync)
+            {
+                return ground.Values.Where(g => g.IsVehicle && g.OwnerID == ownerID).Select(g => g.Node).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Takes a character's vehicles off the ground (they are back in the hangar when they log in again).
+        /// </summary>
+        public List<GroundItem> TakeGroundVehicles(uint ownerID)
+        {
+            lock (sync)
+            {
+                var taken = ground.Values.Where(g => g.IsVehicle && g.OwnerID == ownerID).ToList();
+                foreach (var item in taken)
+                {
+                    ground.Remove(item.UniqueID);
+                    item.Counter = ++groundCounter;
+                }
+                return taken;
+            }
+        }
+
+        /// <summary>
+        /// Sends a packet built by <paramref name="build"/> to every player in the cluster within
+        /// <paramref name="radius"/> of a point (one packet each).
+        /// </summary>
+        public void SendNear(ushort clusterID, int x, int y, int radius, Func<UCPacket<GSOpcode>> build)
+        {
+            foreach (var player in Players)
+            {
+                var coord = player.Coord;
+                if (coord != null && coord.ClusterID == clusterID &&
+                    Math.Abs((long)coord.X - x) <= radius && Math.Abs((long)coord.Y - y) <= radius)
+                {
+                    player.Network.SendPacket(build());
+                }
+            }
+        }
+
+        private static bool IsExpired(GroundItem item)
+        {
+            return !item.IsVehicle && item.Expires <= UnixTime();
+        }
+
+        private void RemoveExpired()
+        {
+            foreach (var item in ground.Values.Where(IsExpired).ToList())
+            {
+                ground.Remove(item.UniqueID);
+            }
         }
 
         /// <summary>
