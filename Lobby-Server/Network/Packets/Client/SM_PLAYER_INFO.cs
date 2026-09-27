@@ -76,7 +76,7 @@ namespace TitansUC.LobbyServer.Network.Packets.Client
             this.PutSize(PlayerContainers.PlayerInfoList.Length);
             foreach (var container in PlayerContainers.PlayerInfoList)
             {
-                this.PutUIntBE(unchecked(id + (uint)container.Item2));
+                this.PutUIntBE(PlayerContainers.GetUniqueID(id, container));
                 this.PutIntBE(container.Item3);
             }
 
@@ -125,23 +125,7 @@ namespace TitansUC.LobbyServer.Network.Packets.Client
             this.PutByte((byte)c.Gender);
 
             // Looks (Java: Appearance.getHumanLooks)
-            this.PutSize(20);
-            foreach (var type in new[] { ApparelType.DRESS, ApparelType.TOP, ApparelType.COAT, ApparelType.BOTTOM,
-                ApparelType.SHOES, ApparelType.GLOVES, ApparelType.HAT, ApparelType.GLASSES })
-            {
-                var apparel = c.GetApparel(type);
-                this.PutShortBE((short)CharacterData.GetWearID(apparel.ItemID));
-                this.PutByte((byte)apparel.Style);
-            }
-            this.PutShortBE(0);
-            this.PutByte((byte)c.Skin);
-            this.PutByte(0);
-            this.PutByte((byte)c.Face);
-            this.PutShortBE(0);
-            this.PutByte((byte)c.HairStyle);
-            this.PutByte((byte)c.HairColor);
-            this.PutByte(0);
-            this.PutBytes(new byte[26]);
+            CharacterLooks.Write(this, c);
 
             // Vehicle (Java: PlayerLooksWriter): character id and vehicle id when in a mobile suit
             this.PutIntBE(-1);

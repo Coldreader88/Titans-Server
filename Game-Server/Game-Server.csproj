@@ -7,7 +7,7 @@
     <ProjectGuid>{27D1A23A-232D-492D-B497-CEC67E66E1A4}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Game_Server</RootNamespace>
+    <RootNamespace>TitansUC.GameServer</RootNamespace>
     <AssemblyName>Game-Server</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -35,6 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data">
+      <HintPath>..\Dependencies\MySql.Data\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -44,7 +47,42 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="Configuration\Configuration.cs" />
+    <Compile Include="GameServer.cs" />
+    <Compile Include="Manager\GameClientManager.cs" />
+    <Compile Include="Network\Client\UCGameSession.cs" />
+    <Compile Include="World\CoordData.cs" />
+    <Compile Include="World\GameWorld.cs" />
+    <Compile Include="World\ItemNode.cs" />
+    <Compile Include="World\PlayerInventory.cs" />
+    <Compile Include="Network\Packets\Client\CM_CLIENT_MSG.cs" />
+    <Compile Include="Network\Packets\Client\CM_ITEM_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_LOGIN_GAME.cs" />
+    <Compile Include="Network\Packets\Client\CM_LOGOUT_GAME_FE.cs" />
+    <Compile Include="Network\Packets\Client\CM_LOGOUT_GS.cs" />
+    <Compile Include="Network\Packets\Client\CM_OCCUPATION_CITY_INFO_LIST.cs" />
+    <Compile Include="Network\Packets\Client\CM_PAPER_DOLL_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_PLAYER_COORD_DATA_LIST.cs" />
+    <Compile Include="Network\Packets\Client\CM_PLAYER_COORD_UPDATE.cs" />
+    <Compile Include="Network\Packets\Client\CM_PLAYER_LOOKS.cs" />
+    <Compile Include="Network\Packets\Client\CM_REGISTER_PLAYER.cs" />
+    <Compile Include="Network\Packets\Client\CM_REGIST_COORD_MGR.cs" />
+    <Compile Include="Network\Packets\Client\CM_SERVER_TIME.cs" />
+    <Compile Include="Network\Packets\Client\CM_SIMPLE_PLAYER_INFO.cs" />
+    <Compile Include="Network\Packets\Client\CM_SPACE_CIRCUIT_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\SM_ITEM_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_LOGIN_GAME.cs" />
+    <Compile Include="Network\Packets\Client\SM_LOGOUT_GAME_FE.cs" />
+    <Compile Include="Network\Packets\Client\SM_LOGOUT_GS.cs" />
+    <Compile Include="Network\Packets\Client\SM_OCCUPATION_CITY_INFO_LIST.cs" />
+    <Compile Include="Network\Packets\Client\SM_PAPER_DOLL_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_PLAYER_COORD_DATA_LIST.cs" />
+    <Compile Include="Network\Packets\Client\SM_PLAYER_LOOKS.cs" />
+    <Compile Include="Network\Packets\Client\SM_REGISTER_PLAYER.cs" />
+    <Compile Include="Network\Packets\Client\SM_REGIST_COORD_MGR.cs" />
+    <Compile Include="Network\Packets\Client\SM_SERVER_TIME.cs" />
+    <Compile Include="Network\Packets\Client\SM_SIMPLE_PLAYER_INFO.cs" />
+    <Compile Include="Network\Packets\Client\SM_SPACE_CIRCUIT_ITEM.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

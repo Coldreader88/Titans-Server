@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Common.Database;
 using Common.Network;
 using Common.Network.Packets;
 using Common.Server;
@@ -96,6 +97,17 @@ namespace TitansUC.LobbyServer
             if (!AccountDatabase.Instance.TestConnection())
             {
                 Logger.ShowError("Cannot connect to the account database, logins will fail until it is reachable.");
+            }
+            else
+            {
+                try
+                {
+                    LoginSessionDatabase.Instance.EnsureTable();
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowError(ex);
+                }
             }
 
             LobbyClientManager.Instance.Port = Configuration.Instance.Port;

@@ -120,5 +120,40 @@ namespace Common.Characters
         {
             return uint.Parse("1" + id.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         }
+
+        /// <summary>
+        /// Turns a client id back into the database id (117 -> 17). Returns false for ids that do not
+        /// start with the player digit "1".
+        /// </summary>
+        public static bool TryFromClientID(uint clientID, out uint id)
+        {
+            id = 0;
+            var text = clientID.ToString(CultureInfo.InvariantCulture);
+            return text.Length > 1 && text[0] == '1' &&
+                uint.TryParse(text.Substring(1), NumberStyles.None, CultureInfo.InvariantCulture, out id) && id > 0;
+        }
+    }
+
+    /// <summary>
+    /// One row of the container table: an item template in one of the character's containers.
+    /// </summary>
+    public class CharacterItem
+    {
+        /// <summary>
+        /// The static id of the container holding the item (see <see cref="PlayerContainers"/>).
+        /// </summary>
+        public int ContainerID { get; set; }
+
+        /// <summary>
+        /// The item's template id.
+        /// </summary>
+        public int ItemID { get; set; }
+
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Stack size, or for a vehicle its engine id (-1 = the template's engine).
+        /// </summary>
+        public int Amount { get; set; }
     }
 }

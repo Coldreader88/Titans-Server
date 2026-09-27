@@ -23,3 +23,14 @@ CREATE TABLE IF NOT EXISTS `accounts` (
   `last_ip` varchar(45) COLLATE utf8_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`acc_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Session key from the login reply (0x38000), with the character taken to the game server (0x30005).
+-- The Game server checks it when the client logs in (0x41). The Lobby server creates this table
+-- itself when it is missing.
+CREATE TABLE IF NOT EXISTS `login_sessions` (
+  `acc_id` int(10) NOT NULL,
+  `session_key` int(10) unsigned NOT NULL,
+  `char_id` int(10) unsigned NOT NULL default '0',
+  `updated` int(10) NOT NULL default '0',
+  PRIMARY KEY (`acc_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;

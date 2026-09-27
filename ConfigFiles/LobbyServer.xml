@@ -11,6 +11,10 @@
   <!-- Money a new character starts with (Java reference: default_money = 50000). -->
   <DefaultMoney>50000</DefaultMoney>
 
+  <!-- Game server the client connects to after picking a character (sent in 0x38005). -->
+  <GameServerIP>127.0.0.1</GameServerIP>
+  <GameServerPort>42010</GameServerPort>
+
   <!-- MySQL database with the accounts and character tables (DB/SQL/accounts.sql, DB/SQL/characters.sql). -->
   <Database>
     <Host>127.0.0.1</Host>

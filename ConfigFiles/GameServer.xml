@@ -2,6 +2,24 @@
 <GameServer>
   <Port>42010</Port>
 
+  <!-- Only log in characters the Lobby handed over (session key from the login reply). Turn off only for testing. -->
+  <CheckSessionKey>true</CheckSessionKey>
+
+  <!-- How far away other players are visible, in position units. 0 uses what the client asks for (8000 on foot). -->
+  <ViewDistance>0</ViewDistance>
+
+  <!-- Seconds between position saves while a player is online (also saved on logout). -->
+  <SaveInterval>60</SaveInterval>
+
+  <!-- MySQL database shared with the Lobby server (DB/SQL/accounts.sql, DB/SQL/characters.sql). -->
+  <Database>
+    <Host>127.0.0.1</Host>
+    <Port>3306</Port>
+    <Name>titans-server</Name>
+    <User>root</User>
+    <Password>titans</Password>
+  </Database>
+
   <!-- 帐号服务器域名或IP -->
   <AccountHost>127.0.0.1</AccountHost>
   

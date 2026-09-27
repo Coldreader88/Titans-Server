@@ -5,20 +5,29 @@ using Common.Characters;
 using MySql.Data.MySqlClient;
 using SmartEngine.Core;
 
-namespace TitansUC.LobbyServer.Database
+namespace Common.Database
 {
     /// <summary>
     /// Reads and creates characters. Uses the Java server's tables (DB/SQL/characters.sql) and its
     /// conventions so existing Java databases keep working:
     /// characters.char_id is the database id; appearance and garments rows use that id, while skills
     /// and container rows use the client id (see <see cref="Character.ClientID"/>).
-    /// Uses the connection settings of <see cref="AccountDatabase"/>.
+    /// Uses the connection settings of <see cref="DatabaseConnection"/>.
     /// </summary>
     public class CharacterDatabase
     {
         static readonly CharacterDatabase instance = new CharacterDatabase();
 
         public static CharacterDatabase Instance { get { return instance; } }
+
+        private const string SelectCharacter =
+            "SELECT c.char_id, c.acc_id, c.char_name, c.slot, c.char_score, c.char_lost, c.char_money, " +
+            "c.char_access, c.zone, c.x, c.y, c.z, c.rotx, c.roty, c.direction, c.date_created, c.team_id, " +
+            "a.face, a.faction, a.gender, a.skin, a.hairstyle, a.haircolor, a.`rank`, " +
+            "g.dress, g.top, g.coat, g.bottom, g.shoes, g.gloves, g.hat, g.glasses " +
+            "FROM characters c " +
+            "LEFT JOIN appearance a ON a.char_id = c.char_id " +
+            "LEFT JOIN garments g ON g.char_id = c.char_id ";
 
         /// <summary>
         /// The account's characters in slot order (at most <see cref="Character.MaxSlots"/>).
@@ -28,18 +37,11 @@ namespace TitansUC.LobbyServer.Database
         {
             var result = new List<Character>();
 
-            using (var connection = AccountDatabase.Instance.Open())
+            using (var connection = DatabaseConnection.Open())
             {
                 using (var cmd = new MySqlCommand(
-                    "SELECT c.char_id, c.acc_id, c.char_name, c.slot, c.char_score, c.char_lost, c.char_money, " +
-                    "c.char_access, c.zone, c.x, c.y, c.z, c.rotx, c.roty, c.direction, c.date_created, c.team_id, " +
-                    "a.face, a.faction, a.gender, a.skin, a.hairstyle, a.haircolor, a.`rank`, " +
-                    "g.dress, g.top, g.coat, g.bottom, g.shoes, g.gloves, g.hat, g.glasses " +
-                    "FROM characters c " +
-                    "LEFT JOIN appearance a ON a.char_id = c.char_id " +
-                    "LEFT JOIN garments g ON g.char_id = c.char_id " +
-                    "WHERE c.acc_id = @acc AND c.slot BETWEEN 1 AND @slots " +
-                    "ORDER BY c.slot, c.char_id", connection))
+                    SelectCharacter + "WHERE c.acc_id = @acc AND c.slot BETWEEN 1 AND @slots ORDER BY c.slot, c.char_id",
+                    connection))
                 {
                     cmd.Parameters.AddWithValue("@acc", accountID);
                     cmd.Parameters.AddWithValue("@slots", Character.MaxSlots);
@@ -78,11 +80,132 @@ namespace TitansUC.LobbyServer.Database
         }
 
         /// <summary>
+        /// Loads one character by its client id (see <see cref="Character.ClientID"/>), or returns null
+        /// when there is no such character.
+        /// </summary>
+        public Character LoadCharacterByClientID(uint clientID)
+        {
+            uint id;
+            if (!Character.TryFromClientID(clientID, out id))
+            {
+                return null;
+            }
+
+            using (var connection = DatabaseConnection.Open())
+            {
+                Character character = null;
+                using (var cmd = new MySqlCommand(SelectCharacter + "WHERE c.char_id = @id LIMIT 1", connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            character = ReadCharacter(reader);
+                        }
+                    }
+                }
+
+                if (character != null)
+                {
+                    LoadSkills(connection, character);
+                }
+                return character;
+            }
+        }
+
+        /// <summary>
+        /// Deletes a character of <paramref name="accountID"/> with its appearance, garments, skills and
+        /// items. Returns false when the account has no such character.
+        /// Java reference: CharacterResourceSaver.delete (which left skills and items behind).
+        /// </summary>
+        public bool Delete(uint accountID, Character character)
+        {
+            using (var connection = DatabaseConnection.Open())
+            {
+                using (var cmd = new MySqlCommand("DELETE FROM characters WHERE acc_id = @acc AND char_id = @id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@acc", accountID);
+                    cmd.Parameters.AddWithValue("@id", character.ID);
+                    if (cmd.ExecuteNonQuery() == 0)
+                    {
+                        return false;
+                    }
+                }
+
+                ExecuteForID(connection, "DELETE FROM appearance WHERE char_id = @id", character.ID);
+                ExecuteForID(connection, "DELETE FROM garments WHERE char_id = @id", character.ID.ToString(CultureInfo.InvariantCulture));
+                ExecuteForID(connection, "DELETE FROM skills WHERE char_id = @id", character.ClientID);
+                ExecuteForID(connection, "DELETE FROM container WHERE char_id = @id", character.ClientID);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Saves where the character is (zone, position and rotation).
+        /// </summary>
+        public void SavePosition(Character character)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand(
+                "UPDATE characters SET zone = @zone, x = @x, y = @y, z = @z, rotx = @rotx, roty = @roty, direction = @dir " +
+                "WHERE char_id = @id", connection))
+            {
+                cmd.Parameters.AddWithValue("@zone", (int)character.Zone);
+                cmd.Parameters.AddWithValue("@x", character.X);
+                cmd.Parameters.AddWithValue("@y", character.Y);
+                cmd.Parameters.AddWithValue("@z", character.Z);
+                cmd.Parameters.AddWithValue("@rotx", character.RotX);
+                cmd.Parameters.AddWithValue("@roty", character.RotY);
+                cmd.Parameters.AddWithValue("@dir", character.Direction);
+                cmd.Parameters.AddWithValue("@id", character.ID);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// The character's items (container table rows), in insertion order.
+        /// </summary>
+        public List<CharacterItem> LoadItems(Character character)
+        {
+            var result = new List<CharacterItem>();
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand(
+                "SELECT container_id, item_id, item_name, item_amount FROM container WHERE char_id = @id", connection))
+            {
+                cmd.Parameters.AddWithValue("@id", character.ClientID);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        result.Add(new CharacterItem
+                        {
+                            ContainerID = GetInt(reader, "container_id", 0),
+                            ItemID = GetInt(reader, "item_id", -1),
+                            Name = GetString(reader, "item_name"),
+                            Amount = GetInt(reader, "item_amount", 0),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        private static void ExecuteForID(MySqlConnection connection, string sql, object id)
+        {
+            using (var cmd = new MySqlCommand(sql, connection))
+            {
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
         /// True when any character already uses <paramref name="name"/> (case-insensitive).
         /// </summary>
         public bool NameExists(string name)
         {
-            using (var connection = AccountDatabase.Instance.Open())
+            using (var connection = DatabaseConnection.Open())
             using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM characters WHERE LOWER(char_name) = LOWER(@name)", connection))
             {
                 cmd.Parameters.AddWithValue("@name", name);
@@ -97,7 +220,7 @@ namespace TitansUC.LobbyServer.Database
         /// </summary>
         public void Create(Character character, int hangarItemID, string hangarItemName)
         {
-            using (var connection = AccountDatabase.Instance.Open())
+            using (var connection = DatabaseConnection.Open())
             {
                 using (var cmd = new MySqlCommand(
                     "INSERT INTO characters (acc_id, char_name, slot, char_score, char_lost, char_money, char_access, " +

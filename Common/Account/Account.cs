@@ -38,6 +38,12 @@ namespace Common.Account
         public string UserName { get; set; }
         public string Password { get; set; }
         public byte GMLevel { get; set; }
+
+        /// <summary>
+        /// Random key sent in the login reply; the client presents it to get the game server address
+        /// and to log in to the game server (see Common.Database.LoginSessionDatabase).
+        /// </summary>
+        public uint SessionKey { get; set; }
         public uint Version { get; set; }
         public AuthenticationStatus Status { get; set; }
         public bool Authenticated { get { return Status == AuthenticationStatus.SUCCESS; } }
