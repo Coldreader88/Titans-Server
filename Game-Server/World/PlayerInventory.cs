@@ -10,7 +10,7 @@ namespace TitansUC.GameServer.World
     ///
     /// The top-level containers use the unique ids the Lobby sent in the player info
     /// (<see cref="PlayerContainers.GetUniqueID"/>); items get unique ids from a server-wide counter.
-    /// Worn clothes (garments table) go in "weared", as in the Java server (Player.wear); rows of the
+    /// Worn clothes (garments table) go in the fixed slots of "weared"; rows of the
     /// container table go in their container, and anything in the hangar is treated as a vehicle.
     /// </summary>
     public class PlayerInventory
@@ -26,6 +26,17 @@ namespace TitansUC.GameServer.World
         /// Vehicle health used until MS templates are loaded (Java: Vehicle.write constants).
         /// </summary>
         public const int DefaultVehicleHealth = 2000;
+
+        /// <summary>
+        /// The clothing slots of weared after the vehicle slot, in order. The official capture has the
+        /// combat uniform (dress) in slot 1, gloves in slot 6 and the cap (hat) in slot 7; glasses have
+        /// no slot.
+        /// </summary>
+        public static readonly ApparelType[] WearedSlots =
+        {
+            ApparelType.DRESS, ApparelType.TOP, ApparelType.COAT, ApparelType.BOTTOM,
+            ApparelType.SHOES, ApparelType.GLOVES, ApparelType.HAT,
+        };
 
         private static int nextUniqueID = 0x00400000;
 
@@ -51,14 +62,29 @@ namespace TitansUC.GameServer.World
                 Register(node);
             }
 
+            // Weared has fixed slots (UCGOZone-Login.pcap): slot 0 holds the vehicle being piloted
+            // (empty: static id -1), then one slot per piece of clothing. The client reads the slots by
+            // position, so empty ones are sent too.
             var weared = Find(PlayerContainers.Weared);
-            foreach (var type in CharacterLooks.Order)
+            weared.Add(ItemNode.EmptySlot(-1));
+            foreach (var type in WearedSlots)
             {
                 var apparel = character.GetApparel(type);
                 if (apparel.ItemID > 0)
                 {
                     Register(weared.Add(NewItem(apparel.ItemID, 1, type.ToString().ToLowerInvariant())));
                 }
+                else
+                {
+                    weared.Add(ItemNode.EmptySlot(0));
+                }
+            }
+
+            // The official swap pack held a trade pack container, which the client asks for.
+            var swapPack = Find(PlayerContainers.SwapPack);
+            if (swapPack != null)
+            {
+                Register(swapPack.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, PlayerContainers.TradePack) { Name = "tradepack" }));
             }
 
             foreach (var item in items)

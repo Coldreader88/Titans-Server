@@ -69,6 +69,16 @@ namespace TitansUC.GameServer.World
 
         public string Name { get; set; }
 
+        /// <summary>
+        /// An empty slot of a container with fixed slots (weared): unique id 0, format 0 and the given
+        /// static id (-1 for the vehicle slot, 0 for a clothing slot, as the official server sent them).
+        /// The client never asks for it.
+        /// </summary>
+        public static ItemNode EmptySlot(int staticID)
+        {
+            return new ItemNode(0, 0, staticID);
+        }
+
         public ItemNode Add(ItemNode child)
         {
             child.Parent = this;
