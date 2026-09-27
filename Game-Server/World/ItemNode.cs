@@ -79,11 +79,44 @@ namespace TitansUC.GameServer.World
             return new ItemNode(0, 0, staticID);
         }
 
+        /// <summary>
+        /// For a vehicle: its engine id, as stored in the container table's item_amount.
+        /// </summary>
+        public int EngineID { get; set; }
+
+        /// <summary>
+        /// True for an <see cref="EmptySlot"/>.
+        /// </summary>
+        public bool IsEmptySlot { get { return UniqueID == 0; } }
+
         public ItemNode Add(ItemNode child)
         {
             child.Parent = this;
             Children.Add(child);
             return child;
+        }
+
+        public bool Remove(ItemNode child)
+        {
+            if (!Children.Remove(child))
+            {
+                return false;
+            }
+            child.Parent = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Puts <paramref name="child"/> in slot <paramref name="index"/> of a container with fixed slots
+        /// (weared), replacing what was there. Returns the node it replaced.
+        /// </summary>
+        public ItemNode SetSlot(int index, ItemNode child)
+        {
+            var old = Children[index];
+            old.Parent = null;
+            child.Parent = this;
+            Children[index] = child;
+            return old;
         }
 
         /// <summary>

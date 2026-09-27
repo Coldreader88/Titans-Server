@@ -23,9 +23,9 @@ namespace TitansUC.GameServer.World
         public const int VehicleInventory = 110010;
 
         /// <summary>
-        /// Vehicle health used until MS templates are loaded (Java: Vehicle.write constants).
+        /// Weared slot holding the vehicle being piloted (Java: Player.pilot "crowns" it there).
         /// </summary>
-        public const int DefaultVehicleHealth = 2000;
+        public const int PilotSlot = 0;
 
         /// <summary>
         /// The clothing slots of weared after the vehicle slot, in order. The official capture has the
@@ -40,9 +40,20 @@ namespace TitansUC.GameServer.World
 
         private static int nextUniqueID = 0x00400000;
 
+        private readonly object sync = new object();
         private readonly Dictionary<uint, ItemNode> nodes = new Dictionary<uint, ItemNode>();
 
+        /// <summary>
+        /// Container table rows this class does not load (unknown containers, weared); saved back unchanged.
+        /// </summary>
+        private readonly List<CharacterItem> kept = new List<CharacterItem>();
+
         public List<ItemNode> Containers { get; private set; }
+
+        /// <summary>
+        /// The vehicle the player is piloting, or null on foot.
+        /// </summary>
+        public ItemNode Piloting { get; private set; }
 
         public PlayerInventory(Character character, IEnumerable<CharacterItem> items)
         {
@@ -90,10 +101,11 @@ namespace TitansUC.GameServer.World
             foreach (var item in items)
             {
                 var container = Find(item.ContainerID);
-                if (container == null || item.ItemID <= 0)
+                if (container == null || item.ItemID <= 0 || item.ContainerID == PlayerContainers.Weared)
                 {
                     Logger.ShowWarning(string.Format("{0}: skipping item {1} ({2}) in unknown container {3}.",
                         character.Name, item.ItemID, item.Name, item.ContainerID));
+                    kept.Add(item);
                     continue;
                 }
 
@@ -113,9 +125,12 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public ItemNode Get(uint uniqueID)
         {
-            ItemNode node;
-            nodes.TryGetValue(uniqueID, out node);
-            return node;
+            lock (sync)
+            {
+                ItemNode node;
+                nodes.TryGetValue(uniqueID, out node);
+                return node;
+            }
         }
 
         /// <summary>
@@ -126,12 +141,186 @@ namespace TitansUC.GameServer.World
             return Containers.Find(c => c.StaticID == staticID);
         }
 
+        /// <summary>
+        /// Takes a vehicle out of the hangar and puts the player in it (0x17 section 8; Java:
+        /// MoveItem.hangarRideLogic). Returns null when it cannot.
+        /// </summary>
+        public ItemNode Ride(uint vehicleUID, uint hangarUID)
+        {
+            lock (sync)
+            {
+                var vehicle = GetLocked(vehicleUID);
+                var hangar = GetLocked(hangarUID);
+                if (Piloting != null || vehicle == null || hangar == null || vehicle.Parent != hangar ||
+                    hangar.StaticID != PlayerContainers.Hangar)
+                {
+                    return null;
+                }
+
+                hangar.Remove(vehicle);
+                Find(PlayerContainers.Weared).SetSlot(PilotSlot, vehicle);
+                Piloting = vehicle;
+                return vehicle;
+            }
+        }
+
+        /// <summary>
+        /// Puts the piloted vehicle back in the hangar (0x17 section 9; Java: MoveItem.hangarPutLogic).
+        /// Returns null when it cannot.
+        /// </summary>
+        public ItemNode PutBack(uint vehicleUID, uint hangarUID)
+        {
+            lock (sync)
+            {
+                var hangar = GetLocked(hangarUID);
+                var vehicle = Piloting;
+                if (vehicle == null || vehicle.UniqueID != vehicleUID || hangar == null ||
+                    hangar.StaticID != PlayerContainers.Hangar)
+                {
+                    return null;
+                }
+
+                Find(PlayerContainers.Weared).SetSlot(PilotSlot, ItemNode.EmptySlot(-1));
+                hangar.Add(vehicle);
+                Piloting = null;
+                return vehicle;
+            }
+        }
+
+        /// <summary>
+        /// Moves <paramref name="amount"/> of an item between two of the player's containers (0x17 section 7;
+        /// Java: MoveItem.bankLogic). Stacks of the same item merge, as the official server did.
+        /// </summary>
+        public MoveResult Move(uint itemUID, uint sourceUID, uint destUID, int amount)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                var source = GetLocked(sourceUID);
+                var dest = GetLocked(destUID);
+                if (item == null || source == null || dest == null || item.Parent != source || source == dest ||
+                    dest.Format != ItemNode.Multi || !CanHoldItems(source) || !CanHoldItems(dest) ||
+                    item.Format != ItemNode.Singleton || amount <= 0 || amount > item.Amount)
+                {
+                    return null;
+                }
+
+                bool movingAll = amount >= item.Amount;
+                var stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                var result = new MoveResult { Item = item };
+
+                if (stack != null)
+                {
+                    // Official: 0x0301 when the whole stack joins the one there, 0x0401 for part of it.
+                    stack.Amount += amount;
+                    Touch(stack);
+                    result.Target = stack;
+                    if (movingAll)
+                    {
+                        source.Remove(item);
+                        Unregister(item);
+                        result.Kind = MoveKind.Merged;
+                    }
+                    else
+                    {
+                        item.Amount -= amount;
+                        Touch(item);
+                        result.Kind = MoveKind.AddedToStack;
+                    }
+                }
+                else if (movingAll)
+                {
+                    source.Remove(item);
+                    dest.Add(item);
+                    Touch(item);
+                    result.Kind = MoveKind.Moved;
+                }
+                else
+                {
+                    // Official 0x0201: part of a stack becomes a new item in the destination.
+                    item.Amount -= amount;
+                    Touch(item);
+                    var created = NewItem(item.StaticID, amount, item.Name);
+                    Register(dest.Add(created));
+                    result.Target = created;
+                    result.Kind = MoveKind.Split;
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// The rows to write back to the container table: every item in the top-level containers except
+        /// weared (clothes are in the garments table). A piloted vehicle is saved in the hangar. Items inside
+        /// vehicles are not saved yet.
+        /// </summary>
+        public List<CharacterItem> ToRows()
+        {
+            var rows = new List<CharacterItem>();
+            lock (sync)
+            {
+                foreach (var container in Containers)
+                {
+                    if (container.StaticID == PlayerContainers.Weared || container.Format != ItemNode.Multi)
+                    {
+                        continue;
+                    }
+                    foreach (var item in container.Children)
+                    {
+                        if (item.StaticID == PlayerContainers.TradePack && container.StaticID == PlayerContainers.SwapPack)
+                        {
+                            continue;
+                        }
+                        rows.Add(ToRow(container.StaticID, item));
+                    }
+                }
+
+                if (Piloting != null)
+                {
+                    rows.Add(ToRow(PlayerContainers.Hangar, Piloting));
+                }
+                rows.AddRange(kept);
+            }
+            return rows;
+        }
+
+        private static CharacterItem ToRow(int containerID, ItemNode item)
+        {
+            return new CharacterItem
+            {
+                ContainerID = containerID,
+                ItemID = item.StaticID,
+                Name = item.Name,
+                Amount = containerID == PlayerContainers.Hangar ? item.EngineID : item.Amount,
+            };
+        }
+
+        /// <summary>
+        /// Containers items can be moved in and out of with section 7: the player's own top-level list
+        /// containers other than weared and the hangar (those have their own sections). Containers inside
+        /// others (trade pack, vehicle inventories) are not saved yet, so moves into them are refused.
+        /// </summary>
+        private static bool CanHoldItems(ItemNode container)
+        {
+            return container.Parent == null && container.Format == ItemNode.Multi &&
+                container.StaticID != PlayerContainers.Weared && container.StaticID != PlayerContainers.Hangar;
+        }
+
         private void AddVehicle(ItemNode hangar, CharacterItem item)
         {
-            var vehicle = hangar.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID) { Name = item.Name });
+            var template = VehicleTemplates.Get(item.ItemID);
+            int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
+            int engine = item.Amount > 0 ? item.Amount : (template != null ? template.EngineID : VehicleTemplates.DefaultEngine);
+
+            var vehicle = hangar.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
+            {
+                Name = !string.IsNullOrEmpty(item.Name) ? item.Name : (template != null ? template.Name : null),
+                EngineID = item.Amount > 0 ? item.Amount : -1,
+            });
             vehicle.Created = UnixNow();
             vehicle.Options = new byte[6][];
-            vehicle.Options[5] = VehicleStats(DefaultVehicleHealth, DefaultVehicleHealth, item.Amount > 0 ? item.Amount : 0);
+            vehicle.Options[5] = VehicleStats(health, health, engine);
             Register(vehicle);
 
             Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleArmaments) { Name = "armaments", Modified = -1, Created = -1 }));
@@ -139,8 +328,9 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The vehicle's stats field: 19 ints. Java reference: Vehicle.write (health, then constants
-        /// the Java authors had not decoded, then the engine id).
+        /// The vehicle's stats field: 19 ints. The official TGM-79 had 3220 of 3300 health and its engine id
+        /// in the 18th (UCGOZone-Login.pcap); the other values are the Java server's constants
+        /// (Vehicle.write), which it had not decoded.
         /// </summary>
         private static byte[] VehicleStats(int health, int maxHealth, int engineID)
         {
@@ -175,9 +365,29 @@ namespace TitansUC.GameServer.World
             };
         }
 
+        private static void Touch(ItemNode item)
+        {
+            item.Modified = UnixNow();
+        }
+
+        private ItemNode GetLocked(uint uniqueID)
+        {
+            ItemNode node;
+            nodes.TryGetValue(uniqueID, out node);
+            return node;
+        }
+
         private void Register(ItemNode node)
         {
-            nodes[node.UniqueID] = node;
+            lock (sync)
+            {
+                nodes[node.UniqueID] = node;
+            }
+        }
+
+        private void Unregister(ItemNode node)
+        {
+            nodes.Remove(node.UniqueID);
         }
 
         private static uint NewUniqueID()
@@ -189,5 +399,31 @@ namespace TitansUC.GameServer.World
         {
             return GameWorld.UnixTime();
         }
+    }
+
+    public enum MoveKind
+    {
+        /// <summary>The item changed containers (official reply 0x0101).</summary>
+        Moved,
+
+        /// <summary>Part of a stack became a new item in the destination (0x0201).</summary>
+        Split,
+
+        /// <summary>The whole stack joined a stack of the same item (0x0301).</summary>
+        Merged,
+
+        /// <summary>Part of a stack joined a stack of the same item (0x0401).</summary>
+        AddedToStack,
+    }
+
+    public class MoveResult
+    {
+        public MoveKind Kind { get; set; }
+
+        /// <summary>The item that was moved (for Merged it no longer exists).</summary>
+        public ItemNode Item { get; set; }
+
+        /// <summary>The destination stack (Merged, AddedToStack) or the new item (Split).</summary>
+        public ItemNode Target { get; set; }
     }
 }

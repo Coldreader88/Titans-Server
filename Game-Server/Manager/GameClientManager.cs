@@ -17,6 +17,7 @@ namespace TitansUC.GameServer.Manager
             RegisterPacketHandler(GSOpcode.CM_REGISTER_PLAYER, new CM_REGISTER_PLAYER());
             RegisterPacketHandler(GSOpcode.CM_SERVER_TIME, new CM_SERVER_TIME());
             RegisterPacketHandler(GSOpcode.CM_ITEM_INFO, new CM_ITEM_INFO());
+            RegisterPacketHandler(GSOpcode.CM_MOVE_ITEM, new CM_MOVE_ITEM());
             RegisterPacketHandler(GSOpcode.CM_OCCUPATION_CITY_INFO_LIST, new CM_OCCUPATION_CITY_INFO_LIST());
             RegisterPacketHandler(GSOpcode.CM_REGIST_COORD_MGR, new CM_REGIST_COORD_MGR());
             RegisterPacketHandler(GSOpcode.CM_PLAYER_COORD_DATA_LIST, new CM_PLAYER_COORD_DATA_LIST());
