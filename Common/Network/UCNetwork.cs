@@ -14,20 +14,43 @@ namespace Common.Network
     /// The official servers answered each request with the sequence number of that request: in the
     /// captured logins (UCGO Packet Logs.zip, dummylogin.txt) the status server replies to sequence 0
     /// with 0, and the login server replies to 1, 2, 3 with 1, 2, 3.
+    ///
+    /// The official CMS (chat) server instead numbered its own packets 1, 2, 3, ... whatever the client
+    /// sent, since it also pushes packets nobody asked for (chat from other players). Servers like that
+    /// turn on <see cref="Counting"/> (see <see cref="UCNetwork{T}.CountServerSequence"/>).
     /// </summary>
     public class ServerSequence
     {
+        private uint sent;
+
         /// <summary>
         /// The sequence number of the last packet received from the client.
         /// </summary>
         public uint CLIENT { get; set; }
 
         /// <summary>
-        /// The sequence number to put on the next outgoing packet.
+        /// Number outgoing packets 1, 2, 3, ... instead of repeating the client's sequence number.
+        /// </summary>
+        public bool Counting { get; set; }
+
+        /// <summary>
+        /// The sequence number of the last outgoing packet, or of the next one when not counting.
         /// </summary>
         public uint SERVER
         {
-            get { return CLIENT; }
+            get { return Counting ? sent : CLIENT; }
+        }
+
+        /// <summary>
+        /// The sequence number for the next outgoing packet. Call once per packet.
+        /// </summary>
+        public uint Next()
+        {
+            if (!Counting)
+            {
+                return CLIENT;
+            }
+            return ++sent;
         }
     }
 
@@ -46,6 +69,12 @@ namespace Common.Network
 
         public ServerSequence Sequence { get; set; }
 
+        /// <summary>
+        /// Number this server's outgoing packets 1, 2, 3, ... per connection (see <see cref="ServerSequence"/>).
+        /// Set once at startup; the CMS server turns it on.
+        /// </summary>
+        public static bool CountServerSequence { get; set; }
+
         protected UCEncryption UCCrypt
         {
             get { return (UCEncryption)Crypt; }
@@ -55,7 +84,7 @@ namespace Common.Network
         {
             var instance = new UCNetwork<T>();
 
-            instance.Sequence = new ServerSequence();
+            instance.Sequence = new ServerSequence { Counting = CountServerSequence };
 
             CreateNewInstance(instance, sock, commandTable, client);
 
@@ -250,7 +279,7 @@ namespace Common.Network
 
             lock (sendLock)
             {
-                var wire = packet.ToWire(Sequence.SERVER);
+                var wire = packet.ToWire(Sequence.Next());
 
                 PrintPacketData(packet, false);
 
