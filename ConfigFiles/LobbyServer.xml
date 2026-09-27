@@ -8,7 +8,10 @@
   <!-- Create an account on first login when the user name does not exist yet. -->
   <AutoCreateAccounts>true</AutoCreateAccounts>
 
-  <!-- MySQL database with the accounts table (DB/SQL/accounts.sql). -->
+  <!-- Money a new character starts with (Java reference: default_money = 50000). -->
+  <DefaultMoney>50000</DefaultMoney>
+
+  <!-- MySQL database with the accounts and character tables (DB/SQL/accounts.sql, DB/SQL/characters.sql). -->
   <Database>
     <Host>127.0.0.1</Host>
     <Port>3306</Port>

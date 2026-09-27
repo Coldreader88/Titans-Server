@@ -152,7 +152,7 @@ namespace TitansUC.LobbyServer.Database
             }
         }
 
-        private MySqlConnection Open()
+        internal MySqlConnection Open()
         {
             if (connectionString == null)
             {

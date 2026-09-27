@@ -19,8 +19,12 @@ namespace Common.Network.Packets
     {
         CM_REQUEST_LOGIN = 0x30000,
         CM_REQUEST_CHARACTER_LIST = 0x30001,
+        CM_REQUEST_PLAYER_INFO = 0x30002,
+        CM_REQUEST_CREATE_CHARACTER = 0x30003,
 
         SM_REQUEST_LOGIN = 0x38000,
         SM_CHARACTER_LIST = 0x38001,
+        SM_PLAYER_INFO = 0x38002,
+        SM_CREATE_CHARACTER = 0x38003,
     }
 }
