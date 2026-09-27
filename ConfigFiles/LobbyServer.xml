@@ -17,7 +17,7 @@
     <Port>3306</Port>
     <Name>titans-server</Name>
     <User>root</User>
-    <Password></Password>
+    <Password>titans</Password>
   </Database>
 
   <!-- 帐号服务器域名或IP -->
