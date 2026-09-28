@@ -87,6 +87,11 @@ namespace TitansUC.GameServer.World
             timer = new Timer(Tick, null, TickMs, TickMs);
         }
 
+        /// <summary>
+        /// Every NPC (alive or waiting to respawn).
+        /// </summary>
+        public ICollection<Npc> All { get { return npcs.Values; } }
+
         public Npc Get(uint id)
         {
             Npc npc;

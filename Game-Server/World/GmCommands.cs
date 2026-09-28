@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -34,9 +34,179 @@ namespace TitansUC.GameServer.World
                     return Items(args);
                 case "skill":
                     return SkillCommand(gm, args);
+                case "near":
+                    return Near(gm, args);
+                case "tp":
+                    return TeleportTo(gm, args);
                 default:
                     return new List<string> { "This game server does not know #" + parts[0] + "." };
             }
+        }
+
+        public const int NearLines = 25;
+
+        private static int ViewDistance
+        {
+            get { return TitansUC.GameServer.Configuration.Instance.ViewDistance > 0 ? TitansUC.GameServer.Configuration.Instance.ViewDistance : 8000; }
+        }
+
+        private static double Distance(CoordData from, int x, int y, int z)
+        {
+            double dx = x - (double)from.X, dy = y - (double)from.Y, dz = z - (double)from.Z;
+            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        private static string FactionName(int faction)
+        {
+            return faction == 1 ? "EF" : faction == 2 ? "Zeon" : "-";
+        }
+
+        private static string VehicleName(int templateID)
+        {
+            var t = ItemTemplates.Get(templateID);
+            return t != null ? t.Name : templateID.ToString();
+        }
+
+        /// <summary>
+        /// #near[::radius]: players, NPCs and vehicles on the ground within the view distance (or the radius),
+        /// nearest first, with the ids #tp takes.
+        /// </summary>
+        public static List<string> Near(UCGameSession gm, IList<string> args)
+        {
+            var me = gm.Coord;
+            int radius = ViewDistance, n;
+            if (args.Count > 0 && int.TryParse(args[0], out n) && n > 0)
+            {
+                radius = n;
+            }
+
+            var found = new List<KeyValuePair<double, string>>();
+            foreach (var p in GameWorld.Instance.Players)
+            {
+                var c = p.InGame ? p.Coord : null;
+                if (p == gm || c == null || c.ClusterID != me.ClusterID || !me.IsNear(c, radius))
+                {
+                    continue;
+                }
+                var vehicle = p.Inventory.Piloting;
+                found.Add(new KeyValuePair<double, string>(Distance(me, c.X, c.Y, c.Z), string.Format("{0} - player {1}, {2}, {3}",
+                    p.Character.Name, p.CharacterID, FactionName((int)p.Character.Faction), vehicle != null ? "in " + vehicle.Name : "on foot")));
+            }
+            foreach (var npc in NpcManager.Instance.Visible(me.ClusterID, me.X, me.Y, radius))
+            {
+                var info = NpcManager.Instance.Get(npc.CharacterID);
+                found.Add(new KeyValuePair<double, string>(Distance(me, npc.X, npc.Y, npc.Z), string.Format("{0} - NPC {1}, {2}, {3}{4}{5}",
+                    info.Name, npc.CharacterID, FactionName(info.Faction), VehicleName(info.TemplateID),
+                    info.IsVendor ? ", vendor" : "", npc.Damage > 0 ? ", " + npc.Damage + "% damaged" : "")));
+            }
+            foreach (var g in GameWorld.Instance.GroundNear(me.ClusterID, me.X, me.Y, radius, GroundItem.ListVehicles))
+            {
+                found.Add(new KeyValuePair<double, string>(Distance(me, g.X, g.Y, g.Z), string.Format("{0} - {1} {2} on the ground, owner {3}",
+                    g.Node.Name ?? VehicleName(g.Node.StaticID), g.IsWreck ? "wreck" : "vehicle", g.UniqueID,
+                    g.OwnerID == 0xFFFFFFFF ? "none" : g.OwnerID.ToString())));
+            }
+
+            found.RemoveAll(f => f.Key > radius);
+            var lines = new List<string>();
+            lines.Add(string.Format("{0} within {1} (#tp::id goes there):", found.Count, radius));
+            foreach (var f in found.OrderBy(f => f.Key).Take(NearLines))
+            {
+                lines.Add(string.Format("{0} ({1:0} away)", f.Value, f.Key));
+            }
+            if (found.Count > NearLines)
+            {
+                lines.Add(string.Format("... and {0} more farther away; #near::radius narrows it.", found.Count - NearLines));
+            }
+            return lines;
+        }
+
+        /// <summary>
+        /// Where a #tp target is: a player (id or name), an NPC (id or name; the nearest of that name) or a
+        /// vehicle on the ground (unique id). Null when there is none.
+        /// </summary>
+        private static CoordData Locate(UCGameSession gm, string target, out string what)
+        {
+            what = null;
+            uint id;
+            bool numeric = uint.TryParse(target, out id);
+            var player = numeric ? GameWorld.Instance.Get(id)
+                : GameWorld.Instance.Players.Find(p => p.InGame && string.Equals(p.Character.Name, target, StringComparison.OrdinalIgnoreCase));
+            if (player != null && player.InGame && player.Coord != null)
+            {
+                what = player.Character.Name;
+                return player.Coord;
+            }
+
+            Npc npc = null;
+            if (numeric)
+            {
+                npc = NpcManager.Instance.Get(id);
+            }
+            else
+            {
+                var me = gm.Coord;
+                npc = NpcManager.Instance.All.Where(x => x.Alive && string.Equals(x.Name, target, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.Zone == me.ClusterID ? 0 : 1).ThenBy(x => Distance(me, x.X, x.Y, x.Z)).FirstOrDefault();
+            }
+            if (npc != null && npc.Alive)
+            {
+                what = "NPC " + npc.Name;
+                return npc.ToCoord();
+            }
+
+            var ground = numeric ? GameWorld.Instance.GetGround(id) : null;
+            if (ground != null)
+            {
+                what = ground.Node.Name ?? "the vehicle";
+                return new CoordData { X = ground.X, Y = ground.Y, Z = ground.Z, ClusterID = ground.ClusterID };
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// #tp::target[::player]: teleports you (or the player) next to a player, NPC or ground vehicle.
+        /// </summary>
+        public static List<string> TeleportTo(UCGameSession gm, IList<string> args)
+        {
+            var lines = new List<string>();
+            if (args.Count == 0)
+            {
+                lines.Add("Usage: #tp::target[::player]. Target: a player's id or name, an NPC's id or name, or a ground vehicle's id (#near lists them).");
+                return lines;
+            }
+
+            string what;
+            var to = Locate(gm, args[0], out what);
+            if (to == null)
+            {
+                lines.Add("Nothing called \"" + args[0] + "\" here (not a player, NPC or ground vehicle on this server).");
+                return lines;
+            }
+
+            var mover = gm;
+            if (args.Count > 1)
+            {
+                string moverName;
+                var who = Locate(gm, args[1], out moverName);
+                uint id;
+                mover = uint.TryParse(args[1], out id) ? GameWorld.Instance.Get(id)
+                    : GameWorld.Instance.Players.Find(p => p.InGame && string.Equals(p.Character.Name, args[1], StringComparison.OrdinalIgnoreCase));
+                if (mover == null || who == null)
+                {
+                    lines.Add("No player \"" + args[1] + "\" online.");
+                    return lines;
+                }
+            }
+            if (to.ClusterID != mover.Coord.ClusterID)
+            {
+                lines.Add(what + " is in " + (to.ClusterID == 2 ? "Space" : "Earth") + "; take a shuttle there first.");
+                return lines;
+            }
+
+            // Next to it, not inside it.
+            mover.Teleport(to.X + 300, to.Y, to.Z);
+            lines.Add(mover == gm ? "Teleported to " + what + "." : "Teleported " + mover.Character.Name + " to " + what + ".");
+            return lines;
         }
 
         /// <summary>
