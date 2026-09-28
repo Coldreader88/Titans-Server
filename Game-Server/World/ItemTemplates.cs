@@ -95,7 +95,8 @@ namespace TitansUC.GameServer.World
                 {
                     try
                     {
-                        Load(File.ReadAllBytes(CharacterData.FindFile("Templates", file)), VehicleFiles.Contains(file), result);
+                        Load(File.ReadAllBytes(CharacterData.FindFile("Templates", file)), VehicleFiles.Contains(file),
+                            CategoryOf(file), result);
                     }
                     catch (Exception ex)
                     {
@@ -108,7 +109,42 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        private static void Load(byte[] d, bool vehicles, Dictionary<int, ItemTemplate> result)
+        /// <summary>
+        /// The category #items lists a template file under: "WEAPONTEMPLATE.DAT" is "weapon",
+        /// "EVENTMSTEMPLATE.DAT" is "eventms".
+        /// </summary>
+        private static string CategoryOf(string file)
+        {
+            var name = file.Substring(0, file.IndexOf("TEMPLATE", StringComparison.OrdinalIgnoreCase)).ToLowerInvariant();
+            switch (name)
+            {
+                case "ammunition": return "ammo";
+                case "developmenttool": return "tool";
+                case "rawmaterial": return "material";
+                default: return name;
+            }
+        }
+
+        /// <summary>
+        /// All templates of a category (see <see cref="CategoryOf"/>), by id.
+        /// </summary>
+        public static List<ItemTemplate> InCategory(string category)
+        {
+            EnsureLoaded();
+            return templates.Values.Where(t => category == "all" || t.Category == category).OrderBy(t => t.ID).ToList();
+        }
+
+        /// <summary>
+        /// The categories and how many templates each has.
+        /// </summary>
+        public static List<KeyValuePair<string, int>> Categories()
+        {
+            EnsureLoaded();
+            return templates.Values.GroupBy(t => t.Category).OrderBy(g => g.Key)
+                .Select(g => new KeyValuePair<string, int>(g.Key, g.Count())).ToList();
+        }
+
+        private static void Load(byte[] d, bool vehicles, string category, Dictionary<int, ItemTemplate> result)
         {
             int p = 4;
             int count = ReadSize(d, ref p);
@@ -126,6 +162,7 @@ namespace TitansUC.GameServer.World
                 }
                 range = t.ID / 10000;
                 t.IsVehicle = vehicles;
+                t.Category = category;
                 ReadEquipmentStats(d, p, t);
                 result[t.ID] = t;
             }
@@ -246,6 +283,11 @@ namespace TitansUC.GameServer.World
         public int Price { get; set; }
 
         public bool IsVehicle { get; set; }
+
+        /// <summary>
+        /// The template file it comes from, for #items: weapon, shield, ammo, ms, tank, car, ...
+        /// </summary>
+        public string Category { get; set; }
 
         /// <summary>
         /// Weapons and shields (see ItemTemplates.ReadEquipmentStats): durability; weapons also range, power

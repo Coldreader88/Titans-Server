@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using TitansUC.GameServer.World;
 
 namespace TitansUC.GameServer.Network.Packets.Client
@@ -21,15 +21,16 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public const uint ItemPickedUp = 2;
         public const uint VehicleLeft = 3;
         public const uint VehicleTaken = 4;
+        public const uint Damaged = 5;
 
-        public SM_UPDATE_ITEM_INFO(uint action, GroundItem item, uint actorID)
+        public SM_UPDATE_ITEM_INFO(uint action, GroundItem item, uint actorID, ushort echo = 0xFFFF)
         {
             this.ID = GSOpcode.SM_UPDATE_ITEM_INFO;
 
             this.PutUIntBE(action);
             item.WriteRecord(this, action == ItemPickedUp || action == VehicleTaken);
             this.PutUIntBE(actorID);
-            this.PutUShortBE(0xFFFF);
+            this.PutUShortBE(echo);
             this.PutByte(item.List);
         }
     }

@@ -141,4 +141,28 @@ namespace TitansUC.GameServer.Network.Link
             link.OnTeleportTo(from, this.GetUIntBE());
         }
     }
+
+    /// <summary>
+    /// 0x0A: uint32 BE character id, UC string "name::arg::arg": a GM command the game server answers
+    /// (#items, #skill). See <see cref="GameLink.GmCommand"/>.
+    /// </summary>
+    public class CMS_GM_COMMAND : UCPacket<CGOpcode>
+    {
+        public CMS_GM_COMMAND()
+        {
+            this.ID = CGOpcode.CMS_GM_COMMAND;
+        }
+
+        public override Packet<CGOpcode> New()
+        {
+            return new CMS_GM_COMMAND();
+        }
+
+        public override void OnProcess(Session<CGOpcode> client)
+        {
+            var link = (CmsLink)client;
+            uint id = this.GetUIntBE();
+            link.OnGmCommand(id, this.GetUCString());
+        }
+    }
 }

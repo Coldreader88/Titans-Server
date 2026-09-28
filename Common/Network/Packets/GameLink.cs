@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Common.Network.Packets
 {
@@ -43,6 +44,18 @@ namespace Common.Network.Packets
             var p = New(CGOpcode.CMS_SPAWN);
             p.PutUIntBE(characterID);
             p.PutUCString(string.Join("::", args));
+            return p;
+        }
+
+        /// <summary>
+        /// 0x0A, CMS -> game server: a GM chat command the game server answers itself (#items, #skill):
+        /// uint32 BE character id, UC string "name::arg::arg". Not in the Java servers.
+        /// </summary>
+        public static UCPacket<CGOpcode> GmCommand(uint characterID, string name, IEnumerable<string> args)
+        {
+            var p = New(CGOpcode.CMS_GM_COMMAND);
+            p.PutUIntBE(characterID);
+            p.PutUCString(string.Join("::", new[] { name }.Concat(args)));
             return p;
         }
 

@@ -93,6 +93,18 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "items", Usage = "#items[::category[::name filter][::page]]", Level = AccessLevel.GM,
+                Description = "Lists the item templates you can #spawn, by category, with their ids.",
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "items", a)),
+            });
+            Add(new Command
+            {
+                Name = "skill", Usage = "#skill[::skill name::level]", Level = AccessLevel.GM,
+                Description = "Shows your skills, or sets one (e.g. #skill::ambac::85.5; all sets every combat skill).",
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "skill", a)),
+            });
+            Add(new Command
+            {
                 Name = "poslog", Usage = "#poslog::message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.PositionLog(s.CharacterID, string.Join(" ", a))),

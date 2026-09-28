@@ -727,6 +727,50 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// 0x11: an attack on a vehicle standing on the ground with nobody in it. 0x8011 goes to the attacker,
+        /// the vehicle's new health to everyone near (0x8035 action 5); a destroyed one becomes a wreck
+        /// (0x8035 action 1 with health 0) and is lost to its owner.
+        /// </summary>
+        public void OnAttackItem(CM_ATTACK_ITEM p)
+        {
+            if (!CheckInGame("Attack item") || p.AttackerID != CharacterID)
+            {
+                return;
+            }
+            var weapon = Inventory.Armament(p.Slot);
+            var ground = GameWorld.Instance.GetGround(p.ItemUniqueID);
+            if (weapon == null || ground == null || !ground.IsVehicle || ground.IsWreck || ground.ClusterID != Coord.ClusterID ||
+                ground.Node.MaxHealth <= 0)
+            {
+                Logger.ShowWarning(string.Format("{0}: attack on ground item {1:X8} refused: no weapon, or not a vehicle.",
+                    Character.Name, p.ItemUniqueID));
+                return;
+            }
+
+            var r = Combat.Attack(weapon, ground.Node, null, 0);
+            uint attacker = CharacterID;
+            this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, p.Echo, r, ground));
+            if (r.Result == Combat.ResultMiss)
+            {
+                return;
+            }
+            if (r.Destroyed)
+            {
+                ground.BecomeWreck();
+                Logger.ShowInfo(string.Format("{0} destroyed the empty {1} of character {2}.", Character.Name, ground.Node.Name, ground.OwnerID));
+                var owner = GameWorld.Instance.Get(ground.OwnerID);
+                if (owner != null)
+                {
+                    owner.SaveItems();
+                }
+            }
+            GameWorld.Instance.Place(ground);
+            ushort echo = p.Echo;
+            GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance, () =>
+                new SM_UPDATE_ITEM_INFO(r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged, ground, attacker, echo));
+        }
+
+        /// <summary>
         /// An attack on an NPC: 0x800F to the attacker only (an NPC has no client), 0x8036 to everyone near it.
         /// </summary>
         private void AttackNpc(ItemNode weapon, Npc npc, int distance)
@@ -1334,7 +1378,7 @@ namespace TitansUC.GameServer.Network.Client
         /// Writes the player's items back to the container table (with the vehicles they left on the ground),
         /// and their money when it changed.
         /// </summary>
-        private void SaveItems()
+        public void SaveItems()
         {
             try
             {

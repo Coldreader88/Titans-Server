@@ -178,6 +178,36 @@ namespace Common.Database
         }
 
         /// <summary>
+        /// Saves one skill level (a GM's #skill), keeping its experience.
+        /// </summary>
+        public void SaveSkill(Character character, Skill skill)
+        {
+            using (var connection = DatabaseConnection.Open())
+            {
+                int updated;
+                using (var cmd = new MySqlCommand(
+                    "UPDATE skills SET skill_level = @level WHERE char_id = @id AND skill_idx = @idx", connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", character.ClientID);
+                    cmd.Parameters.AddWithValue("@idx", (int)skill);
+                    cmd.Parameters.AddWithValue("@level", character.GetSkill(skill));
+                    updated = cmd.ExecuteNonQuery();
+                }
+                if (updated == 0)
+                {
+                    using (var cmd = new MySqlCommand(
+                        "INSERT INTO skills (char_id, skill_idx, skill_level, skill_exp) VALUES (@id, @idx, @level, 0)", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@id", character.ClientID);
+                        cmd.Parameters.AddWithValue("@idx", (int)skill);
+                        cmd.Parameters.AddWithValue("@level", character.GetSkill(skill));
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// The character's items (container table rows), in insertion order.
         /// </summary>
         public List<CharacterItem> LoadItems(Character character)

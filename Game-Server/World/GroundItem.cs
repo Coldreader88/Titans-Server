@@ -63,6 +63,15 @@ namespace TitansUC.GameServer.World
         public bool IsWreck { get; set; }
 
         /// <summary>
+        /// A vehicle destroyed where it stood: from now on a wreck, lying for its own ten minutes.
+        /// </summary>
+        public void BecomeWreck()
+        {
+            IsWreck = true;
+            Placed = GameWorld.UnixTime();
+        }
+
+        /// <summary>
         /// Items disappear after <see cref="Lifetime"/>, wrecks after <see cref="Combat.WreckLifetime"/>.
         /// Vehicles stay until their owner takes them (or logs in again, which puts them back in the hangar), so
         /// their expiry keeps moving forward.

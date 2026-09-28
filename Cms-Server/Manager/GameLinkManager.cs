@@ -60,6 +60,12 @@ namespace TitansUC.CmsServer.Manager
             return SendToAll(() => GameLink.Spawn(characterID, list));
         }
 
+        public bool GmCommand(uint characterID, string name, IEnumerable<string> args)
+        {
+            var list = args.ToList();
+            return SendToAll(() => GameLink.GmCommand(characterID, name, list));
+        }
+
         public bool PositionLog(uint characterID, string message)
         {
             return SendToAll(() => GameLink.PositionLog(characterID, message));

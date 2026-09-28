@@ -116,6 +116,27 @@ namespace TitansUC.GameServer
                             Logger.ShowInfo(gm.GmSpawn(string.Join(" ", args, 2, args.Length - 2).Split(new[] { "::" }, StringSplitOptions.None)));
                             break;
 
+                        case "gm":
+                            // gm <character name or id> <command>, e.g. gm Brian items::weapon or gm Brian skill::ambac::80
+                            if (args.Length < 3)
+                            {
+                                Logger.ShowInfo("Usage: gm <character name or id> items[::category[::filter][::page]] | skill[::name::level]");
+                                break;
+                            }
+                            uint gmID;
+                            var who = uint.TryParse(args[1], out gmID) ? GameWorld.Instance.Get(gmID)
+                                : GameWorld.Instance.Players.Find(s => string.Equals(s.Character.Name, args[1], StringComparison.OrdinalIgnoreCase));
+                            if (who == null)
+                            {
+                                Logger.ShowInfo(args[1] + " is not online.");
+                                break;
+                            }
+                            foreach (var line in GmCommands.Run(who, string.Join(" ", args, 2, args.Length - 2)))
+                            {
+                                Logger.ShowInfo(line);
+                            }
+                            break;
+
                         case "online":
                             foreach (UCGameSession player in GameWorld.Instance.Players)
                             {
