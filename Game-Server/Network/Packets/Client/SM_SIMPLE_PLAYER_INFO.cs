@@ -17,6 +17,20 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_SIMPLE_PLAYER_INFO : UCPacket<GSOpcode>
     {
+        /// <summary>
+        /// An NPC: account FFFFFFFF, as the official server sent it.
+        /// </summary>
+        public SM_SIMPLE_PLAYER_INFO(World.Npc npc)
+        {
+            this.ID = GSOpcode.SM_SIMPLE_PLAYER_INFO;
+
+            this.PutUIntBE(0xFFFFFFFF);
+            this.PutUIntBE(npc.ID);
+            this.PutByte(0);
+            this.PutByte(npc.Faction);
+            this.PutUCString(npc.Name);
+        }
+
         public SM_SIMPLE_PLAYER_INFO(uint accountID, Character character)
         {
             this.ID = GSOpcode.SM_SIMPLE_PLAYER_INFO;

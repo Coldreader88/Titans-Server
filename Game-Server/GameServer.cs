@@ -62,6 +62,8 @@ namespace TitansUC.GameServer
                 return;
             }
 
+            World.NpcManager.Instance.Start();
+
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
 
