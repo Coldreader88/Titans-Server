@@ -12,11 +12,12 @@ namespace TitansUC.GameServer.World
     /// Names and shop prices of the items, read from the client's template files (DB/Templates/*TEMPLATE.DAT).
     ///
     /// Every binary template file lists its records after a 4-byte header and a UC size count, and every record
-    /// starts the same way: int32 BE id, 4 bytes, three UC-size-prefixed UTF-16 strings (comment, code, name),
-    /// 4 bytes, int32 BE price. What follows differs per file (see <see cref="VehicleTemplates"/> for the MS
-    /// layout), so the next record is found by looking for the next id of the same range followed by valid
-    /// strings. That finds exactly the header's count in every file; the prices match what the official server
-    /// charged (75mm machine gun 7500 in 75mm_MG.pcap, alumina 250 in Alumina_1(ZSSAEO3).pcap).
+    /// starts the same way: int32 BE id, int32 BE sub-type (<see cref="ItemTemplate.Kind"/>), three
+    /// UC-size-prefixed UTF-16 strings (comment, code, name), 4 bytes, int32 BE price. What follows differs per
+    /// file (see <see cref="VehicleTemplates"/> for the MS layout), so the next record is found by looking for
+    /// the next id of the same range followed by valid strings. That finds exactly the header's count in every
+    /// file; the prices match what the official server charged (75mm machine gun 7500 in 75mm_MG.pcap, alumina
+    /// 250 in Alumina_1(ZSSAEO3).pcap).
     ///
     /// A price of 100000000 marks items the shops do not sell. CLOTHESTEMPLATE.DAT is a text file without
     /// prices; clothes and yarn (24xxxx) are made by players, not bought.
@@ -32,7 +33,7 @@ namespace TitansUC.GameServer.World
         {
             "MSTEMPLATE.DAT", "TANKTEMPLATE.DAT", "CARTEMPLATE.DAT", "FIGHTERTEMPLATE.DAT", "MATEMPLATE.DAT",
             "BATTLESHIPTEMPLATE.DAT", "EVENTMSTEMPLATE.DAT", "EVENTTANKTEMPLATE.DAT", "EVENTCARTEMPLATE.DAT",
-            "EVENTFIGHTERTEMPLATE.DAT",
+            "EVENTFIGHTERTEMPLATE.DAT", "EVENTMATEMPLATE.DAT",
         };
 
         private static readonly string[] Files =
@@ -41,7 +42,9 @@ namespace TitansUC.GameServer.World
             "DEVELOPMENTTOOLTEMPLATE.DAT", "EVENTCARTEMPLATE.DAT", "EVENTFIGHTERTEMPLATE.DAT", "EVENTITEMTEMPLATE.DAT",
             "EVENTMSTEMPLATE.DAT", "EVENTTANKTEMPLATE.DAT", "FIGHTERTEMPLATE.DAT", "FUELTEMPLATE.DAT", "MATEMPLATE.DAT",
             "MSTEMPLATE.DAT", "RAWMATERIALTEMPLATE.DAT", "SHIELDTEMPLATE.DAT", "TANKTEMPLATE.DAT", "TARGETTEMPLATE.DAT",
-            "WEAPONTEMPLATE.DAT",
+            "WEAPONTEMPLATE.DAT", "ENGINETEMPLATE.DAT", "ORETEMPLATE.DAT", "FARMPRODUCTTEMPLATE.DAT",
+            "STOCKFARMPRODUCTTEMPLATE.DAT", "MARINEPRODUCTTEMPLATE.DAT", "DYETEMPLATE.DAT", "WRECKAGETEMPLATE.DAT",
+            "EVENTMATEMPLATE.DAT",
         };
 
         private static readonly object loadLock = new object();
@@ -131,6 +134,9 @@ namespace TitansUC.GameServer.World
                 case "ammunition": return "ammo";
                 case "developmenttool": return "tool";
                 case "rawmaterial": return "material";
+                case "farmproduct": return "farm";
+                case "stockfarmproduct": return "stockfarm";
+                case "marineproduct": return "marine";
                 default: return name;
             }
         }
@@ -222,7 +228,7 @@ namespace TitansUC.GameServer.World
                 {
                     return null;
                 }
-                q += 4;
+                int kind = ReadInt(d, ref q);
                 string comment, code, name;
                 if (!TryReadString(d, ref q, out comment) || !TryReadString(d, ref q, out code) ||
                     !TryReadString(d, ref q, out name) || name.Length == 0)
@@ -232,7 +238,7 @@ namespace TitansUC.GameServer.World
                 q += 4;
                 int price = ReadInt(d, ref q);
                 p = q;
-                return new ItemTemplate { ID = id, Name = name.Trim(), Price = price };
+                return new ItemTemplate { ID = id, Kind = kind, Name = name.Trim(), Price = price };
             }
             catch (IndexOutOfRangeException)
             {
@@ -292,6 +298,12 @@ namespace TitansUC.GameServer.World
     {
         public int ID { get; set; }
         public string Name { get; set; }
+
+        /// <summary>
+        /// The int32 BE after the id: a sub-type the production tables match ingredients on. Engines: 1 MS/MA
+        /// rocket, 2 tank, 5 hydro jet, 7 general vehicle, 8 MS/MA jet (a Zaku II F2 takes a 1 or an 8).
+        /// </summary>
+        public int Kind { get; set; }
 
         /// <summary>
         /// The shop price of one; <see cref="ItemTemplates.NotForSale"/> for items the shops do not sell.

@@ -148,8 +148,10 @@ namespace TitansUC.GameServer.World
                     continue;
                 }
 
-                if (item.ContainerID == PlayerContainers.Hangar)
+                var itemTemplate = ItemTemplates.Get(item.ItemID);
+                if (item.ContainerID == PlayerContainers.Hangar || (itemTemplate != null && itemTemplate.IsVehicle))
                 {
+                    // Vehicles also wait in the productive container (the factory) after they are built.
                     AddVehicle(container, item);
                 }
                 else
@@ -237,6 +239,15 @@ namespace TitansUC.GameServer.World
                 var item = GetLocked(itemUID);
                 var source = GetLocked(sourceUID);
                 var dest = GetLocked(destUID);
+                if (item != null && source != null && dest != null && item.Parent == source && IsVehicle(item) &&
+                    HoldsVehicles(source) && HoldsVehicles(dest) && source != dest)
+                {
+                    // A vehicle built in the factory goes to the hangar ("take out"), or back in to be taken apart
+                    // (Zaku_F2A_Factory_to_Hangar.pcap: section 7, answered like an item move).
+                    source.Remove(item);
+                    dest.Add(item);
+                    return new MoveResult { Item = item, Kind = MoveKind.Moved };
+                }
                 if (item == null || source == null || dest == null || item.Parent != source || source == dest ||
                     dest.Format != ItemNode.Multi || !CanHoldItems(source) || !CanHoldItems(dest) ||
                     item.Format != ItemNode.Singleton || amount <= 0 || amount > item.Amount)
@@ -690,6 +701,15 @@ namespace TitansUC.GameServer.World
             lock (sync)
             {
                 var item = GetLocked(itemUID);
+                if (item != null && IsVehicle(item) && item.Parent != null && item.Parent.UniqueID == containerUID &&
+                    IsFactory(item.Parent))
+                {
+                    // Dragged out of the factory onto the ground; it keeps its unique id
+                    // (Zaku_F2A_Drag_Out_of_Factory.pcap).
+                    item.Parent.Remove(item);
+                    UnregisterTree(item);
+                    return item;
+                }
                 if (item == null || amount <= 0 || item.Format != ItemNode.Singleton || amount > item.Amount)
                 {
                     return null;
@@ -758,6 +778,17 @@ namespace TitansUC.GameServer.World
                 }
 
                 var dest = GetLocked(destUID);
+                if (IsVehicle(item))
+                {
+                    // Dragged from the ground into the factory, to be taken apart (Zaku_F2A_Drag_into_Factory.pcap).
+                    if (dest == null || !IsFactory(dest))
+                    {
+                        return false;
+                    }
+                    dest.Add(item);
+                    RegisterTree(item);
+                    return true;
+                }
                 if (dest == null || !CanHoldItems(dest))
                 {
                     return false;
@@ -844,7 +875,7 @@ namespace TitansUC.GameServer.World
 
         private static CharacterItem ToRow(int containerID, ItemNode item)
         {
-            bool vehicle = containerID == PlayerContainers.Hangar || containerID == PilotingRow;
+            bool vehicle = containerID == PlayerContainers.Hangar || containerID == PilotingRow || IsVehicle(item);
             return new CharacterItem
             {
                 ContainerID = containerID,
@@ -872,6 +903,136 @@ namespace TitansUC.GameServer.World
             }
             return container.Parent == null &&
                 container.StaticID != PlayerContainers.Weared && container.StaticID != PlayerContainers.Hangar;
+        }
+
+        /// <summary>
+        /// Whether a container is the player's productive container (the factory), where things are made.
+        /// </summary>
+        public static bool IsFactory(ItemNode container)
+        {
+            return container != null && container.Parent == null && container.StaticID == PlayerContainers.Productive;
+        }
+
+        private static bool HoldsVehicles(ItemNode container)
+        {
+            return IsFactory(container) || (container.Parent == null && container.StaticID == PlayerContainers.Hangar);
+        }
+
+        /// <summary>
+        /// Uses up <paramref name="amount"/> of an item in one of the player's containers for production.
+        /// Returns 8 when none is left (the item is gone), 9 when some of the stack is, 0 when it cannot
+        /// (the states 0x8028 reports).
+        /// </summary>
+        public uint UseUp(uint itemUID, uint containerUID, int amount)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                if (item == null || item.Parent == null || item.Parent.UniqueID != containerUID || amount <= 0 ||
+                    item.Format != ItemNode.Singleton || amount > item.Amount || !CanHoldItems(item.Parent))
+                {
+                    return 0;
+                }
+                if (amount >= item.Amount)
+                {
+                    item.Parent.Remove(item);
+                    Unregister(item);
+                    return 8;
+                }
+                item.Amount -= amount;
+                Touch(item);
+                return 9;
+            }
+        }
+
+        /// <summary>
+        /// Whether one of the player's items could be used up for production: it is in that container, and
+        /// the stack has <paramref name="amount"/>.
+        /// </summary>
+        public bool CanUse(uint itemUID, uint containerUID, int templateID, int amount)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                return item != null && item.StaticID == templateID && item.Parent != null &&
+                    item.Parent.UniqueID == containerUID && item.Format == ItemNode.Singleton &&
+                    amount > 0 && amount <= item.Amount && CanHoldItems(item.Parent);
+            }
+        }
+
+        /// <summary>
+        /// Puts what production made or gave back in a container: stacking items join a stack of the same item
+        /// there, others come one by one (at most <paramref name="amount"/>); a vehicle is built with
+        /// <paramref name="engineID"/> (-1: its template's). Returns the (last) node.
+        /// </summary>
+        public ItemNode Produce(ItemNode container, int templateID, int amount, int engineID = -1)
+        {
+            lock (sync)
+            {
+                var template = ItemTemplates.Get(templateID);
+                if (template != null && template.IsVehicle)
+                {
+                    var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Name = template.Name, Amount = engineID });
+                    container.Add(vehicle);
+                    return vehicle;
+                }
+                string name = template != null ? template.Name : null;
+                if (template == null || template.Stacks)
+                {
+                    var stack = container.Children.Find(c => c.StaticID == templateID && c.Format == ItemNode.Singleton);
+                    if (stack != null)
+                    {
+                        stack.Amount += amount;
+                        Touch(stack);
+                        return stack;
+                    }
+                    return Register(container.Add(NewItem(templateID, amount, name)));
+                }
+                ItemNode last = null;
+                for (int i = 0; i < amount; i++)
+                {
+                    last = Register(container.Add(NewItem(templateID, 1, name)));
+                }
+                return last;
+            }
+        }
+
+        /// <summary>
+        /// Takes a vehicle in the factory apart: it is gone, and its cargo and armaments stay in the factory.
+        /// Returns the vehicle, or null when it is not a vehicle in the factory.
+        /// </summary>
+        public ItemNode Dismantle(uint vehicleUID, uint factoryUID)
+        {
+            lock (sync)
+            {
+                var vehicle = GetLocked(vehicleUID);
+                var factory = GetLocked(factoryUID);
+                if (vehicle == null || !IsVehicle(vehicle) || !IsFactory(factory) || vehicle.Parent != factory)
+                {
+                    return null;
+                }
+                factory.Remove(vehicle);
+                UnregisterTree(vehicle);
+                var parts = new List<ItemNode>();
+                foreach (var part in vehicle.Children)
+                {
+                    parts.AddRange(part.Children.FindAll(c => !c.IsEmptySlot && c.Format == ItemNode.Singleton));
+                }
+                foreach (var item in parts)
+                {
+                    // The vehicle is gone, so its weapons and cargo simply change hands, as they are.
+                    Register(factory.Add(item));
+                }
+                return vehicle;
+            }
+        }
+
+        /// <summary>
+        /// Whether a node is a vehicle (a list with its armaments and inventory in it), not a stack of items.
+        /// </summary>
+        public static bool IsVehicle(ItemNode item)
+        {
+            return item.Format == ItemNode.Multi && item.Children.Exists(c => c.StaticID == VehicleArmaments);
         }
 
         private void AddVehicle(ItemNode hangar, CharacterItem item)

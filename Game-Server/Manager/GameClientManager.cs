@@ -28,6 +28,8 @@ namespace TitansUC.GameServer.Manager
             RegisterPacketHandler(GSOpcode.CM_ATTACK_ITEM, new CM_ATTACK_ITEM());
             RegisterPacketHandler(GSOpcode.CM_SPACE_ITEM_LOCK, new CM_SPACE_ITEM_LOCK(GSOpcode.CM_SPACE_ITEM_LOCK));
             RegisterPacketHandler(GSOpcode.CM_SPACE_ITEM_LIST, new CM_SPACE_ITEM_LOCK(GSOpcode.CM_SPACE_ITEM_LIST));
+            RegisterPacketHandler(GSOpcode.CM_PRODUCT_ITEM, new CM_PRODUCT_ITEM(GSOpcode.CM_PRODUCT_ITEM));
+            RegisterPacketHandler(GSOpcode.CM_PRODUCT_DONE, new CM_PRODUCT_ITEM(GSOpcode.CM_PRODUCT_DONE));
             RegisterPacketHandler(GSOpcode.CM_TARGET_DESTROYED, new CM_TARGET_DESTROYED());
             RegisterPacketHandler(GSOpcode.CM_MULTI_ATTACK_RESULT, new CM_MULTI_ATTACK_RESULT());
             RegisterPacketHandler(GSOpcode.CM_RELAY, new CM_RELAY());
