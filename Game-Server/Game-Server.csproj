@@ -80,7 +80,6 @@
     <Compile Include="Network\Packets\Client\SM_SPACE_PICKUP_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_UPDATE_ITEM_INFO.cs" />
     <Compile Include="World\GroundItem.cs" />
-    <Compile Include="World\Flight.cs" />
     <Compile Include="Network\Packets\Client\CM_ATTACK_RESULT.cs" />
     <Compile Include="Network\Packets\Client\CM_MULTI_ATTACK_RESULT.cs" />
     <Compile Include="Network\Packets\Client\SM_ATTACK_RESULT.cs" />
@@ -97,6 +96,7 @@
     <Compile Include="World\Npc.cs" />
     <Compile Include="World\GmCommands.cs" />
     <Compile Include="World\Loadouts.cs" />
+    <Compile Include="World\WorldDatabase.cs" />
     <Compile Include="Network\Packets\Client\CM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_ITEM_LOCK.cs" />

@@ -1,5 +1,7 @@
 ﻿<?xml version="1.0"?>
 <GameServer>
+  <!-- The Earth (ground) server's port. Run a second copy with -instance=space for Space: it listens on
+       Port + 1 (42011). Without the argument (or with -instance=ground) the server runs Earth. -->
   <Port>42010</Port>
 
   <!-- Only log in characters the Lobby handed over (session key from the login reply). Turn off only for testing. -->
@@ -15,10 +17,9 @@
        0 = they only fire back when attacked, like on the official server. -->
   <NpcAggroRange>1500</NpcAggroRange>
 
-  <!-- Where the client reconnects after a shuttle flight between Earth and Space. This server handles both,
-       so this is its own address as the client sees it (like GameServerIP in LobbyServer.xml); 0 = Port. -->
+  <!-- Where the client reconnects after a shuttle flight: the other side's server (Earth: Port, Space:
+       Port + 1) at this address as the client sees it (like GameServerIP in LobbyServer.xml). -->
   <TransferHost>127.0.0.1</TransferHost>
-  <TransferPort>0</TransferPort>
 
   <!-- MySQL database shared with the Lobby server (DB/SQL/accounts.sql, DB/SQL/characters.sql). -->
   <Database>

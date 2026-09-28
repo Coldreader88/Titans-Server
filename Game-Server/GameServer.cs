@@ -23,9 +23,13 @@ namespace TitansUC.GameServer
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
-            ServerInfo.InitServer("Game-Server");
-
             Configuration.Instance.Initialization("./Config/GameServer.xml");
+            Configuration.Instance.SetInstance(args);
+            PlayerInventory.SetUniqueIDBase(Configuration.Instance.IsSpace);
+            ServerInfo.InitServer("Game-Server (" + Configuration.Instance.InstanceName + ")");
+            Logger.ShowInfo(string.Format("Running the {0} world (zone {1}) on port {2}; the other side is at {3}:{4}.",
+                Configuration.Instance.InstanceName, Configuration.Instance.Zone, Configuration.Instance.ListenPort,
+                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
             Network<GSOpcode>.SuppressUnknownPackets = false;
             Network<GSOpcode>.SuppressPacketPrintOut = true;
             Network<GSOpcode>.SuppressPacketHeaderPrintOut = true;
@@ -43,7 +47,18 @@ namespace TitansUC.GameServer
                 Logger.ShowWarning("CheckSessionKey is off: anyone can log in to any character.");
             }
 
-            GameClientManager.Instance.Port = Configuration.Instance.Port;
+            try
+            {
+                WorldDatabase.EnsureTables();
+                WorldDatabase.LoadGround(Configuration.Instance.Zone);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError("Cannot read the saved ground items: " + ex.Message);
+            }
+            WorldDatabase.StartSaving(Configuration.Instance.Zone);
+
+            GameClientManager.Instance.Port = Configuration.Instance.ListenPort;
             Encryption.KeyExchangeImplementation = new SmartEngine.Network.DefaultEncryptionKeyExchange();
             Encryption.Implementation = new Common.Network.Encryption.UCEncryption();
             // The official game server numbered its own packets 1, 2, 3, ...: once the client sends packets
@@ -54,7 +69,7 @@ namespace TitansUC.GameServer
 
             if (!GameClientManager.Instance.Start())
             {
-                Logger.ShowError("Cannot Listen on port:" + Configuration.Instance.Port);
+                Logger.ShowError("Cannot Listen on port:" + Configuration.Instance.ListenPort);
                 Logger.ShowError("Shutting down in 20sec.");
                 GameClientManager.Instance.Stop();
                 System.Threading.Thread.Sleep(20000);
@@ -85,7 +100,10 @@ namespace TitansUC.GameServer
                 {
                     string cmd = Console.ReadLine();
                     if (cmd == null)
-                        break;
+                    {
+                        // No console (input closed): keep serving; the ground is saved as it changes.
+                        System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
+                    }
                     args = cmd.Split(' ');
                     switch (args[0].ToLower())
                     {
@@ -137,6 +155,15 @@ namespace TitansUC.GameServer
                             }
                             break;
 
+                        case "save":
+                            foreach (UCGameSession player in GameWorld.Instance.Players)
+                            {
+                                player.Save();
+                            }
+                            WorldDatabase.SaveGround(Configuration.Instance.Zone);
+                            Logger.ShowInfo("Saved the players and the ground.");
+                            break;
+
                         case "online":
                             foreach (UCGameSession player in GameWorld.Instance.Players)
                             {
@@ -158,6 +185,11 @@ namespace TitansUC.GameServer
         private static void ShuttingDown(object sender, ConsoleCancelEventArgs args)
         {
             Logger.ShowInfo("Closing.....");
+            foreach (UCGameSession player in GameWorld.Instance.Players)
+            {
+                player.Save();
+            }
+            WorldDatabase.SaveGround(Configuration.Instance.Zone);
             GameClientManager.Instance.Stop();
         }
 

@@ -17,12 +17,57 @@ namespace TitansUC.GameServer
         string chatHost = "127.0.0.1", chatPassword = "";
         int chatPort = 10241;
         string transferHost = "127.0.0.1";
-        int transferPort;
+        ushort zone = ZoneEarth;
+
+        public const ushort ZoneEarth = 1;
+        public const ushort ZoneSpace = 2;
 
         /// <summary>
-        /// Port the game server listens on (the Lobby sends it to the client, see LobbyServer.xml GameServerPort).
+        /// The Earth (ground) server's port; the Space server listens on the next one, as the Java server
+        /// had them (24010 and 24011). The Lobby sends the client to one or the other by the character's zone
+        /// (LobbyServer.xml GameServerPort).
         /// </summary>
         public int Port { get { return port; } }
+
+        /// <summary>
+        /// Which world this process runs: <see cref="ZoneEarth"/> (the default, "-instance=ground") or
+        /// <see cref="ZoneSpace"/> ("-instance=space"), like the Java server's SPACE argument.
+        /// </summary>
+        public ushort Zone { get { return zone; } }
+
+        public bool IsSpace { get { return zone == ZoneSpace; } }
+
+        public string InstanceName { get { return IsSpace ? "Space" : "Earth"; } }
+
+        /// <summary>
+        /// The port this process listens on: <see cref="Port"/> on Earth, <see cref="Port"/> + 1 in Space.
+        /// </summary>
+        public int ListenPort { get { return IsSpace ? port + 1 : port; } }
+
+        /// <summary>
+        /// The port of the other side's server, where a shuttle flight sends the client (0x8040).
+        /// </summary>
+        public int TransferPort { get { return IsSpace ? port : port + 1; } }
+
+        /// <summary>
+        /// Reads "-instance=ground|earth|space" from the command line (ground when missing).
+        /// </summary>
+        public void SetInstance(string[] args)
+        {
+            foreach (var arg in args ?? new string[0])
+            {
+                var a = arg.Trim().TrimStart('-', '/').ToLowerInvariant();
+                if (a.StartsWith("instance=") || a.StartsWith("instance:"))
+                {
+                    var value = a.Substring(9);
+                    zone = value == "space" || value == "2" ? ZoneSpace : ZoneEarth;
+                }
+                else if (a == "space")
+                {
+                    zone = ZoneSpace;
+                }
+            }
+        }
 
         public int LogLevel { get { return loglevel; } }
 
@@ -61,11 +106,10 @@ namespace TitansUC.GameServer
         public string ChatPassword { get { return chatPassword; } }
 
         /// <summary>
-        /// Where a shuttle flight between Earth and Space reconnects the client (0x8040). This server handles
-        /// both sides, so by default the client comes back here; 0 as the port means <see cref="Port"/>.
+        /// The other side's server address as the client sees it, where a shuttle flight between Earth and
+        /// Space reconnects the client (0x8040), on <see cref="TransferPort"/>.
         /// </summary>
         public string TransferHost { get { return transferHost; } }
-        public int TransferPort { get { return transferPort > 0 ? transferPort : port; } }
 
         public string DBHost { get { return dbHost; } }
         public int DBPort { get { return dbPort; } }
@@ -113,7 +157,7 @@ namespace TitansUC.GameServer
                             transferHost = i.InnerText.Trim();
                             break;
                         case "transferport":
-                            transferPort = int.Parse(i.InnerText.Trim());
+                            // Old setting: the other server's port is now always Port or Port + 1.
                             break;
                         case "chatpassword":
                             chatPassword = i.InnerText;

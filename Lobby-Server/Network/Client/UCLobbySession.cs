@@ -282,8 +282,8 @@ namespace TitansUC.LobbyServer.Network.Client
 
         /// <summary>
         /// 0x30005: the player entered the game with a character; send the game server address.
-        /// Java reference: RequestGameServerIP.java. The Java server picked the Earth or Space server by
-        /// the character's zone; this server has one game server, set in LobbyServer.xml.
+        /// Java reference: RequestGameServerIP.java. As there, the character's zone picks the Earth game server
+        /// (LobbyServer.xml GameServerPort) or the Space one (the next port).
         /// </summary>
         public void OnRequestGameServer(CM_REQUEST_GAME_SERVER p)
         {
@@ -314,11 +314,13 @@ namespace TitansUC.LobbyServer.Network.Client
                     return;
                 }
 
+                // Earth and Space are separate game servers: Space listens on the Earth port + 1.
+                bool space = (int)character.Zone == 2;
                 string address = Configuration.Instance.GameServerIP;
-                int port = Configuration.Instance.GameServerPort;
+                int port = Configuration.Instance.GameServerPort + (space ? 1 : 0);
 
-                Logger.ShowInfo(string.Format("Sending {0} with character {1} to the game server at {2}:{3}.",
-                    account.UserName, character.Name, address, port));
+                Logger.ShowInfo(string.Format("Sending {0} with character {1} to the {2} game server at {3}:{4}.",
+                    account.UserName, character.Name, space ? "Space" : "Earth", address, port));
 
                 this.Network.SendPacket(new SM_GAME_SERVER(SM_GAME_SERVER.Allow, address, port));
             }
