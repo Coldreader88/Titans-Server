@@ -73,6 +73,7 @@
     <Compile Include="Network\Packets\Client\SM_PAY_REPAIR.cs" />
     <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
     <Compile Include="World\ItemTemplates.cs" />
+    <Compile Include="World\Production.cs" />
     <Compile Include="Network\Packets\Client\Bytes.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_PLACED_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_SPACE_PLACED_ITEM.cs" />
@@ -100,6 +101,7 @@
     <Compile Include="Network\Packets\Client\CM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_ITEM_LOCK.cs" />
+    <Compile Include="Network\Packets\Client\CM_PRODUCT_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_SPACE_ITEM_LIST.cs" />
     <Compile Include="Network\Packets\Client\CM_TARGET_DESTROYED.cs" />
     <Compile Include="Network\Packets\Client\SM_SKILL_GAIN.cs" />

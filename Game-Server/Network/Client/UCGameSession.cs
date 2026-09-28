@@ -597,8 +597,10 @@ namespace TitansUC.GameServer.Network.Client
 
             bool vehicle = p.MiniOp == CM_SPACE_PICKUP_ITEM.GetIn;
             var zone = (ushort)Character.Zone;
+            // A vehicle of theirs can also be dragged into the factory (mini op 1 with the factory as destination).
+            bool toFactory = !vehicle && PlayerInventory.IsFactory(Inventory.Get(p.DestUniqueID));
             var ground = GameWorld.Instance.Take(p.ItemUniqueID, g => g.ClusterID == zone &&
-                (vehicle ? g.IsVehicle && !g.IsWreck && g.OwnerID == CharacterID : !g.IsVehicle));
+                (vehicle || (toFactory && g.IsVehicle) ? g.IsVehicle && !g.IsWreck && g.OwnerID == CharacterID : !g.IsVehicle));
             if (ground == null)
             {
                 RefuseGround("pick up", p.ItemUniqueID, "nothing there they can take");
@@ -626,6 +628,266 @@ namespace TitansUC.GameServer.Network.Client
             this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, ground.Node));
             BroadcastGround(vehicle ? SM_UPDATE_ITEM_INFO.VehicleTaken : SM_UPDATE_ITEM_INFO.ItemPickedUp, ground);
             SaveItems();
+        }
+
+        private static readonly Random productionRandom = new Random();
+
+        private static int Roll()
+        {
+            lock (productionRandom)
+            {
+                return productionRandom.Next(10000);
+            }
+        }
+
+        /// <summary>
+        /// 0x28: make something in the productive container (the factory) from the ingredients the client
+        /// lists, or take a vehicle there apart. The recipes are the client's (<see cref="Production"/>). The
+        /// product goes in the factory at once and the client shows its timer; a failure uses the ingredients
+        /// up and gives the recipe's share of them back (70%).
+        /// </summary>
+        public void OnProductItem(CM_PRODUCT_ITEM p)
+        {
+            if (!CheckInGame("Production"))
+            {
+                return;
+            }
+            var factory = Inventory.Get(p.FactoryUniqueID);
+            string refusal = null;
+            if (p.CharacterID != CharacterID)
+            {
+                refusal = "not their character";
+            }
+            else if (!PlayerInventory.IsFactory(factory))
+            {
+                refusal = string.Format("{0:X8} is not their productive container", p.FactoryUniqueID);
+            }
+            else if (p.Action == CM_PRODUCT_ITEM.ActionUpgrade)
+            {
+                refusal = "vehicle upgrades are not implemented yet";
+            }
+            else if (p.Action == CM_PRODUCT_ITEM.ActionDismantle)
+            {
+                refusal = Dismantle(p, factory);
+            }
+            else
+            {
+                refusal = Craft(p, factory);
+            }
+            if (refusal != null)
+            {
+                // Nothing was used: the ingredients keep state 7.
+                Logger.ShowWarning(string.Format("{0} cannot make {1} (action {2}): {3}.", Character.Name, p.ProductID, p.Action, refusal));
+                this.Network.SendPacket(new SM_PRODUCT_ITEM(p, SM_PRODUCT_ITEM.Failed, (uint)GameWorld.UnixTime(),
+                    new List<uint>(), new List<KeyValuePair<int, int>>()));
+            }
+        }
+
+        /// <summary>
+        /// 0x28 actions 1-4: builds the product, or fails. Returns why it cannot, or null once it answered.
+        /// </summary>
+        private string Craft(CM_PRODUCT_ITEM p, ItemNode factory)
+        {
+            var recipe = Production.Get(p.ProductID);
+            if (recipe == null)
+            {
+                return "no recipe for it";
+            }
+            var product = ItemTemplates.Get(p.ProductID);
+            bool stacks = product == null || product.Stacks;
+            int batches = stacks ? Math.Max(1, p.Amount / recipe.Yield) : 1;
+            if (batches > 10000)
+            {
+                return "amount " + p.Amount;
+            }
+
+            // Which of the listed items go to which ingredient, and how much of each.
+            var use = new int[p.Inputs.Count];
+            int engine = -1;
+            foreach (var input in recipe.Inputs)
+            {
+                int needed = input.Amount * batches;
+                for (int i = 0; i < p.Inputs.Count && needed > 0; i++)
+                {
+                    var listed = p.Inputs[i];
+                    if (use[i] > 0 || !input.Matches(listed.TemplateID))
+                    {
+                        continue;
+                    }
+                    int take = Math.Min(needed, listed.Amount);
+                    if (!Inventory.CanUse(listed.UniqueID, listed.ContainerUniqueID, listed.TemplateID, take))
+                    {
+                        return string.Format("{0:X8} is not {1} x {2} of theirs", listed.UniqueID, take, listed.TemplateID);
+                    }
+                    use[i] = take;
+                    needed -= take;
+                    if (input.Range == 29)
+                    {
+                        engine = listed.TemplateID;
+                    }
+                }
+                if (needed > 0)
+                {
+                    return string.Format("{0} more of ingredient {1} needed", needed, input.TemplateID != -1 ? input.TemplateID.ToString() : "range " + input.Range);
+                }
+            }
+
+            var states = new List<uint>();
+            var used = new Dictionary<int, int>();
+            for (int i = 0; i < p.Inputs.Count; i++)
+            {
+                uint state = 7;
+                if (use[i] > 0)
+                {
+                    state = Inventory.UseUp(p.Inputs[i].UniqueID, p.Inputs[i].ContainerUniqueID, use[i]);
+                    int sum;
+                    used.TryGetValue(p.Inputs[i].TemplateID, out sum);
+                    used[p.Inputs[i].TemplateID] = sum + use[i];
+                }
+                states.Add(state);
+            }
+
+            var output = new List<KeyValuePair<int, int>>();
+            int chance = Recipe.Chance(Character, recipe.Skills, recipe.SuccessRate);
+            bool success = Roll() < chance;
+            if (success)
+            {
+                int made = batches * recipe.Yield;
+                int productID = p.ProductID;
+                if (recipe.Kind == Recipe.Kinds.Refine && made > 1)
+                {
+                    // Refining in bulk came out 17-27% over (1000 iron ore: 585 steel, not 500; 1000 bauxite:
+                    // 590 alumina; 1000 alumina: 635 fine ceramics). Single ones came out as asked.
+                    lock (productionRandom)
+                    {
+                        made += made * productionRandom.Next(15, 28) / 100;
+                    }
+                }
+                else if (recipe.ExID > 0 && Recipe.BestSkill(Character, recipe.Skills) >= recipe.ExSkill && Roll() < recipe.ExRate)
+                {
+                    productID = recipe.ExID;
+                }
+                Inventory.Produce(factory, productID, made, engine);
+                output.Add(new KeyValuePair<int, int>(productID, made));
+                GainSkill(recipe.Skills);
+            }
+            else
+            {
+                foreach (var r in recipe.Returns)
+                {
+                    int sum;
+                    int back = used.TryGetValue(r.Key, out sum) ? sum * r.Value / 10000 : 0;
+                    if (back > 0)
+                    {
+                        Inventory.Produce(factory, r.Key, back);
+                        output.Add(new KeyValuePair<int, int>(r.Key, back));
+                    }
+                }
+            }
+
+            Logger.ShowInfo(string.Format("{0} {1} {2} ({3}) x {4} at {5:0.#}% ({6}).", Character.Name,
+                success ? "made" : "failed to make", recipe.ProductID, product != null ? product.Name : "?", batches * recipe.Yield,
+                chance / 100.0, string.Join(", ", output.Select(o => o.Value + " x " + o.Key))));
+            this.Network.SendPacket(new SM_PRODUCT_ITEM(p, success ? SM_PRODUCT_ITEM.Done : SM_PRODUCT_ITEM.Failed,
+                (uint)GameWorld.UnixTime(), states, output));
+            SaveItems();
+            return null;
+        }
+
+        /// <summary>
+        /// 0x28 action 5: takes the vehicle in the factory apart. It gives back the recipe's share (70%) of what
+        /// it was built from, engine aside (a Zaku II F2 of 60 super high tensile steel gave 42,
+        /// Zaku_F2A_Dismantle_Success.pcap); a failure gives back 70% of that (an Oggo of 10 gave 5,
+        /// Oggo_Dismantle_Fail_(ZSSAEO3).pcap). Returns why it cannot, or null once it answered.
+        /// </summary>
+        private string Dismantle(CM_PRODUCT_ITEM p, ItemNode factory)
+        {
+            if (p.Inputs.Count != 1)
+            {
+                return p.Inputs.Count + " items listed";
+            }
+            var node = Inventory.Get(p.Inputs[0].UniqueID);
+            var recipe = node != null ? Production.Get(node.StaticID) : null;
+            if (recipe == null || !recipe.CanDismantle)
+            {
+                return "it cannot be taken apart";
+            }
+            if (Inventory.Dismantle(p.Inputs[0].UniqueID, factory.UniqueID) == null)
+            {
+                return "it is not a vehicle in the factory";
+            }
+
+            int chance = Recipe.Chance(Character, recipe.DismantleSkills, recipe.DismantleRate);
+            bool success = Roll() < chance;
+            var output = new List<KeyValuePair<int, int>>();
+            foreach (var r in recipe.Returns)
+            {
+                var input = recipe.Inputs.Find(i => i.TemplateID == r.Key);
+                int back = input != null ? input.Amount * r.Value / 10000 : 0;
+                if (!success)
+                {
+                    back = (int)Math.Round(back * r.Value / 10000.0);
+                }
+                if (back > 0)
+                {
+                    Inventory.Produce(factory, r.Key, back);
+                    output.Add(new KeyValuePair<int, int>(r.Key, back));
+                }
+            }
+            if (success)
+            {
+                GainSkill(recipe.DismantleSkills);
+            }
+
+            Logger.ShowInfo(string.Format("{0} {1} {2} ({3}) apart: {4}.", Character.Name, success ? "took" : "failed to take",
+                node.Name, node.StaticID, string.Join(", ", output.Select(o => o.Value + " x " + o.Key))));
+            this.Network.SendPacket(new SM_PRODUCT_ITEM(p, success ? SM_PRODUCT_ITEM.Done : SM_PRODUCT_ITEM.Failed,
+                (uint)GameWorld.UnixTime(), new List<uint> { SM_PRODUCT_ITEM.StateUsedUp }, output));
+            SaveItems();
+            return null;
+        }
+
+        /// <summary>
+        /// A success raises the best of the skills it used by 0.1, up to 130. The captures show no skill packet
+        /// after crafting, so the client sees it at the next login. The rate of gain is ours.
+        /// </summary>
+        private void GainSkill(List<KeyValuePair<Skill, int>> skills)
+        {
+            if (skills.Count == 0)
+            {
+                return;
+            }
+            var skill = skills.OrderByDescending(s => Character.GetSkill(s.Key)).First().Key;
+            int level = Character.GetSkill(skill);
+            if (level >= GmCommands.MaxSkill)
+            {
+                return;
+            }
+            Character.SetSkill(skill, level + 1);
+            try
+            {
+                CharacterDatabase.Instance.SaveSkill(Character, skill);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+        }
+
+        /// <summary>
+        /// 0x29: the client's production timer ran out; 0x8029 is the request with 0x0002 in bytes 2-3 (the
+        /// product has been in the factory since 0x8028).
+        /// </summary>
+        public void OnProductDone(CM_PRODUCT_ITEM p)
+        {
+            if (!CheckInGame("Production done"))
+            {
+                return;
+            }
+            var body = (byte[])p.Body.Clone();
+            body[2] = 0;
+            body[3] = 2;
+            this.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_PRODUCT_DONE, body));
         }
 
         /// <summary>
