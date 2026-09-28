@@ -331,8 +331,22 @@ namespace TitansUC.GameServer.World
                 wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6], 0xFFFFFFFF) { IsWreck = true };
             }
             Logger.ShowInfo(string.Format("{0} destroyed NPC {1} ({2}).", attacker.Character.Name, npc.Name, npc.TemplateID));
-            // Loot first, then the wreck, as the official Magellans dropped theirs.
-            foreach (var loot in Loot(npc))
+            // Warships drop their loot on the ground first, then the wreck, as the official Magellans did. Mobile
+            // suits, armours and fighters keep it in the wreck's cargo, for whoever opens it (0x26/0x27).
+            var drops = Loot(npc);
+            if (npc.IsMobile)
+            {
+                var cargo = wreck.Node.Add(new ItemNode(PlayerInventory.NewUniqueID(), ItemNode.Multi, PlayerInventory.VehicleInventory)
+                {
+                    Name = "inventory", Modified = -1, Created = -1,
+                });
+                foreach (var loot in drops)
+                {
+                    cargo.Add(loot.Node);
+                }
+                drops.Clear();
+            }
+            foreach (var loot in drops)
             {
                 var item = loot;
                 GameWorld.Instance.Place(item);
@@ -345,7 +359,7 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// What a destroyed NPC drops, scattered within 200 of it; anyone can pick it up. Warships drop what
+        /// What a destroyed NPC drops, scattered within 200 of it (or put in its wreck); anyone can take it. Warships drop what
         /// the official Magellans dropped (fine lunatitanium alloy 510020, lunatitanium alloy, MR tool kit 280174,
         /// emergency tool kit 310013, MS junk parts); mobile suits, armours and fighters drop MS junk parts,
         /// cartridges and sometimes their gun. The official loot table is not known.
