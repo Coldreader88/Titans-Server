@@ -27,8 +27,13 @@ namespace TitansUC.GameServer.World
     /// of the position lists and comes back at its spawn point with the same id and the update counter raised
     /// by 2 (within 354 seconds in the captures).</item>
     /// </list>
-    /// The captured NPCs stood still (all on Earth, and ships in space; mobile suits in space drifted slowly), so
-    /// these do not move. The hit rules are the same as between players (<see cref="Combat"/>).
+    /// Movement: the captured NPCs on Earth and the ships stood still, mobile suits in space drifted about
+    /// 45-60 units a second around their squad's area. Here space mobile suits patrol around their spawn point at
+    /// that speed; any mobile suit chases its target into weapon range (not beyond <see cref="LeashDistance"/>
+    /// from home) and walks back home afterwards. Their new positions reach clients through 0x8003, like the
+    /// official ones. Hostile NPCs also attack pilots of the other faction within
+    /// NpcAggroRange (GameServer.xml) (0 = only fire back). Destroyed NPCs drop loot.
+    /// The hit rules are the same as between players (<see cref="Combat"/>).
     /// </summary>
     public class NpcManager
     {
@@ -43,6 +48,18 @@ namespace TitansUC.GameServer.World
         public const int ChaseDistance = 8000;
 
         private const int TickMs = 250;
+
+        /// <summary>
+        /// Units per second: patrolling (official space NPCs, ~50) and chasing or going home.
+        /// </summary>
+        public const int PatrolSpeed = 50;
+        public const int ChaseSpeed = 150;
+        public const int PatrolRadius = 1500;
+
+        /// <summary>
+        /// An NPC gives up the chase this far from its spawn point.
+        /// </summary>
+        public const int LeashDistance = 6000;
         private const int DefaultHealth = 50000;
 
         private static readonly NpcManager instance = new NpcManager();
@@ -180,6 +197,11 @@ namespace TitansUC.GameServer.World
                 MaxHealth = int.Parse(f[15]),
                 Alive = true,
             };
+            npc.SpawnX = npc.X;
+            npc.SpawnY = npc.Y;
+            npc.SpawnZ = npc.Z;
+            npc.SpawnDirection = npc.Direction;
+            npc.BaseAction = npc.Action;
             if (npc.MaxHealth <= 0)
             {
                 var template = VehicleTemplates.Get(npc.TemplateID);
@@ -240,6 +262,14 @@ namespace TitansUC.GameServer.World
                 Destroy(npc, attacker);
                 return;
             }
+            SquadAttack(npc, attacker.CharacterID);
+        }
+
+        /// <summary>
+        /// Every member of <paramref name="npc"/>'s squad without a target turns on the player.
+        /// </summary>
+        private void SquadAttack(Npc npc, uint playerID)
+        {
             long now = Now;
             foreach (var member in npcs.Values.Where(n => n.Squad == npc.Squad && n.Zone == npc.Zone && n.Weapon != null))
             {
@@ -247,10 +277,20 @@ namespace TitansUC.GameServer.World
                 {
                     if (member.Alive && member.Target == 0)
                     {
-                        member.Target = attacker.CharacterID;
+                        member.Target = playerID;
                         member.NextShot = now + Next(ShotDelayMs, 3 * ShotDelayMs);
+                        SetAction(member, Npc.ActionFighting);
                     }
                 }
+            }
+        }
+
+        private static void SetAction(Npc npc, byte action)
+        {
+            if (npc.Action != action)
+            {
+                npc.Action = action;
+                npc.UpdateCounter++;
             }
         }
 
@@ -278,9 +318,65 @@ namespace TitansUC.GameServer.World
                 wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6], 0xFFFFFFFF) { IsWreck = true };
             }
             Logger.ShowInfo(string.Format("{0} destroyed NPC {1} ({2}).", attacker.Character.Name, npc.Name, npc.TemplateID));
+            // Loot first, then the wreck, as the official Magellans dropped theirs.
+            foreach (var loot in Loot(npc))
+            {
+                var item = loot;
+                GameWorld.Instance.Place(item);
+                GameWorld.Instance.SendNear(item.ClusterID, item.X, item.Y, UCGameSession.BroadcastDistance,
+                    () => new SM_UPDATE_ITEM_INFO(SM_UPDATE_ITEM_INFO.ItemDropped, item, npc.ID));
+            }
             GameWorld.Instance.Place(wreck);
             GameWorld.Instance.SendNear(wreck.ClusterID, wreck.X, wreck.Y, UCGameSession.BroadcastDistance,
                 () => new SM_UPDATE_ITEM_INFO(SM_UPDATE_ITEM_INFO.ItemDropped, wreck, npc.ID));
+        }
+
+        /// <summary>
+        /// What a destroyed NPC drops, scattered within 200 of it; anyone can pick it up. Warships drop what
+        /// the official Magellans dropped (fine lunatitanium alloy 510020, lunatitanium alloy, MR tool kit 280174,
+        /// emergency tool kit 310013, MS junk parts); mobile suits, armours and fighters drop MS junk parts,
+        /// cartridges and sometimes their gun. The official loot table is not known.
+        /// </summary>
+        private List<GroundItem> Loot(Npc npc)
+        {
+            var drops = new List<KeyValuePair<int, int>>();
+            lock (random)
+            {
+                int range = npc.TemplateID / 10000;
+                if (range == 103)
+                {
+                    drops.Add(new KeyValuePair<int, int>(510020, random.Next(50, 201)));
+                    drops.Add(new KeyValuePair<int, int>(510003, random.Next(20, 101)));
+                    drops.Add(new KeyValuePair<int, int>(510019, random.Next(2, 6)));
+                    if (random.Next(2) == 0) drops.Add(new KeyValuePair<int, int>(280174, 1));
+                    if (random.Next(2) == 0) drops.Add(new KeyValuePair<int, int>(310013, 1));
+                }
+                else if (npc.IsMobile)
+                {
+                    drops.Add(new KeyValuePair<int, int>(510019, random.Next(1, 4)));
+                    if (random.Next(2) == 0) drops.Add(new KeyValuePair<int, int>(540000, random.Next(20, 61)));
+                    if (npc.Weapon != null && random.Next(10) == 0) drops.Add(new KeyValuePair<int, int>(npc.Weapon.StaticID, 1));
+                }
+            }
+
+            var result = new List<GroundItem>();
+            foreach (var drop in drops)
+            {
+                var template = ItemTemplates.Get(drop.Key);
+                if (template == null)
+                {
+                    continue;
+                }
+                int dx, dy;
+                lock (random)
+                {
+                    dx = random.Next(-200, 201);
+                    dy = random.Next(-200, 201);
+                }
+                var node = PlayerInventory.NewItem(template.ID, template.Stacks ? drop.Value : 1, template.Name);
+                result.Add(new GroundItem(node, npc.Zone, npc.X + dx, npc.Y + dy, npc.Z, new byte[6], 0xFFFFFFFF));
+            }
+            return result;
         }
 
         private void Tick(object state)
@@ -302,12 +398,9 @@ namespace TitansUC.GameServer.World
                         }
                         continue;
                     }
-                    if (npc.Weapon != null && (npc.Target != 0 || npc.ShotTarget != 0))
+                    lock (npc)
                     {
-                        lock (npc)
-                        {
-                            Fight(npc, now);
-                        }
+                        Think(npc, now, TickMs / 1000.0);
                     }
                 }
             }
@@ -321,10 +414,189 @@ namespace TitansUC.GameServer.World
             }
         }
 
+        /// <summary>
+        /// One AI step: look for enemies, fight, move.
+        /// </summary>
+        private void Think(Npc npc, long now, double seconds)
+        {
+            if (npc.Weapon == null || npc.IsVendor)
+            {
+                return;
+            }
+            if (npc.Target == 0 && now >= npc.NextAggroCheck)
+            {
+                npc.NextAggroCheck = now + 1000;
+                var enemy = FindEnemy(npc);
+                if (enemy != null)
+                {
+                    Monitor.Exit(npc);
+                    try
+                    {
+                        SquadAttack(npc, enemy.CharacterID);
+                    }
+                    finally
+                    {
+                        Monitor.Enter(npc);
+                    }
+                }
+            }
+            if (npc.Target != 0 || npc.ShotTarget != 0)
+            {
+                Fight(npc, now);
+            }
+            if (npc.IsMobile && npc.Alive)
+            {
+                Move(npc, seconds);
+            }
+            if (npc.Target == 0 && npc.Action == Npc.ActionFighting)
+            {
+                SetAction(npc, npc.BaseAction);
+            }
+        }
+
+        /// <summary>
+        /// The nearest pilot of the other faction within the aggro range, or null.
+        /// </summary>
+        private static UCGameSession FindEnemy(Npc npc)
+        {
+            int range = TitansUC.GameServer.Configuration.Instance.NpcAggroRange;
+            if (range <= 0)
+            {
+                return null;
+            }
+            UCGameSession best = null;
+            double bestDistance = double.MaxValue;
+            foreach (var player in GameWorld.Instance.Players)
+            {
+                var c = player.InGame ? player.Coord : null;
+                if (c == null || c.ClusterID != npc.Zone || player.Inventory.Piloting == null ||
+                    (byte)player.Character.Faction == npc.Faction)
+                {
+                    continue;
+                }
+                double d = WorldDistance(npc, c.X, c.Y, c.Z);
+                if (d <= range && d < bestDistance)
+                {
+                    best = player;
+                    bestDistance = d;
+                }
+            }
+            return best;
+        }
+
+        private static double WorldDistance(Npc npc, int x, int y, int z)
+        {
+            double dx = x - (double)npc.X, dy = y - (double)npc.Y, dz = z - (double)npc.Z;
+            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        /// <summary>
+        /// Chase the target into weapon range; without one go home, and in space patrol around home.
+        /// </summary>
+        private void Move(Npc npc, double seconds)
+        {
+            double fromHome = WorldDistance(npc, npc.SpawnX, npc.SpawnY, npc.SpawnZ);
+            var target = npc.Target != 0 ? Valid(npc, npc.Target) : null;
+            if (target != null && fromHome > LeashDistance)
+            {
+                npc.Target = 0;
+                npc.LockedOn.Clear();
+                target = null;
+            }
+
+            if (target != null)
+            {
+                var c = target.Coord;
+                var template = ItemTemplates.Get(npc.Weapon.StaticID);
+                double keep = Math.Max(300, Math.Min(template.Range * 4 * 0.6, 3000));
+                if (WorldDistance(npc, c.X, c.Y, c.Z) > keep)
+                {
+                    Step(npc, c.X, c.Y, c.Z, ChaseSpeed * seconds);
+                }
+                else
+                {
+                    Face(npc, c.X - (double)npc.X, c.Y - (double)npc.Y);
+                }
+                npc.HasWaypoint = false;
+                return;
+            }
+
+            if (fromHome > PatrolRadius || (npc.Zone != (ushort)Common.Characters.Zone.SPACE && fromHome > 50))
+            {
+                if (Step(npc, npc.SpawnX, npc.SpawnY, npc.SpawnZ, ChaseSpeed * seconds) && npc.Zone != (ushort)Common.Characters.Zone.SPACE)
+                {
+                    npc.Direction = npc.SpawnDirection;
+                }
+                npc.HasWaypoint = false;
+                return;
+            }
+
+            if (npc.Zone == (ushort)Common.Characters.Zone.SPACE)
+            {
+                if (!npc.HasWaypoint)
+                {
+                    lock (random)
+                    {
+                        npc.WaypointX = npc.SpawnX + random.Next(-PatrolRadius, PatrolRadius);
+                        npc.WaypointY = npc.SpawnY + random.Next(-PatrolRadius, PatrolRadius);
+                        npc.WaypointZ = npc.SpawnZ + random.Next(-PatrolRadius / 3, PatrolRadius / 3);
+                    }
+                    npc.HasWaypoint = true;
+                }
+                if (Step(npc, npc.WaypointX, npc.WaypointY, npc.WaypointZ, PatrolSpeed * seconds))
+                {
+                    npc.HasWaypoint = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves up to <paramref name="step"/> toward a point, facing it; true once there.
+        /// </summary>
+        private static bool Step(Npc npc, int x, int y, int z, double step)
+        {
+            double dx = x - (double)npc.X, dy = y - (double)npc.Y, dz = z - (double)npc.Z;
+            double d = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            if (d <= step || d < 1)
+            {
+                npc.X = x;
+                npc.Y = y;
+                npc.Z = z;
+                return true;
+            }
+            Face(npc, dx, dy);
+            npc.X += (int)Math.Round(dx / d * step);
+            npc.Y += (int)Math.Round(dy / d * step);
+            npc.Z += (int)Math.Round(dz / d * step);
+            return false;
+        }
+
+        /// <summary>
+        /// Turns toward a direction. In the captures the heading of a move was the direction value + 90 degrees
+        /// (32768 = 180 degrees).
+        /// </summary>
+        private static void Face(Npc npc, double dx, double dy)
+        {
+            if (Math.Abs(dx) < 1 && Math.Abs(dy) < 1)
+            {
+                return;
+            }
+            double degrees = Math.Atan2(dy, dx) * 180 / Math.PI - 90;
+            while (degrees < -180) degrees += 360;
+            while (degrees >= 180) degrees -= 360;
+            npc.Direction = (short)Math.Round(degrees * 32768 / 180);
+        }
+
         private void Respawn(Npc npc)
         {
             lock (npc)
             {
+                npc.X = npc.SpawnX;
+                npc.Y = npc.SpawnY;
+                npc.Z = npc.SpawnZ;
+                npc.Direction = npc.SpawnDirection;
+                npc.Action = npc.BaseAction;
+                npc.HasWaypoint = false;
                 npc.Alive = true;
                 npc.Damage = 0;
                 npc.UpdateCounter++;

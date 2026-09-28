@@ -18,6 +18,11 @@ namespace TitansUC.GameServer.World
         public const byte NpcTag = 0x0F;
 
         /// <summary>
+        /// The action official NPC mobile suits briefly showed (0x20) instead of their usual 0x30 or 0.
+        /// </summary>
+        public const byte ActionFighting = 0x20;
+
+        /// <summary>
         /// Any value works; the official server used 0x17A2 and similar ones.
         /// </summary>
         public const ushort MachineID = 0x17A2;
@@ -64,6 +69,37 @@ namespace TitansUC.GameServer.World
         /// when it has no ranged weapon.
         /// </summary>
         public ItemNode Weapon { get; set; }
+
+        /// <summary>
+        /// Where it spawns and walks back to, and the action it shows while not fighting.
+        /// </summary>
+        public int SpawnX { get; set; }
+        public int SpawnY { get; set; }
+        public int SpawnZ { get; set; }
+        public short SpawnDirection { get; set; }
+        public byte BaseAction { get; set; }
+
+        /// <summary>
+        /// Mobile suits, mobile armours and fighters move (chase, go home, patrol in space); ships, trucks and
+        /// PUZOCKs stay where they are, as in the captures.
+        /// </summary>
+        public bool IsMobile
+        {
+            get
+            {
+                int range = TemplateID / 10000;
+                return !IsVendor && (range == 41 || range == 42 || range == 43);
+            }
+        }
+
+        /// <summary>
+        /// Current patrol point (space only), and when it next looks around for enemies.
+        /// </summary>
+        public bool HasWaypoint { get; set; }
+        public int WaypointX { get; set; }
+        public int WaypointY { get; set; }
+        public int WaypointZ { get; set; }
+        public long NextAggroCheck { get; set; }
 
         public bool Alive { get; set; }
 

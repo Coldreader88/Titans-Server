@@ -11,6 +11,10 @@
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
 
+  <!-- Hostile NPCs attack pilots of the other faction who come this close (position units).
+       0 = they only fire back when attacked, like on the official server. -->
+  <NpcAggroRange>1500</NpcAggroRange>
+
   <!-- Where the client reconnects after a shuttle flight between Earth and Space. This server handles both,
        so this is its own address as the client sees it (like GameServerIP in LobbyServer.xml); 0 = Port. -->
   <TransferHost>127.0.0.1</TransferHost>

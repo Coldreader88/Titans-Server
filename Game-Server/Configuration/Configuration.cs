@@ -10,7 +10,7 @@ namespace TitansUC.GameServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60;
+        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500;
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
@@ -42,6 +42,12 @@ namespace TitansUC.GameServer
         /// Seconds between saves of a player's position while they play (they are also saved on logout).
         /// </summary>
         public int SaveInterval { get { return saveInterval; } }
+
+        /// <summary>
+        /// Hostile NPCs attack pilots of the other faction who come this close (position units); 0 = they only
+        /// fire back when attacked, as the official captures show.
+        /// </summary>
+        public int NpcAggroRange { get { return npcAggroRange; } }
 
         /// <summary>
         /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
@@ -93,6 +99,9 @@ namespace TitansUC.GameServer
                             break;
                         case "saveinterval":
                             saveInterval = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "npcaggrorange":
+                            npcAggroRange = int.Parse(i.InnerText.Trim());
                             break;
                         case "chathost":
                             chatHost = i.InnerText.Trim();
