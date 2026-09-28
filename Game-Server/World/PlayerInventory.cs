@@ -860,13 +860,14 @@ namespace TitansUC.GameServer.World
         /// </summary>
         /// <summary>
         /// A new, empty vehicle that belongs to no container yet (#spawn puts it on the ground).
-        /// <paramref name="engineID"/> -1 gives it the template's engine.
+        /// <paramref name="engineID"/> -1 gives it the template's engine; <paramref name="children"/> is its
+        /// armaments and inventory in the container.child format (see <see cref="Loadouts"/>).
         /// </summary>
-        public ItemNode CreateVehicle(int templateID, int engineID)
+        public ItemNode CreateVehicle(int templateID, int engineID, string children = null)
         {
             lock (sync)
             {
-                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Amount = engineID });
+                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Amount = engineID, Children = children });
                 UnregisterTree(vehicle);
                 return vehicle;
             }
@@ -876,7 +877,7 @@ namespace TitansUC.GameServer.World
         {
             var template = VehicleTemplates.Get(item.ItemID);
             int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
-            int engine = item.Amount > 0 ? item.Amount : (template != null ? template.EngineID : VehicleTemplates.DefaultEngine);
+            int engine = item.Amount > 0 ? item.Amount : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
 
             var vehicle = new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
             {

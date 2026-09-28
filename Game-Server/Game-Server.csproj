@@ -96,6 +96,7 @@
     <Compile Include="World\Combat.cs" />
     <Compile Include="World\Npc.cs" />
     <Compile Include="World\GmCommands.cs" />
+    <Compile Include="World\Loadouts.cs" />
     <Compile Include="Network\Packets\Client\CM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_ATTACK_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_SKILL_GAIN.cs" />

@@ -160,4 +160,88 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public int CombatValue { get; set; }
     }
+
+    /// <summary>
+    /// Engine names from DB/Templates/engine.dat, the text file the Java server read ("ID: 0x046CD0",
+    /// "Code: ...", "Name: MS/MA thermonuclear rocket engine typeA lv.1", ...). Engines are not in the
+    /// *TEMPLATE.DAT files, so <see cref="ItemTemplates"/> does not know them.
+    /// </summary>
+    public static class EngineTemplates
+    {
+        private static readonly object loadLock = new object();
+        private static Dictionary<int, string> names;
+
+        public static string Name(int id)
+        {
+            string name;
+            return Names.TryGetValue(id, out name) ? name : null;
+        }
+
+        /// <summary>
+        /// An engine by id, or by name (exact, else the first containing it); 0 when there is none.
+        /// </summary>
+        public static int Find(string idOrName)
+        {
+            int id;
+            if (int.TryParse(idOrName, out id))
+            {
+                return Names.ContainsKey(id) ? id : 0;
+            }
+            var all = Names;
+            foreach (var e in all)
+            {
+                if (string.Equals(e.Value, idOrName.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return e.Key;
+                }
+            }
+            foreach (var e in all)
+            {
+                if (e.Value.IndexOf(idOrName.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return e.Key;
+                }
+            }
+            return 0;
+        }
+
+        private static Dictionary<int, string> Names
+        {
+            get
+            {
+                if (names != null)
+                {
+                    return names;
+                }
+                lock (loadLock)
+                {
+                    if (names == null)
+                    {
+                        var result = new Dictionary<int, string>();
+                        try
+                        {
+                            int id = 0;
+                            foreach (var line in File.ReadAllLines(CharacterData.FindFile("Templates", "engine.dat")))
+                            {
+                                if (line.StartsWith("ID:"))
+                                {
+                                    id = Convert.ToInt32(line.Substring(3).Trim(), 16);
+                                }
+                                else if (line.StartsWith("Name:") && id > 0)
+                                {
+                                    result[id] = line.Substring(5).Trim();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.ShowWarning("Could not load engine.dat: " + ex.Message);
+                        }
+                        names = result;
+                    }
+                    return names;
+                }
+            }
+        }
+    }
 }
