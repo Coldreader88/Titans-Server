@@ -143,6 +143,34 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// The vehicle or wreck on the ground that holds the item <paramref name="uniqueID"/> somewhere inside it
+        /// (cargo or armaments); null when none does.
+        /// </summary>
+        public GroundItem FindHolder(uint uniqueID, out ItemNode item)
+        {
+            lock (sync)
+            {
+                foreach (var g in ground.Values)
+                {
+                    if (!g.IsVehicle)
+                    {
+                        continue;
+                    }
+                    foreach (var node in g.Node.Descendants())
+                    {
+                        if (node.UniqueID == uniqueID && !node.IsEmptySlot)
+                        {
+                            item = node;
+                            return g;
+                        }
+                    }
+                }
+            }
+            item = null;
+            return null;
+        }
+
+        /// <summary>
         /// Items and vehicles of one list lying within <paramref name="radius"/> of a point. Expired items are
         /// removed first.
         /// </summary>

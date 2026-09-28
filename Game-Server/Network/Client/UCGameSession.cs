@@ -197,6 +197,13 @@ namespace TitansUC.GameServer.Network.Client
             var node = Inventory.Get(p.UniqueID);
             if (node == null)
             {
+                // Something inside a vehicle or wreck on the ground the player opened.
+                ItemNode inside;
+                var holder = GameWorld.Instance.FindHolder(p.UniqueID, out inside);
+                node = holder != null && CanOpen(holder) ? inside : null;
+            }
+            if (node == null)
+            {
                 // Answer anyway with an empty entry, so the client does not wait for it.
                 Logger.ShowWarning(string.Format("{0} asked for unknown container or item {1:X8} (static id {2}).",
                     Character.Name, p.UniqueID, p.StaticID));
@@ -250,6 +257,10 @@ namespace TitansUC.GameServer.Network.Client
                 case CM_MOVE_ITEM.SectionContainers:
                 {
                     var result = Inventory.Move(p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, p.Amount);
+                    if (result == null && TakeFromGroundVehicle(p))
+                    {
+                        return;
+                    }
                     if (result == null)
                     {
                         RefuseMove(p, "invalid move");
@@ -271,6 +282,138 @@ namespace TitansUC.GameServer.Network.Client
                     RefuseMove(p, "section " + p.Section + " is not implemented");
                     return;
             }
+        }
+
+        /// <summary>
+        /// Distance within which a player can open a vehicle or wreck on the ground and take things out of it.
+        /// </summary>
+        public const int OpenDistance = 3000;
+
+        /// <summary>
+        /// Whether this player may open that vehicle on the ground: any wreck, or their own vehicle, near them.
+        /// </summary>
+        private bool CanOpen(GroundItem g)
+        {
+            var c = Coord;
+            return g != null && g.IsVehicle && c != null && g.ClusterID == c.ClusterID && (g.IsWreck || g.OwnerID == CharacterID) &&
+                Math.Abs((long)g.X - c.X) <= OpenDistance && Math.Abs((long)g.Y - c.Y) <= OpenDistance;
+        }
+
+        /// <summary>
+        /// 0x26: the player opens a vehicle or wreck on the ground (or their own vehicle); 0x8026 lets them.
+        /// </summary>
+        public void OnSpaceItemLock(CM_SPACE_ITEM_LOCK p)
+        {
+            if (!CheckInGame("Open vehicle"))
+            {
+                return;
+            }
+            var g = GameWorld.Instance.GetGround(p.VehicleUniqueID);
+            bool allowed = CanOpen(g) || Inventory.Get(p.VehicleUniqueID) != null;
+            var body = (byte[])p.Body.Clone();
+            body[2] = 0;
+            body[3] = allowed ? (byte)2 : (byte)1;
+            this.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_SPACE_ITEM_LOCK, body));
+            if (!allowed)
+            {
+                Logger.ShowWarning(string.Format("{0} may not open {1:X8}.", Character.Name, p.VehicleUniqueID));
+            }
+        }
+
+        /// <summary>
+        /// 0x27: what is inside the vehicle or wreck the player opened: its cargo and armaments in one list.
+        /// </summary>
+        public void OnSpaceItemList(CM_SPACE_ITEM_LOCK p)
+        {
+            if (!CheckInGame("List vehicle"))
+            {
+                return;
+            }
+            var g = GameWorld.Instance.GetGround(p.VehicleUniqueID);
+            var vehicle = CanOpen(g) ? g.Node : Inventory.Get(p.VehicleUniqueID);
+            if (vehicle == null)
+            {
+                Logger.ShowWarning(string.Format("{0} listed {1:X8}, which they cannot open.", Character.Name, p.VehicleUniqueID));
+                return;
+            }
+            List<ItemNode> items;
+            lock (vehicle)
+            {
+                items = vehicle.Descendants().Where(n => n != vehicle && !n.IsEmptySlot &&
+                    n.StaticID != PlayerInventory.VehicleArmaments && n.StaticID != PlayerInventory.VehicleInventory).ToList();
+            }
+            this.Network.SendPacket(new SM_SPACE_ITEM_LIST(vehicle, items, CharacterID));
+        }
+
+        /// <summary>
+        /// 0x17 with an item that lies in a vehicle or wreck on the ground (opened with 0x26): takes it (or
+        /// part of the stack) out into one of the player's containers. False when the item is not in one.
+        /// </summary>
+        private bool TakeFromGroundVehicle(CM_MOVE_ITEM p)
+        {
+            ItemNode item;
+            var g = GameWorld.Instance.FindHolder(p.ItemUniqueID, out item);
+            if (g == null || item == g.Node || !CanOpen(g))
+            {
+                return false;
+            }
+
+            ItemNode taken;
+            lock (g.Node)
+            {
+                var parent = item.Parent;
+                if (parent == null)
+                {
+                    return false;
+                }
+                int amount = p.Amount > 0 ? p.Amount : item.Amount;
+                if (item.Format == ItemNode.Singleton && amount < item.Amount)
+                {
+                    item.Amount -= amount;
+                    taken = PlayerInventory.NewItem(item.StaticID, amount, item.Name);
+                    taken.Created = item.Created;
+                }
+                else if (parent.StaticID == PlayerInventory.VehicleArmaments)
+                {
+                    parent.SetSlot(parent.Children.IndexOf(item), ItemNode.EmptySlot(0));
+                    taken = item;
+                }
+                else
+                {
+                    parent.Remove(item);
+                    taken = item;
+                }
+            }
+
+            if (!Inventory.PickUp(taken, p.DestUniqueID))
+            {
+                // Nowhere to put it: back where it was.
+                lock (g.Node)
+                {
+                    var cargo = g.Node.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory);
+                    if (taken != item)
+                    {
+                        item.Amount += taken.Amount;
+                    }
+                    else if (cargo != null)
+                    {
+                        cargo.Add(taken);
+                    }
+                }
+                RefuseMove(p, "cannot take it out of the vehicle into that container");
+                return true;
+            }
+
+            Logger.ShowInfo(string.Format("{0} took {1} x {2} out of {3} {4:X8}.", Character.Name, taken.StaticID, taken.Amount,
+                g.IsWreck ? "the wreck" : "the vehicle", g.UniqueID));
+            this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
+            SaveItems();
+            var owner = g.IsWreck ? null : GameWorld.Instance.Get(g.OwnerID);
+            if (owner != null && owner != this)
+            {
+                owner.SaveItems();
+            }
+            return true;
         }
 
         private void RefuseMove(CM_MOVE_ITEM p, string reason)
