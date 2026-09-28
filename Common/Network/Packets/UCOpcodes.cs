@@ -45,6 +45,7 @@ namespace Common.Network.Packets
         CM_SIMPLE_PLAYER_INFO = 0x06,
         CM_PLAYER_LOOKS = 0x0A,
         CM_ATTACK_RESULT = 0x0F,
+        CM_ATTACK_ITEM = 0x11,
         CM_SERVER_TIME = 0x13,
         CM_DELETE_ITEM = 0x15,
         CM_ITEM_INFO = 0x16,
@@ -78,6 +79,7 @@ namespace Common.Network.Packets
         SM_PLAYER_LOOKS = 0x800A,
         SM_ATTACK_RESULT = 0x800F,
         SM_LOCK_ON = 0x8010,
+        SM_ATTACK_ITEM = 0x8011,
         SM_SERVER_TIME = 0x8013,
         SM_DELETE_ITEM = 0x8015,
         SM_ITEM_INFO = 0x8016,
@@ -91,6 +93,7 @@ namespace Common.Network.Packets
         SM_SELL_ITEM = 0x8022,
         SM_SPACE_PLACED_ITEM = 0x8023,
         SM_SPACE_PICKUP_ITEM = 0x8024,
+        SM_SKILL_GAIN = 0x8034,
         SM_UPDATE_ITEM_INFO = 0x8035,
         SM_ATTACK_RESULT_NEAR = 0x8036,
         SM_REGISTER_PLAYER = 0x8038,
@@ -193,6 +196,7 @@ namespace Common.Network.Packets
         CMS_POSITION_LOG = 0x06,
         CMS_TELEPORT_TO_PLAYER = 0x08,
         CMS_RUN_SCRIPT = 0x09,
+        CMS_GM_COMMAND = 0x0A,
 
         // Game server -> CMS server (Java mina_cmsserver cluster/CGOpcodeMap).
         GS_NPC_CHAT = 0x01,

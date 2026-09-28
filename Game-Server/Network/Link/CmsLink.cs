@@ -33,6 +33,7 @@ namespace TitansUC.GameServer.Network.Link
             RegisterPacketHandler(CGOpcode.CMS_END_MAINTENANCE, new CMS_END_MAINTENANCE());
             RegisterPacketHandler(CGOpcode.CMS_POSITION_LOG, new CMS_POSITION_LOG());
             RegisterPacketHandler(CGOpcode.CMS_TELEPORT_TO_PLAYER, new CMS_TELEPORT_TO_PLAYER());
+            RegisterPacketHandler(CGOpcode.CMS_GM_COMMAND, new CMS_GM_COMMAND());
         }
 
         /// <summary>
@@ -171,6 +172,19 @@ namespace TitansUC.GameServer.Network.Link
                 return;
             }
             SystemMessage(characterID, player.GmSpawn(args.Split(new[] { "::" }, StringSplitOptions.None)));
+        }
+
+        public void OnGmCommand(uint characterID, string command)
+        {
+            var player = GameWorld.Instance.Get(characterID);
+            if (player == null)
+            {
+                return;
+            }
+            foreach (var line in GmCommands.Run(player, command))
+            {
+                SystemMessage(characterID, line);
+            }
         }
 
         public void OnPositionLog(uint characterID, string message)

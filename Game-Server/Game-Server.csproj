@@ -95,6 +95,10 @@
     <Compile Include="Network\Packets\Client\SM_USE_ITEM_BUFF.cs" />
     <Compile Include="World\Combat.cs" />
     <Compile Include="World\Npc.cs" />
+    <Compile Include="World\GmCommands.cs" />
+    <Compile Include="Network\Packets\Client\CM_ATTACK_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\SM_ATTACK_ITEM.cs" />
+    <Compile Include="Network\Packets\Client\SM_SKILL_GAIN.cs" />
     <Compile Include="World\NpcManager.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GAME_FE.cs" />
