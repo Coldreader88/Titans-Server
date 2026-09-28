@@ -29,6 +29,11 @@ namespace TitansUC.CmsServer.Commands
         public int MinArguments { get; set; }
 
         public Action<UCCmsSession, List<string>> Run { get; set; }
+
+        /// <summary>
+        /// Example lines #help shows.
+        /// </summary>
+        public string[] Examples { get; set; }
     }
 
     /// <summary>
@@ -47,66 +52,92 @@ namespace TitansUC.CmsServer.Commands
 
         private readonly Dictionary<string, Command> commands = new Dictionary<string, Command>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// The #items categories (one per template file in DB/Templates), for the help text.
+        /// </summary>
+        public const string ItemCategories =
+            "weapon, shield, ammo, ms, ma, tank, car, fighter, battleship, tool, material, fuel, camp, target, " +
+            "eventms, eventtank, eventcar, eventfighter, eventitem, all";
+
         private CommandMap()
         {
             Add(new Command
             {
-                Name = "help", Usage = "#help", Level = AccessLevel.GM,
-                Description = "Lists the commands you can use.",
-                Run = (s, a) => Help(s),
+                Name = "help", Usage = "#help[::command]", Level = AccessLevel.GM,
+                Description = "Lists the commands you can use, or one command with examples.",
+                Examples = new[] { "#help", "#help::items" },
+                Run = Help,
             });
             Add(new Command
             {
                 Name = "online", Usage = "#online", Level = AccessLevel.Player,
                 Description = "Shows how many players are online (VIP and up also see who, with their ids).",
+                Examples = new[] { "#online" },
                 Run = Online,
+            });
+            Add(new Command
+            {
+                Name = "near", Usage = "#near[::radius]", Level = AccessLevel.GM,
+                Description = "Lists the players, NPCs and ground vehicles around you (view distance, 8000 by default), nearest first, with their ids.",
+                Examples = new[] { "#near", "#near::2000" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "near", a)),
             });
             Add(new Command
             {
                 Name = "sys", Usage = "#sys::message", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Sends a system message to all online players.",
+                Examples = new[] { "#sys::Server restart in 10 minutes" },
                 Run = (s, a) => CmsWorld.Instance.SystemMessage(string.Join(" ", a)),
             });
             Add(new Command
             {
                 Name = "tele", Usage = "#tele::x::y::z", Level = AccessLevel.GM, MinArguments = 3,
                 Description = "Teleports you to the given coordinates.",
+                Examples = new[] { "#tele::1000::2000::30" },
                 Run = Teleport,
             });
             Add(new Command
             {
-                Name = "tp", Usage = "#tp::targetID[::playerID]", Level = AccessLevel.GM, MinArguments = 1,
-                Description = "Teleports you (or playerID) to the player targetID. #online shows the ids.",
-                Run = TeleportTo,
+                Name = "tp", Usage = "#tp::target[::player]", Level = AccessLevel.GM, MinArguments = 1,
+                Description = "Teleports you (or player) next to a player, NPC or ground vehicle, by id or name. #near and #online show the ids.",
+                Examples = new[] { "#tp::Char", "#tp::13", "#tp::1000000043", "#tp::Burchard", "#tp::Amuro::Char (moves Char to Amuro)" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "tp", a)),
             });
             Add(new Command
             {
                 Name = "bookmark", Usage = "#bookmark::name", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Teleports you to a place from the tele_bookmark table.",
+                Examples = new[] { "#bookmark::Sydney" },
                 Run = Bookmark,
             });
             Add(new Command
             {
                 Name = "spawn", Usage = "#spawn::id::itemID[::amount] | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
-                Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away.",
+                Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away. #items finds the ids.",
+                Examples = new[] { "#spawn::id::280048 (75mm machine gun)", "#spawn::id::540000::100 (100 cartridges)",
+                    "#spawn::name::elecar aaron", "#spawn::id::410000 (a GM to ride)", "#spawn::npc", "#spawn::npc::410007 (a ZAKU II)" },
                 Run = Spawn,
             });
             Add(new Command
             {
                 Name = "items", Usage = "#items[::category[::name filter][::page]]", Level = AccessLevel.GM,
-                Description = "Lists the item templates you can #spawn, by category, with their ids.",
+                Description = "Lists the item templates you can #spawn, with their ids, 15 per page. Categories: " + ItemCategories + ".",
+                Examples = new[] { "#items (categories and counts)", "#items::weapon", "#items::weapon::2 (page 2)",
+                    "#items::weapon::zaku", "#items::ms::gundam", "#items::all::shield" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "items", a)),
             });
             Add(new Command
             {
                 Name = "skill", Usage = "#skill[::skill name::level]", Level = AccessLevel.GM,
-                Description = "Shows your skills, or sets one (e.g. #skill::ambac::85.5; all sets every combat skill).",
+                Description = "Shows your skills, or sets one (skills with one decimal; strength, spirit and luck whole numbers; all = every combat skill).",
+                Examples = new[] { "#skill", "#skill::ambac::85.5", "#skill::ms::100", "#skill::all::100", "#skill::spirit::80" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "skill", a)),
             });
             Add(new Command
             {
                 Name = "poslog", Usage = "#poslog::message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
+                Examples = new[] { "#poslog::stuck in wall" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.PositionLog(s.CharacterID, string.Join(" ", a))),
             });
             Add(new Command
@@ -119,6 +150,7 @@ namespace TitansUC.CmsServer.Commands
             {
                 Name = "shutdown", Usage = "#shutdown::seconds (-1 ends maintenance)", Level = AccessLevel.Admin, MinArguments = 1,
                 Description = "Counts down to maintenance, then closes the game servers. -1 ends the maintenance.",
+                Examples = new[] { "#shutdown::300", "#shutdown::-1" },
                 Run = Shutdown,
             });
         }
@@ -199,11 +231,28 @@ namespace TitansUC.CmsServer.Commands
             CmsWorld.Instance.SystemMessage(session, command.Usage + ": " + command.Description);
         }
 
-        private void Help(UCCmsSession session)
+        /// <summary>
+        /// #help lists every command with its examples; #help::name shows one.
+        /// </summary>
+        private void Help(UCCmsSession session, List<string> args)
         {
-            foreach (var command in commands.Values.Where(c => session.Level >= c.Level).OrderBy(c => c.Name))
+            IEnumerable<Command> list = commands.Values.Where(c => session.Level >= c.Level).OrderBy(c => c.Name);
+            if (args.Count > 0)
+            {
+                list = list.Where(c => string.Equals(c.Name, args[0].TrimStart('#'), StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!list.Any())
+                {
+                    CmsWorld.Instance.SystemMessage(session, "No command #" + args[0].TrimStart('#') + ". #help lists them.");
+                    return;
+                }
+            }
+            foreach (var command in list)
             {
                 Describe(session, command);
+                foreach (var example in command.Examples ?? new string[0])
+                {
+                    CmsWorld.Instance.SystemMessage(session, "   e.g. " + example);
+                }
             }
         }
 
@@ -229,18 +278,6 @@ namespace TitansUC.CmsServer.Commands
                 return;
             }
             ToGame(session, GameLinkManager.Instance.Teleport(session.CharacterID, x, y, z));
-        }
-
-        private static void TeleportTo(UCCmsSession session, List<string> args)
-        {
-            uint to, from = session.CharacterID;
-            if (!uint.TryParse(args[0], NumberStyles.None, CultureInfo.InvariantCulture, out to) ||
-                (args.Count > 1 && !uint.TryParse(args[1], NumberStyles.None, CultureInfo.InvariantCulture, out from)))
-            {
-                CmsWorld.Instance.SystemMessage(session, "Usage: #tp::targetID[::playerID]");
-                return;
-            }
-            ToGame(session, GameLinkManager.Instance.TeleportTo(from, to));
         }
 
         private static void Bookmark(UCCmsSession session, List<string> args)
