@@ -354,6 +354,7 @@ namespace TitansUC.GameServer.Network.Client
                 : (p.Radius > 0 && p.Radius < int.MaxValue ? (int)p.Radius : 8000);
 
             var others = GameWorld.Instance.Visible(this, radius).Select(s => s.Coord).ToList();
+            others.AddRange(NpcManager.Instance.Visible(self.ClusterID, self.X, self.Y, radius));
 
             this.Network.SendPacket(new SM_PLAYER_COORD_DATA_LIST(AccountID, self, others));
 
@@ -694,6 +695,11 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
             var weapon = Inventory.Armament(p.Slot);
+            if (Npc.IsNpcID(p.TargetID))
+            {
+                AttackNpc(weapon, NpcManager.Instance.Get(p.TargetID), p.Distance);
+                return;
+            }
             var target = GameWorld.Instance.Get(p.TargetID);
             if (weapon == null || target == null || !target.InGame || target.Coord == null ||
                 target.Coord.ClusterID != Coord.ClusterID)
@@ -721,6 +727,28 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// An attack on an NPC: 0x800F to the attacker only (an NPC has no client), 0x8036 to everyone near it.
+        /// </summary>
+        private void AttackNpc(ItemNode weapon, Npc npc, int distance)
+        {
+            if (weapon == null || npc == null || npc.Zone != Coord.ClusterID)
+            {
+                Logger.ShowWarning(string.Format("{0}: attack on an NPC refused: no weapon or no such NPC.", Character.Name));
+                return;
+            }
+            var r = NpcManager.Instance.Attack(npc, weapon, distance);
+            if (r == null)
+            {
+                return;
+            }
+            uint attacker = CharacterID;
+            this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, npc.ID, r));
+            GameWorld.Instance.SendNear(npc.Zone, npc.X, npc.Y, BroadcastDistance,
+                () => new SM_ATTACK_RESULT_NEAR(attacker, npc.ID, r));
+            NpcManager.Instance.AfterAttack(npc, r, this);
+        }
+
+        /// <summary>
         /// 0x67: an attack on several players at once (beam weapons, explosions): 0x8067 to the attacker and
         /// each target, 0x8068 to everyone near the point of impact.
         /// </summary>
@@ -739,8 +767,20 @@ namespace TitansUC.GameServer.Network.Client
 
             var results = new List<KeyValuePair<uint, HitResult>>();
             var targets = new List<UCGameSession>();
+            var npcHits = new List<KeyValuePair<Npc, HitResult>>();
             foreach (var t in p.Targets)
             {
+                if (Npc.IsNpcID(t.TargetID))
+                {
+                    var npc = NpcManager.Instance.Get(t.TargetID);
+                    var hit = npc != null && npc.Zone == Coord.ClusterID && !npcHits.Any(h => h.Key == npc)
+                        ? NpcManager.Instance.Attack(npc, weapon, t.Distance) : null;
+                    if (hit != null)
+                    {
+                        npcHits.Add(new KeyValuePair<Npc, HitResult>(npc, hit));
+                    }
+                    continue;
+                }
                 var target = GameWorld.Instance.Get(t.TargetID);
                 if (target == null || !target.InGame || target.Coord == null || target.Coord.ClusterID != Coord.ClusterID ||
                     targets.Contains(target))
@@ -754,6 +794,7 @@ namespace TitansUC.GameServer.Network.Client
                     targets.Add(target);
                 }
             }
+            results.AddRange(npcHits.Select(h => new KeyValuePair<uint, HitResult>(h.Key.ID, h.Value)));
             if (results.Count == 0)
             {
                 return;
@@ -771,6 +812,10 @@ namespace TitansUC.GameServer.Network.Client
             for (int i = 0; i < targets.Count; i++)
             {
                 AfterHit(targets[i], results[i].Value);
+            }
+            foreach (var h in npcHits)
+            {
+                NpcManager.Instance.AfterAttack(h.Key, h.Value, this);
             }
         }
 
@@ -804,15 +849,27 @@ namespace TitansUC.GameServer.Network.Client
 
         private void AfterHit(UCGameSession target, HitResult r)
         {
-            if (r.ShieldBroken)
-            {
-                target.Inventory.DestroyArmament(Combat.ShieldSlot);
-                target.RaiseUpdateCounter();
-            }
             if (r.Destroyed)
             {
                 Logger.ShowInfo(string.Format("{0} destroyed {1}'s {2}.", Character.Name, target.Character.Name, r.DamagedItem.Name));
-                target.LoseVehicle();
+            }
+            target.ApplyHit(r);
+        }
+
+        /// <summary>
+        /// After the results of a hit on this player went out: a broken shield is gone, a destroyed vehicle
+        /// becomes a wreck.
+        /// </summary>
+        public void ApplyHit(HitResult r)
+        {
+            if (r.ShieldBroken)
+            {
+                Inventory.DestroyArmament(Combat.ShieldSlot);
+                RaiseUpdateCounter();
+            }
+            if (r.Destroyed)
+            {
+                LoseVehicle();
             }
         }
 
@@ -980,7 +1037,7 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// How far ground item events reach (and the 0x05 radius when the client sends none).
         /// </summary>
-        private static int BroadcastDistance
+        public static int BroadcastDistance
         {
             get { return Configuration.Instance.ViewDistance > 0 ? Configuration.Instance.ViewDistance : 8000; }
         }
@@ -1002,6 +1059,12 @@ namespace TitansUC.GameServer.Network.Client
         /// </summary>
         public void OnSimplePlayerInfo(CM_SIMPLE_PLAYER_INFO p)
         {
+            var npc = Npc.IsNpcID(p.CharacterID) ? NpcManager.Instance.Get(p.CharacterID) : null;
+            if (npc != null)
+            {
+                this.Network.SendPacket(new SM_SIMPLE_PLAYER_INFO(npc));
+                return;
+            }
             var other = GameWorld.Instance.Get(p.CharacterID);
             if (other == null)
             {
@@ -1016,6 +1079,12 @@ namespace TitansUC.GameServer.Network.Client
         /// </summary>
         public void OnPlayerLooks(CM_PLAYER_LOOKS p)
         {
+            var npc = Npc.IsNpcID(p.CharacterID) ? NpcManager.Instance.Get(p.CharacterID) : null;
+            if (npc != null)
+            {
+                this.Network.SendPacket(new SM_PLAYER_LOOKS(npc.ID, npc.TemplateID, npc.Armaments, SM_PLAYER_LOOKS.NpcCounter, 0));
+                return;
+            }
             var other = GameWorld.Instance.Get(p.CharacterID);
             if (other == null)
             {

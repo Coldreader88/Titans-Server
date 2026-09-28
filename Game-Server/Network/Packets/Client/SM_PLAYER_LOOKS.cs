@@ -41,7 +41,16 @@ namespace TitansUC.GameServer.Network.Packets.Client
             CharacterLooks.Write(this, character);
         }
 
-        public SM_PLAYER_LOOKS(uint characterID, int vehicleTemplateID, int[] armaments, ushort counter)
+        /// <summary>
+        /// The looks counter the official server sent for NPCs most often (6..0x0B seen).
+        /// </summary>
+        public const ushort NpcCounter = 6;
+
+        /// <summary>
+        /// A vehicle: its template, the template of each armament slot (-1 empty) and one byte per slot (FF
+        /// for players, 00 for NPCs, as in the captures).
+        /// </summary>
+        public SM_PLAYER_LOOKS(uint characterID, int vehicleTemplateID, int[] armaments, ushort counter, byte slotByte = 0xFF)
         {
             this.ID = GSOpcode.SM_PLAYER_LOOKS;
 
@@ -56,7 +65,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutSize(armaments.Length);
             foreach (var template in armaments)
             {
-                this.PutByte(0xFF);
+                this.PutByte(slotByte);
             }
             this.PutSize(0);
             this.PutUShortBE(counter);
