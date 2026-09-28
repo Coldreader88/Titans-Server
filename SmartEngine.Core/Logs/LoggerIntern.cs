@@ -46,6 +46,12 @@ namespace SmartEngine.Core
                 LogData data;
                 while (queue.TryDequeue(out data))
                 {
+                    if (data.Logger == null)
+                    {
+                        // Logged before the logger was set up: print it rather than crash the log thread.
+                        Console.WriteLine(data.Text);
+                        continue;
+                    }
                     switch (data.LogLevel)
                     {
                         case Level.Debug:

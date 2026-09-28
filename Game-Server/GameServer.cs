@@ -23,10 +23,12 @@ namespace TitansUC.GameServer
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
-            Configuration.Instance.Initialization("./Config/GameServer.xml");
+            // The logger starts in InitServer; anything logged before it (reading the configuration does)
+            // crashes its thread, so only the command line is read first, for the server's name.
             Configuration.Instance.SetInstance(args);
-            PlayerInventory.SetUniqueIDBase(Configuration.Instance.IsSpace);
             ServerInfo.InitServer("Game-Server (" + Configuration.Instance.InstanceName + ")");
+            Configuration.Instance.Initialization("./Config/GameServer.xml");
+            PlayerInventory.SetUniqueIDBase(Configuration.Instance.IsSpace);
             Logger.ShowInfo(string.Format("Running the {0} world (zone {1}) on port {2}; the other side is at {3}:{4}.",
                 Configuration.Instance.InstanceName, Configuration.Instance.Zone, Configuration.Instance.ListenPort,
                 Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
