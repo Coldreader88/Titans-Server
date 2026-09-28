@@ -445,7 +445,7 @@ namespace TitansUC.GameServer.Network.Client
             bool vehicle = p.MiniOp == CM_SPACE_PICKUP_ITEM.GetIn;
             var zone = (ushort)Character.Zone;
             var ground = GameWorld.Instance.Take(p.ItemUniqueID, g => g.ClusterID == zone &&
-                (vehicle ? g.IsVehicle && g.OwnerID == CharacterID : !g.IsVehicle));
+                (vehicle ? g.IsVehicle && !g.IsWreck && g.OwnerID == CharacterID : !g.IsVehicle));
             if (ground == null)
             {
                 RefuseGround("pick up", p.ItemUniqueID, "nothing there they can take");
@@ -682,6 +682,296 @@ namespace TitansUC.GameServer.Network.Client
             this.Network.SendPacket(new SM_GC_PLAYER_INFO(AccountID, Character, vehicle, flight != null ? flight.Transport : null));
         }
 
+        /// <summary>
+        /// 0x0F: the attacker's client says it fired the weapon in armament slot <c>Slot</c> at a player. The
+        /// server decides the result (see <see cref="Combat"/>) and sends 0x800F to the attacker and the target
+        /// and 0x8036 to everyone near the target.
+        /// </summary>
+        public void OnAttackResult(CM_ATTACK_RESULT p)
+        {
+            if (!CheckInGame("Attack") || p.AttackerID != CharacterID)
+            {
+                return;
+            }
+            var weapon = Inventory.Armament(p.Slot);
+            var target = GameWorld.Instance.Get(p.TargetID);
+            if (weapon == null || target == null || !target.InGame || target.Coord == null ||
+                target.Coord.ClusterID != Coord.ClusterID)
+            {
+                Logger.ShowWarning(string.Format("{0}: attack on {1} with slot {2} refused: no weapon or no target.",
+                    Character.Name, p.TargetID, p.Slot));
+                return;
+            }
+
+            var r = target.TakeHit(weapon, p.Distance);
+            if (r == null)
+            {
+                return;
+            }
+            uint attacker = CharacterID;
+            this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, target.CharacterID, r));
+            if (target != this)
+            {
+                target.Network.SendPacket(new SM_ATTACK_RESULT(attacker, target.CharacterID, r));
+            }
+            var c = target.Coord;
+            GameWorld.Instance.SendNear(c.ClusterID, c.X, c.Y, BroadcastDistance,
+                () => new SM_ATTACK_RESULT_NEAR(attacker, target.CharacterID, r));
+            AfterHit(target, r);
+        }
+
+        /// <summary>
+        /// 0x67: an attack on several players at once (beam weapons, explosions): 0x8067 to the attacker and
+        /// each target, 0x8068 to everyone near the point of impact.
+        /// </summary>
+        public void OnMultiAttackResult(CM_MULTI_ATTACK_RESULT p)
+        {
+            if (!CheckInGame("Multi attack") || p.AttackerID != CharacterID)
+            {
+                return;
+            }
+            var weapon = Inventory.Armament(p.Slot);
+            if (weapon == null)
+            {
+                Logger.ShowWarning(string.Format("{0}: multi attack with empty slot {1} refused.", Character.Name, p.Slot));
+                return;
+            }
+
+            var results = new List<KeyValuePair<uint, HitResult>>();
+            var targets = new List<UCGameSession>();
+            foreach (var t in p.Targets)
+            {
+                var target = GameWorld.Instance.Get(t.TargetID);
+                if (target == null || !target.InGame || target.Coord == null || target.Coord.ClusterID != Coord.ClusterID ||
+                    targets.Contains(target))
+                {
+                    continue;
+                }
+                var r = target.TakeHit(weapon, t.Distance);
+                if (r != null)
+                {
+                    results.Add(new KeyValuePair<uint, HitResult>(target.CharacterID, r));
+                    targets.Add(target);
+                }
+            }
+            if (results.Count == 0)
+            {
+                return;
+            }
+
+            uint attacker = CharacterID;
+            uint number = results[0].Value.AttackNumber;
+            this.Network.SendPacket(new SM_MULTI_ATTACK_RESULT(attacker, weapon, number, p.X, p.Y, p.Z, results));
+            foreach (var target in targets.Where(t => t != this))
+            {
+                target.Network.SendPacket(new SM_MULTI_ATTACK_RESULT(attacker, weapon, number, p.X, p.Y, p.Z, results));
+            }
+            GameWorld.Instance.SendNear(Coord.ClusterID, p.X, p.Y, BroadcastDistance,
+                () => new SM_MULTI_ATTACK_RESULT_NEAR(attacker, weapon, number, p.X, p.Y, p.Z, results));
+            for (int i = 0; i < targets.Count; i++)
+            {
+                AfterHit(targets[i], results[i].Value);
+            }
+        }
+
+        /// <summary>
+        /// Applies an attack on this player's piloted vehicle; null when they are on foot (or have no vehicle
+        /// any more). Sets the damage and attack number of the position record, as the official server did.
+        /// </summary>
+        public HitResult TakeHit(ItemNode weapon, int distance)
+        {
+            var vehicle = Inventory.Piloting;
+            if (vehicle == null || vehicle.Health <= 0)
+            {
+                return null;
+            }
+            var shield = Inventory.Armament(Combat.ShieldSlot);
+            var shieldTemplate = shield != null ? ItemTemplates.Get(shield.StaticID) : null;
+            var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance);
+            if (r.Result != Combat.ResultMiss)
+            {
+                lock (sync)
+                {
+                    Coord.AttackNumber = (int)r.AttackNumber;
+                    if (r.VehicleDamaged)
+                    {
+                        Coord.Damage = r.Percent;
+                    }
+                }
+            }
+            return r;
+        }
+
+        private void AfterHit(UCGameSession target, HitResult r)
+        {
+            if (r.ShieldBroken)
+            {
+                target.Inventory.DestroyArmament(Combat.ShieldSlot);
+                target.RaiseUpdateCounter();
+            }
+            if (r.Destroyed)
+            {
+                Logger.ShowInfo(string.Format("{0} destroyed {1}'s {2}.", Character.Name, target.Character.Name, r.DamagedItem.Name));
+                target.LoseVehicle();
+            }
+        }
+
+        /// <summary>
+        /// The piloted vehicle was destroyed: it becomes a wreck on the ground (0x8035 action 1, health 0) that
+        /// lies for ten minutes and cannot be boarded, and the player is on foot.
+        /// </summary>
+        public void LoseVehicle()
+        {
+            var vehicle = Inventory.LoseVehicle();
+            if (vehicle == null)
+            {
+                return;
+            }
+            var c = Coord;
+            var rotation = new byte[]
+            {
+                (byte)(c.Tilt >> 8), (byte)c.Tilt, (byte)(c.Roll >> 8), (byte)c.Roll, (byte)(c.Direction >> 8), (byte)c.Direction,
+            };
+            var wreck = new GroundItem(vehicle, c.ClusterID, c.X, c.Y, c.Z, rotation, CharacterID) { IsWreck = true };
+            GameWorld.Instance.Place(wreck);
+            SetVehicle(null);
+            BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, wreck);
+            SaveItems();
+        }
+
+        public void RaiseUpdateCounter()
+        {
+            lock (sync)
+            {
+                Coord.UpdateCounter++;
+            }
+        }
+
+        /// <summary>
+        /// Packets a client may have sent to other players with 0x39: lock on (0x8010) and trade (0x802A-0x8031).
+        /// </summary>
+        private static bool CanRelay(uint opcode)
+        {
+            return opcode == (uint)GSOpcode.SM_LOCK_ON || (opcode >= 0x802A && opcode <= 0x8031);
+        }
+
+        /// <summary>
+        /// 0x39: send a packet to the listed players (lock on, trade), unchanged.
+        /// </summary>
+        public void OnRelay(CM_RELAY p)
+        {
+            if (!CheckInGame("Relay"))
+            {
+                return;
+            }
+            if (!CanRelay(p.Opcode))
+            {
+                Logger.ShowWarning(string.Format("{0}: relay of opcode {1:X} refused.", Character.Name, p.Opcode));
+                return;
+            }
+            foreach (var id in p.Receivers.Distinct())
+            {
+                var receiver = GameWorld.Instance.Get(id);
+                if (receiver != null && receiver.InGame)
+                {
+                    receiver.Network.SendPacket(new SM_RAW(p.Opcode, p.Payload));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 0x3A: send a packet (fire effects and gestures, 0x803B) to everyone within the radius, the sender
+        /// included, as the official server did.
+        /// </summary>
+        public void OnBroadcast(CM_BROADCAST p)
+        {
+            if (!CheckInGame("Broadcast"))
+            {
+                return;
+            }
+            if (p.Opcode != (uint)GSOpcode.SM_BROADCAST || p.CharacterID != CharacterID)
+            {
+                Logger.ShowWarning(string.Format("{0}: broadcast of opcode {1:X} refused.", Character.Name, p.Opcode));
+                return;
+            }
+            int radius = float.IsNaN(p.Radius) || p.Radius <= 0 ? BroadcastDistance : (int)Math.Min(p.Radius, BroadcastDistance);
+            var payload = p.Payload;
+            GameWorld.Instance.SendNear(Coord.ClusterID, p.X, p.Y, radius, () => new SM_RAW(p.Opcode, payload));
+        }
+
+        /// <summary>
+        /// 0x1B: equip or unequip the piloted vehicle's weapons and shield; the reply echoes the request, and the
+        /// others see the new looks.
+        /// </summary>
+        public void OnEquipItem(CM_EQUIP_ITEM p)
+        {
+            if (!CheckInGame("Equip item"))
+            {
+                return;
+            }
+            if (p.SubOp != CM_EQUIP_ITEM.Armaments || p.Entries.Count == 0)
+            {
+                this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
+                return;
+            }
+            if (p.CharacterID != CharacterID)
+            {
+                return;
+            }
+            foreach (var e in p.Entries)
+            {
+                bool ok = e.Action == CM_EQUIP_ITEM.Equip ? Inventory.Equip(e.ItemUniqueID, e.Slot) : Inventory.Unequip(e.Slot);
+                if (!ok)
+                {
+                    Logger.ShowWarning(string.Format("{0}: equip of {1:X8} in slot {2} refused.", Character.Name, e.ItemUniqueID, e.Slot));
+                    return;
+                }
+            }
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
+            RaiseUpdateCounter();
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x1D: reload a weapon from an ammunition stack; the reply echoes the request.
+        /// </summary>
+        public void OnReload(CM_USE_ITEM_WITH_TARGET p)
+        {
+            if (!CheckInGame("Reload"))
+            {
+                return;
+            }
+            if (p.CharacterID != CharacterID || !Inventory.Reload(p.AmmoUID, p.ContainerUID, p.WeaponUID, p.Rounds))
+            {
+                Logger.ShowWarning(string.Format("{0}: reload of {1:X8} refused.", Character.Name, p.WeaponUID));
+                return;
+            }
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_USE_ITEM_WITH_TARGET, p.Body));
+            SaveItems();
+        }
+
+        /// <summary>
+        /// 0x1C: use an ER kit on the piloted vehicle.
+        /// </summary>
+        public void OnUseItemBuff(CM_USE_ITEM_BUFF p)
+        {
+            if (!CheckInGame("Use item"))
+            {
+                return;
+            }
+            var vehicle = Inventory.Piloting;
+            int repaired = p.CharacterID == CharacterID ? Inventory.UseRepairKit(p.ItemUID, p.ContainerUID) : -1;
+            this.Network.SendPacket(new SM_USE_ITEM_BUFF(p, vehicle != null ? vehicle.UniqueID : 0, repaired, repaired >= 0));
+            if (repaired >= 0)
+            {
+                lock (sync)
+                {
+                    Coord.Damage = Combat.DamagePercent(vehicle.Health, vehicle.MaxHealth);
+                }
+                SaveItems();
+            }
+        }
+
         private void RefuseShop(string what, int id, string reason)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2} refused: {3}.", Character.Name, what, id, reason));
@@ -734,7 +1024,7 @@ namespace TitansUC.GameServer.Network.Client
             }
             var vehicle = other.Inventory.Piloting;
             this.Network.SendPacket(vehicle != null
-                ? new SM_PLAYER_LOOKS(other.Character, vehicle.StaticID)
+                ? new SM_PLAYER_LOOKS(other.CharacterID, vehicle.StaticID, PlayerInventory.ArmamentTemplates(vehicle), other.Coord.UpdateCounter)
                 : new SM_PLAYER_LOOKS(other.Character));
         }
 

@@ -163,7 +163,7 @@ namespace TitansUC.GameServer.World
         {
             lock (sync)
             {
-                return ground.Values.Where(g => g.IsVehicle && g.OwnerID == ownerID).Select(g => g.Node).ToList();
+                return ground.Values.Where(g => g.IsVehicle && !g.IsWreck && g.OwnerID == ownerID).Select(g => g.Node).ToList();
             }
         }
 
@@ -174,7 +174,7 @@ namespace TitansUC.GameServer.World
         {
             lock (sync)
             {
-                var taken = ground.Values.Where(g => g.IsVehicle && g.OwnerID == ownerID).ToList();
+                var taken = ground.Values.Where(g => g.IsVehicle && !g.IsWreck && g.OwnerID == ownerID).ToList();
                 foreach (var item in taken)
                 {
                     ground.Remove(item.UniqueID);
@@ -235,7 +235,7 @@ namespace TitansUC.GameServer.World
 
         private static bool IsExpired(GroundItem item)
         {
-            return !item.IsVehicle && item.Expires <= UnixTime();
+            return item.CanExpire && item.Expires <= UnixTime();
         }
 
         private void RemoveExpired()

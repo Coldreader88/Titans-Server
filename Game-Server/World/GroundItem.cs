@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 
 namespace TitansUC.GameServer.World
 {
@@ -57,13 +57,32 @@ namespace TitansUC.GameServer.World
         public bool IsVehicle { get { return Node.Format == ItemNode.Multi; } }
 
         /// <summary>
-        /// Items disappear after <see cref="Lifetime"/>. Vehicles stay until their owner takes them (or logs
-        /// in again, which puts them back in the hangar), so their expiry keeps moving forward.
+        /// The wreck of a vehicle destroyed in combat: nobody can board it, it is lost to its owner and it lies
+        /// for <see cref="Combat.WreckLifetime"/> seconds.
+        /// </summary>
+        public bool IsWreck { get; set; }
+
+        /// <summary>
+        /// Items disappear after <see cref="Lifetime"/>, wrecks after <see cref="Combat.WreckLifetime"/>.
+        /// Vehicles stay until their owner takes them (or logs in again, which puts them back in the hangar), so
+        /// their expiry keeps moving forward.
         /// </summary>
         public int Expires
         {
-            get { return IsVehicle ? GameWorld.UnixTime() + Lifetime : Placed + Lifetime; }
+            get
+            {
+                if (IsWreck)
+                {
+                    return Placed + Combat.WreckLifetime;
+                }
+                return IsVehicle ? GameWorld.UnixTime() + Lifetime : Placed + Lifetime;
+            }
         }
+
+        /// <summary>
+        /// Whether it can still lie on the ground: vehicles (not wrecks) never expire.
+        /// </summary>
+        public bool CanExpire { get { return !IsVehicle || IsWreck; } }
 
         public byte List
         {

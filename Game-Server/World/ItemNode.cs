@@ -91,6 +91,17 @@ namespace TitansUC.GameServer.World
         public int MaxHealth { get; set; }
 
         /// <summary>
+        /// For a weapon or shield: its stats list, which its description carries instead of children (7 ints:
+        /// durability, max durability, power, a rate-like value, range, 0, 1000; a shield: durability, max
+        /// durability, 0, 0, 0, 0, 1000), and the rounds loaded in it (its fifth option). Null for other items.
+        /// Layout from the official 0x8016 / 0x8021 descriptions of weapons.
+        /// </summary>
+        public int[] Stats { get; set; }
+        public int Loaded { get; set; }
+
+        public bool IsEquipment { get { return Stats != null; } }
+
+        /// <summary>
         /// This node and everything under it.
         /// </summary>
         public IEnumerable<ItemNode> Descendants()
@@ -167,6 +178,22 @@ namespace TitansUC.GameServer.World
             p.PutIntBE(Modified);
 
             int optionCount = Format - 14;
+            if (Stats != null)
+            {
+                for (int i = 0; i < optionCount - 1; i++)
+                {
+                    p.PutSize(0);
+                }
+                p.PutSize(1);
+                p.PutIntBE(Loaded);
+                p.PutSize(Stats.Length);
+                foreach (var value in Stats)
+                {
+                    p.PutIntBE(value);
+                }
+                return p.ToArray();
+            }
+
             for (int i = 0; i < optionCount; i++)
             {
                 var option = Options != null && i < Options.Length ? Options[i] : null;

@@ -422,6 +422,194 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Slots of a vehicle's armaments container: 0 main weapon, 1 shield or left hand, higher ones further
+        /// weapons (the official ACGUY had 4). Empty slots are sent as 0, 0, 0.
+        /// </summary>
+        public const int MaxArmamentSlots = 8;
+
+        /// <summary>
+        /// Equips a weapon or shield from the piloted vehicle's inventory into armament slot
+        /// <paramref name="slot"/> (0x1B); what was there goes back to the inventory.
+        /// </summary>
+        public bool Equip(uint itemUID, int slot)
+        {
+            lock (sync)
+            {
+                var vehicle = Piloting;
+                var item = GetLocked(itemUID);
+                if (vehicle == null || item == null || !item.IsEquipment || slot < 0 || slot >= MaxArmamentSlots)
+                {
+                    return false;
+                }
+                var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
+                var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
+                if (inventory == null || armaments == null || item.Parent != inventory)
+                {
+                    return false;
+                }
+
+                inventory.Remove(item);
+                PadSlots(armaments, slot);
+                var old = armaments.SetSlot(slot, item);
+                if (!old.IsEmptySlot)
+                {
+                    inventory.Add(old);
+                }
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Takes what is in armament slot <paramref name="slot"/> back to the piloted vehicle's inventory (0x1B).
+        /// </summary>
+        public bool Unequip(int slot)
+        {
+            lock (sync)
+            {
+                var vehicle = Piloting;
+                if (vehicle == null)
+                {
+                    return false;
+                }
+                var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
+                var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
+                if (inventory == null || armaments == null || slot < 0 || slot >= armaments.Children.Count ||
+                    armaments.Children[slot].IsEmptySlot)
+                {
+                    return true;
+                }
+                inventory.Add(armaments.SetSlot(slot, ItemNode.EmptySlot(0)));
+                while (armaments.Children.Count > 0 && armaments.Children[armaments.Children.Count - 1].IsEmptySlot)
+                {
+                    armaments.Children.RemoveAt(armaments.Children.Count - 1);
+                }
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// The weapon in armament slot <paramref name="slot"/> of the piloted vehicle, or null.
+        /// </summary>
+        public ItemNode Armament(int slot)
+        {
+            lock (sync)
+            {
+                var armaments = Piloting != null ? Piloting.Children.Find(c => c.StaticID == VehicleArmaments) : null;
+                if (armaments == null || slot < 0 || slot >= armaments.Children.Count || armaments.Children[slot].IsEmptySlot)
+                {
+                    return null;
+                }
+                return armaments.Children[slot];
+            }
+        }
+
+        /// <summary>
+        /// The template of each armament slot of a vehicle, -1 for an empty one (for its looks, 0x800A).
+        /// </summary>
+        public static int[] ArmamentTemplates(ItemNode vehicle)
+        {
+            var armaments = vehicle != null ? vehicle.Children.Find(c => c.StaticID == VehicleArmaments) : null;
+            if (armaments == null)
+            {
+                return new int[0];
+            }
+            return armaments.Children.ConvertAll(c => c.IsEmptySlot ? -1 : c.StaticID).ToArray();
+        }
+
+        /// <summary>
+        /// Moves <paramref name="rounds"/> from an ammunition stack into a weapon (0x1D).
+        /// </summary>
+        public bool Reload(uint ammoUID, uint containerUID, uint weaponUID, int rounds)
+        {
+            lock (sync)
+            {
+                var ammo = GetLocked(ammoUID);
+                var container = GetLocked(containerUID);
+                var weapon = GetLocked(weaponUID);
+                if (ammo == null || weapon == null || container == null || ammo.Parent != container ||
+                    !weapon.IsEquipment || rounds <= 0 || rounds > ammo.Amount)
+                {
+                    return false;
+                }
+                ammo.Amount -= rounds;
+                if (ammo.Amount == 0)
+                {
+                    container.Remove(ammo);
+                    Unregister(ammo);
+                }
+                weapon.Loaded += rounds;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Removes a destroyed weapon or shield from armament slot <paramref name="slot"/>.
+        /// </summary>
+        public void DestroyArmament(int slot)
+        {
+            lock (sync)
+            {
+                var armaments = Piloting != null ? Piloting.Children.Find(c => c.StaticID == VehicleArmaments) : null;
+                if (armaments == null || slot < 0 || slot >= armaments.Children.Count || armaments.Children[slot].IsEmptySlot)
+                {
+                    return;
+                }
+                UnregisterTree(armaments.SetSlot(slot, ItemNode.EmptySlot(0)));
+            }
+        }
+
+        /// <summary>
+        /// Share of the maximum health an ER kit repairs (the official one repaired 1360 of 4000 in
+        /// Self_ER_REpair.pcap).
+        /// </summary>
+        public const int RepairKitPercent = 34;
+
+        /// <summary>
+        /// Uses one ER kit (31xxxx) from <paramref name="containerUID"/> on the piloted vehicle (0x1C). Returns the
+        /// health repaired, or -1 when there is no kit, no vehicle or nothing to repair.
+        /// </summary>
+        public int UseRepairKit(uint itemUID, uint containerUID)
+        {
+            lock (sync)
+            {
+                var vehicle = Piloting;
+                var kit = GetLocked(itemUID);
+                var container = GetLocked(containerUID);
+                if (vehicle == null || kit == null || container == null || kit.Parent != container ||
+                    kit.StaticID / 10000 != 31 || kit.Amount <= 0 || vehicle.MaxHealth <= 0 ||
+                    vehicle.Health <= 0 || vehicle.Health >= vehicle.MaxHealth)
+                {
+                    return -1;
+                }
+                int repaired = System.Math.Min(vehicle.MaxHealth - vehicle.Health, vehicle.MaxHealth * RepairKitPercent / 100);
+                SetHealth(vehicle, vehicle.Health + repaired);
+                kit.Amount--;
+                if (kit.Amount == 0)
+                {
+                    container.Remove(kit);
+                    Unregister(kit);
+                }
+                return repaired;
+            }
+        }
+
+        /// <summary>
+        /// Takes the destroyed piloted vehicle away from the player, who is then on foot. Returns it, or null.
+        /// </summary>
+        public ItemNode LoseVehicle()
+        {
+            return GetOff(Piloting != null ? Piloting.UniqueID : 0);
+        }
+
+        private static void PadSlots(ItemNode container, int slot)
+        {
+            while (container.Children.Count <= slot)
+            {
+                container.Add(ItemNode.EmptySlot(0));
+            }
+        }
+
+        /// <summary>
         /// Moves money between the money container and the bank (0x19). False when the source is short.
         /// </summary>
         public bool TransferMoney(bool toBank, int amount)
@@ -691,14 +879,26 @@ namespace TitansUC.GameServer.World
             Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleArmaments) { Name = "armaments", Modified = -1, Created = -1 }));
             var inventory = Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 }));
 
-            // Java's container.child format: "itemID-amount" separated by spaces.
+            // Java's container.child format: "itemID-amount" separated by spaces; equipped armaments are
+            // written "@slot-itemID".
+            var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
             foreach (var entry in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
             {
-                var parts = entry.Split('-');
-                int itemID, amount;
-                if (parts.Length == 2 && int.TryParse(parts[0], out itemID) && int.TryParse(parts[1], out amount) && itemID > 0)
+                bool armament = entry.StartsWith("@");
+                var parts = entry.TrimStart('@').Split('-');
+                int first, second;
+                if (parts.Length != 2 || !int.TryParse(parts[0], out first) || !int.TryParse(parts[1], out second))
                 {
-                    Register(inventory.Add(NewItem(itemID, amount > 0 ? amount : 1, null)));
+                    continue;
+                }
+                if (armament && first >= 0 && first < MaxArmamentSlots && second > 0)
+                {
+                    PadSlots(armaments, first);
+                    armaments.SetSlot(first, Register(NewItem(second, 1, null)));
+                }
+                else if (!armament && first > 0)
+                {
+                    Register(inventory.Add(NewItem(first, second > 0 ? second : 1, null)));
                 }
             }
             return vehicle;
@@ -709,12 +909,24 @@ namespace TitansUC.GameServer.World
         /// </summary>
         private static string VehicleChildren(ItemNode vehicle)
         {
+            var entries = new List<string>();
             var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
-            if (inventory == null)
+            if (inventory != null)
             {
-                return null;
+                entries.AddRange(inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount));
             }
-            return string.Join(" ", inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount));
+            var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
+            if (armaments != null)
+            {
+                for (int i = 0; i < armaments.Children.Count; i++)
+                {
+                    if (!armaments.Children[i].IsEmptySlot)
+                    {
+                        entries.Add("@" + i + "-" + armaments.Children[i].StaticID);
+                    }
+                }
+            }
+            return string.Join(" ", entries);
         }
 
         /// <summary>
@@ -746,13 +958,25 @@ namespace TitansUC.GameServer.World
         public static ItemNode NewItem(int templateID, int amount, string name)
         {
             int now = UnixNow();
-            return new ItemNode(NewUniqueID(), ItemNode.Singleton, templateID)
+            var item = new ItemNode(NewUniqueID(), ItemNode.Singleton, templateID)
             {
                 Amount = amount,
                 Created = now,
                 Modified = now,
                 Name = name,
             };
+
+            // Weapons and shields come loaded and at full durability (the official 75mm machine gun was bought
+            // with 100 rounds in it).
+            var template = ItemTemplates.Get(templateID);
+            if (template != null && (template.IsWeapon || template.IsShield) && template.Durability > 0)
+            {
+                item.Stats = template.IsWeapon
+                    ? new[] { template.Durability, template.Durability, template.Power, template.Rate, template.Range, 0, 1000 }
+                    : new[] { template.Durability, template.Durability, 0, 0, 0, 0, 1000 };
+                item.Loaded = template.IsWeapon ? template.Magazine : 0;
+            }
+            return item;
         }
 
         private static void Touch(ItemNode item)
@@ -785,7 +1009,10 @@ namespace TitansUC.GameServer.World
         {
             foreach (var n in node.Descendants())
             {
-                nodes[n.UniqueID] = n;
+                if (!n.IsEmptySlot)
+                {
+                    nodes[n.UniqueID] = n;
+                }
             }
         }
 
@@ -793,7 +1020,10 @@ namespace TitansUC.GameServer.World
         {
             foreach (var n in node.Descendants())
             {
-                nodes.Remove(n.UniqueID);
+                if (!n.IsEmptySlot)
+                {
+                    nodes.Remove(n.UniqueID);
+                }
             }
         }
 

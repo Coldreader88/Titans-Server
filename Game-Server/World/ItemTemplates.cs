@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -112,8 +112,33 @@ namespace TitansUC.GameServer.World
                 }
                 range = t.ID / 10000;
                 t.IsVehicle = vehicles;
+                ReadEquipmentStats(d, p, t);
                 result[t.ID] = t;
             }
+        }
+
+        /// <summary>
+        /// Weapons (28xxxx) and shields (36xxxx): int32 BE values at fixed offsets after the price, found by
+        /// matching the 0x8016 descriptions in the captures (75mm machine gun: durability 400, power 35,
+        /// 22, range 500, 100 rounds; beam gun 280019: 400, 110, 18, 700, 160 rounds; shields: durability).
+        /// </summary>
+        private static void ReadEquipmentStats(byte[] d, int afterPrice, ItemTemplate t)
+        {
+            int range = t.ID / 10000;
+            if ((range != 28 && range != 36) || afterPrice + 89 > d.Length)
+            {
+                return;
+            }
+            int p;
+            p = afterPrice + 45; t.Durability = ReadInt(d, ref p);
+            if (range == 36)
+            {
+                return;
+            }
+            p = afterPrice + 41; t.Range = ReadInt(d, ref p);
+            p = afterPrice + 49; t.Power = ReadInt(d, ref p);
+            p = afterPrice + 57; t.Rate = ReadInt(d, ref p);
+            p = afterPrice + 85; t.Magazine = ReadInt(d, ref p);
         }
 
         /// <summary>
@@ -207,6 +232,19 @@ namespace TitansUC.GameServer.World
         public int Price { get; set; }
 
         public bool IsVehicle { get; set; }
+
+        /// <summary>
+        /// Weapons and shields (see ItemTemplates.ReadEquipmentStats): durability; weapons also range, power
+        /// (the third value of the weapon's stats list), a rate-like value and rounds per magazine (0 for melee).
+        /// </summary>
+        public int Durability { get; set; }
+        public int Range { get; set; }
+        public int Power { get; set; }
+        public int Rate { get; set; }
+        public int Magazine { get; set; }
+
+        public bool IsWeapon { get { return ID / 10000 == 28; } }
+        public bool IsShield { get { return ID / 10000 == 36; } }
 
         public bool ForSale { get { return Price > 0 && Price < ItemTemplates.NotForSale; } }
 

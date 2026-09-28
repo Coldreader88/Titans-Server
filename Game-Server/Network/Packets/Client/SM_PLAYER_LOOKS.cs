@@ -25,8 +25,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// UC size    0
     /// uint16 BE   counter the official server raised whenever the armaments changed
     /// </code>
-    /// A vehicle without weapons is "80 80 80" (official captures, e.g. BATTLE 1.pcap). Weapons are not
-    /// implemented yet, so that is what is sent.
+    /// A vehicle without weapons is "80 80 80" (official captures, e.g. BATTLE 1.pcap). With weapons the first
+    /// list holds each armament slot's template (-1 empty) and the second one FF per slot.
     /// </summary>
     public class SM_PLAYER_LOOKS : UCPacket<GSOpcode>
     {
@@ -41,17 +41,25 @@ namespace TitansUC.GameServer.Network.Packets.Client
             CharacterLooks.Write(this, character);
         }
 
-        public SM_PLAYER_LOOKS(Character character, int vehicleTemplateID)
+        public SM_PLAYER_LOOKS(uint characterID, int vehicleTemplateID, int[] armaments, ushort counter)
         {
             this.ID = GSOpcode.SM_PLAYER_LOOKS;
 
             this.PutUIntBE(0x00040002);
-            this.PutUIntBE(character.ClientID);
+            this.PutUIntBE(characterID);
             this.PutIntBE(vehicleTemplateID);
+            this.PutSize(armaments.Length);
+            foreach (var template in armaments)
+            {
+                this.PutIntBE(template);
+            }
+            this.PutSize(armaments.Length);
+            foreach (var template in armaments)
+            {
+                this.PutByte(0xFF);
+            }
             this.PutSize(0);
-            this.PutSize(0);
-            this.PutSize(0);
-            this.PutUShortBE(0);
+            this.PutUShortBE(counter);
         }
     }
 }
