@@ -10,6 +10,9 @@
   <!-- How far away other players are visible, in position units. 0 uses what the client asks for (8000 on foot). -->
   <ViewDistance>0</ViewDistance>
 
+  <!-- Chance in percent that a destroyed vehicle (a player's or an NPC's) leaves a wreck; otherwise nothing is left. -->
+  <WreckChance>70</WreckChance>
+
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
 

@@ -78,7 +78,15 @@ namespace TitansUC.GameServer.Network.Client
             // loaded (and changed) the character: saving again here could undo that.
             if (GameWorld.Instance.Remove(this) && !departed)
             {
-                Save();
+                // Cleared for the other side and gone without 0x42: the client is on its way there.
+                if (reservedCluster != 0)
+                {
+                    Depart();
+                }
+                else
+                {
+                    Save();
+                }
             }
             Logger.ShowInfo(string.Format("{0} left the game ({1} players online).", Character.Name, GameWorld.Instance.Count));
         }
@@ -1065,27 +1073,49 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
+            // Only a reservation: the official client goes on playing on this server after 0x8040. It buys its
+            // FREIGHTER (0x21 service 3), gets in, flies the launch for about 50 seconds and only then leaves
+            // with 0x42 and logs in to the other server (Earth_To_Space.pcap). The flight is saved then.
+            reservedCluster = p.Cluster;
+            if (Configuration.Instance.CheckSessionKey)
+            {
+                LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
+            }
+            Logger.ShowInfo(string.Format("{0} is cleared for {1} ({2}:{3}).", Character.Name, p.Cluster == 2 ? "Space" : "Earth",
+                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
+            this.Network.SendPacket(new SM_RESERVE_ANOTHER_GAME_FE(CharacterID, p.Cluster,
+                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
+        }
+
+        /// <summary>
+        /// The cluster 0x40 cleared the player for (1 Earth, 2 Space), 0 for none.
+        /// </summary>
+        private ushort reservedCluster;
+
+        /// <summary>
+        /// The player leaves for the other side after 0x40: saves the flight (the vehicle they fly in, which
+        /// keeps its unique id, and the take-off point) and the character in the other zone.
+        /// </summary>
+        private void Depart()
+        {
             try
             {
-                WorldDatabase.SaveFlight(CharacterID, p.Cluster, Inventory.Piloting != null ? Inventory.Piloting.UniqueID : 0,
+                WorldDatabase.SaveFlight(CharacterID, reservedCluster, Inventory.Piloting != null ? Inventory.Piloting.UniqueID : 0,
                     lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 });
             }
             catch (Exception ex)
             {
                 Logger.ShowError(ex);
             }
-            Character.Zone = (Common.Characters.Zone)p.Cluster;
+            Character.Zone = (Common.Characters.Zone)reservedCluster;
             if (Configuration.Instance.CheckSessionKey)
             {
                 LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
             }
-
-            Logger.ShowInfo(string.Format("{0} takes off for {1} ({2}:{3}).", Character.Name, p.Cluster == 2 ? "Space" : "Earth",
-                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
+            Logger.ShowInfo(string.Format("{0} takes off for {1} in {2}.", Character.Name, reservedCluster == 2 ? "Space" : "Earth",
+                Inventory.Piloting != null ? Inventory.Piloting.Name : "nothing"));
             Save();
             departed = true;
-            this.Network.SendPacket(new SM_RESERVE_ANOTHER_GAME_FE(CharacterID, p.Cluster,
-                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
         }
 
         /// <summary>
@@ -1182,20 +1212,35 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            bool gone = false;
             if (r.Destroyed)
             {
-                ground.BecomeWreck(CharacterID);
-                Logger.ShowInfo(string.Format("{0} destroyed the empty {1} of character {2}.", Character.Name, ground.Node.Name, ground.OwnerID));
-                var owner = GameWorld.Instance.Get(ground.OwnerID);
+                uint formerOwner = ground.OwnerID;
+                gone = !Combat.LeavesWreck();
+                if (gone)
+                {
+                    GameWorld.Instance.Take(ground.UniqueID, g => true);
+                }
+                else
+                {
+                    ground.BecomeWreck(CharacterID);
+                }
+                Logger.ShowInfo(string.Format("{0} destroyed the empty {1} of character {2}{3}.", Character.Name, ground.Node.Name,
+                    formerOwner, gone ? "; nothing is left of it" : ""));
+                var owner = GameWorld.Instance.Get(formerOwner);
                 if (owner != null)
                 {
                     owner.SaveItems();
                 }
             }
-            GameWorld.Instance.Place(ground);
+            if (!gone)
+            {
+                GameWorld.Instance.Place(ground);
+            }
             ushort echo = p.Echo;
+            uint action = gone ? SM_UPDATE_ITEM_INFO.ItemPickedUp : r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged;
             GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance, () =>
-                new SM_UPDATE_ITEM_INFO(r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged, ground, attacker, echo));
+                new SM_UPDATE_ITEM_INFO(action, ground, attacker, echo));
         }
 
         /// <summary>
@@ -1357,15 +1402,25 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
-            var c = Coord;
-            var rotation = new byte[]
-            {
-                (byte)(c.Tilt >> 8), (byte)c.Tilt, (byte)(c.Roll >> 8), (byte)c.Roll, (byte)(c.Direction >> 8), (byte)c.Direction,
-            };
-            var wreck = new GroundItem(vehicle, c.ClusterID, c.X, c.Y, c.Z, rotation, killerID) { IsWreck = true };
-            GameWorld.Instance.Place(wreck);
             SetVehicle(null);
-            BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, wreck);
+            if (Combat.LeavesWreck())
+            {
+                // The wreck of a player's vehicle is theirs when an NPC destroyed it, else the killer's.
+                uint owner = Npc.IsNpcID(killerID) || killerID == 0xFFFFFFFF || killerID == 0 ? CharacterID : killerID;
+                var c = Coord;
+                var rotation = new byte[]
+                {
+                    (byte)(c.Tilt >> 8), (byte)c.Tilt, (byte)(c.Roll >> 8), (byte)c.Roll, (byte)(c.Direction >> 8), (byte)c.Direction,
+                };
+                var wreck = new GroundItem(vehicle, c.ClusterID, c.X, c.Y, c.Z, rotation, owner) { IsWreck = true };
+                GameWorld.Instance.Place(wreck);
+                BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, wreck);
+                Logger.ShowInfo(string.Format("{0} lost {1}; the wreck belongs to {2}.", Character.Name, vehicle.Name, owner));
+            }
+            else
+            {
+                Logger.ShowInfo(string.Format("{0} lost {1}; nothing is left of it.", Character.Name, vehicle.Name));
+            }
             SaveItems();
         }
 
@@ -1700,7 +1755,14 @@ namespace TitansUC.GameServer.Network.Client
         {
             if (InGame && GameWorld.Instance.Remove(this))
             {
-                Save();
+                if (reservedCluster != 0 && !departed)
+                {
+                    Depart();
+                }
+                else if (!departed)
+                {
+                    Save();
+                }
             }
             this.Network.SendPacket(new SM_LOGOUT_GAME_FE());
         }

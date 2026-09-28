@@ -138,6 +138,9 @@ namespace TitansUC.GameServer
                         case "checksessionkey":
                             checkSessionKey = bool.Parse(i.InnerText.Trim());
                             break;
+                        case "wreckchance":
+                            World.Combat.WreckChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
+                            break;
                         case "viewdistance":
                             viewDistance = int.Parse(i.InnerText.Trim());
                             break;

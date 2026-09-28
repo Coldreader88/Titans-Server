@@ -338,7 +338,9 @@ namespace TitansUC.GameServer.World
             // Warships drop their loot on the ground first, then the wreck, as the official Magellans did. Mobile
             // suits, armours and fighters keep it in the wreck's cargo, for whoever opens it (0x26/0x27).
             var drops = Loot(npc);
-            if (npc.IsMobile)
+            // Not every NPC leaves a wreck; without one its loot lies on the ground.
+            bool leavesWreck = Combat.LeavesWreck();
+            if (npc.IsMobile && leavesWreck)
             {
                 var cargo = wreck.Node.Add(new ItemNode(PlayerInventory.NewUniqueID(), ItemNode.Multi, PlayerInventory.VehicleInventory)
                 {
@@ -356,6 +358,10 @@ namespace TitansUC.GameServer.World
                 GameWorld.Instance.Place(item);
                 GameWorld.Instance.SendNear(item.ClusterID, item.X, item.Y, UCGameSession.BroadcastDistance,
                     () => new SM_UPDATE_ITEM_INFO(SM_UPDATE_ITEM_INFO.ItemDropped, item, npc.ID));
+            }
+            if (!leavesWreck)
+            {
+                return;
             }
             GameWorld.Instance.Place(wreck);
             GameWorld.Instance.SendNear(wreck.ClusterID, wreck.X, wreck.Y, UCGameSession.BroadcastDistance,

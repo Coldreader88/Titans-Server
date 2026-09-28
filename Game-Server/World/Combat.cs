@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 
 namespace TitansUC.GameServer.World
@@ -28,6 +28,20 @@ namespace TitansUC.GameServer.World
         public const int WreckLifetime = 600;
 
         public const int ShieldSlot = 1;
+
+        /// <summary>
+        /// The chance in percent that a destroyed vehicle leaves a wreck; otherwise nothing is left of it
+        /// (GameServer.xml WreckChance, 70 by default).
+        /// </summary>
+        public static int WreckChance = 70;
+
+        public static bool LeavesWreck()
+        {
+            lock (random)
+            {
+                return random.Next(100) < WreckChance;
+            }
+        }
 
         /// <summary>
         /// The attack number: one counter for every attack on the server, misses included (the official Earth
