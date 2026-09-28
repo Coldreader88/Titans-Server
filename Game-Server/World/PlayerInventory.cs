@@ -801,6 +801,39 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Picks an item up onto the stack of the same item already in the destination (0x24 mini op 2 for
+        /// money, 4 for other items; Backpack_Pickup_11222_EF.pcap): the ground item joins that stack and is
+        /// gone. Returns the stack, or null when there is none to join.
+        /// </summary>
+        public ItemNode PickUpOntoStack(ItemNode item, uint destUID)
+        {
+            lock (sync)
+            {
+                if (item.Format != ItemNode.Singleton || IsVehicle(item))
+                {
+                    return null;
+                }
+                var dest = GetLocked(destUID);
+                ItemNode stack = null;
+                if (dest != null && CanHoldItems(dest))
+                {
+                    stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                }
+                if (stack == null && item.StaticID == PlayerContainers.Money && Money != null)
+                {
+                    stack = Money;
+                }
+                if (stack == null)
+                {
+                    return null;
+                }
+                stack.Amount += item.Amount;
+                Touch(stack);
+                return stack;
+            }
+        }
+
+        /// <summary>
         /// Gets in a vehicle on the ground (0x24 mini op 3); it goes in weared's vehicle slot.
         /// </summary>
         public bool Board(ItemNode vehicle, uint wearedUID)

@@ -117,6 +117,7 @@
     <Compile Include="Network\Packets\Client\CM_REGISTER_PLAYER.cs" />
     <Compile Include="Network\Packets\Client\CM_REGIST_COORD_MGR.cs" />
     <Compile Include="Network\Packets\Client\CM_SERVER_TIME.cs" />
+    <Compile Include="Network\Packets\Client\CM_UNKNOWN_0D.cs" />
     <Compile Include="Network\Packets\Client\CM_SIMPLE_PLAYER_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_CIRCUIT_ITEM.cs" />
     <Compile Include="Network\Link\CmsLink.cs" />

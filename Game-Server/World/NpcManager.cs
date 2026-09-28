@@ -29,8 +29,9 @@ namespace TitansUC.GameServer.World
     /// </list>
     /// Movement: the captured NPCs on Earth and the ships stood still, mobile suits in space drifted about
     /// 45-60 units a second around their squad's area. Here space mobile suits patrol around their spawn point at
-    /// that speed; any mobile suit chases its target into weapon range (not beyond <see cref="LeashDistance"/>
-    /// from home) and walks back home afterwards. Their new positions reach clients through 0x8003, like the
+    /// that speed and Earth ones wander near theirs, pausing at each point; any mobile suit chases its target
+    /// into weapon range (not beyond <see cref="LeashDistance"/> from home), circles it while firing, now and
+    /// then closes in to strike with its melee weapon, and walks back home afterwards. Their new positions reach clients through 0x8003, like the
     /// official ones. Hostile NPCs also attack pilots of the other faction within
     /// NpcAggroRange (GameServer.xml) (0 = only fire back). Destroyed NPCs drop loot.
     /// The hit rules are the same as between players (<see cref="Combat"/>).
@@ -55,6 +56,21 @@ namespace TitansUC.GameServer.World
         public const int PatrolSpeed = 50;
         public const int ChaseSpeed = 150;
         public const int PatrolRadius = 1500;
+
+        /// <summary>
+        /// On Earth NPCs wander this far from their spawn point, stopping a while at each point.
+        /// </summary>
+        public const int GroundPatrolRadius = 600;
+
+        /// <summary>
+        /// Melee: the reach in the client's distance units (a quarter of world units) when the weapon names
+        /// none, and the chance an NPC with a gun and a melee weapon picks melee each time it rethinks
+        /// (every <see cref="ModeSeconds"/>).
+        /// </summary>
+        public const int DefaultMeleeReach = 12;
+        public const int MeleeChancePercent = 40;
+        public const int ModeSeconds = 12;
+        public const int MeleeIntervalMs = 2500;
 
         /// <summary>
         /// An NPC gives up the chase this far from its spawn point.
@@ -136,11 +152,11 @@ namespace TitansUC.GameServer.World
         /// A GM's #spawn::npc: a hostile NPC of <paramref name="faction"/> at a point. It fights like the others
         /// but does not come back once destroyed.
         /// </summary>
-        public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction)
+        public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null)
         {
             lock (addLock)
             {
-                var armaments = faction == 1 ? EfArmaments : ZeonArmaments;
+                armaments = armaments ?? (faction == 1 ? EfArmaments : ZeonArmaments);
                 var npc = Parse(new[]
                 {
                     (nextSpawnedID++).ToString(), "Spawned", faction.ToString(), templateID.ToString(), (nextSpawnedSquad++).ToString(),
@@ -239,6 +255,12 @@ namespace TitansUC.GameServer.World
             {
                 npc.Weapon = new ItemNode(0, 0, gun.ID) { Name = gun.Name };
             }
+            var blade = npc.Armaments.Select(ItemTemplates.Get)
+                .FirstOrDefault(t => t != null && t.IsWeapon && t.Magazine <= 0 && Loadouts.IsMelee(t.Name));
+            if (blade != null && !npc.IsVendor)
+            {
+                npc.Melee = new ItemNode(0, 0, blade.ID) { Name = blade.Name };
+            }
             return npc;
         }
 
@@ -288,7 +310,7 @@ namespace TitansUC.GameServer.World
         private void SquadAttack(Npc npc, uint playerID)
         {
             long now = Now;
-            foreach (var member in npcs.Values.Where(n => n.Squad == npc.Squad && n.Zone == npc.Zone && n.Weapon != null))
+            foreach (var member in npcs.Values.Where(n => n.Squad == npc.Squad && n.Zone == npc.Zone && n.Armed))
             {
                 lock (member)
                 {
@@ -456,7 +478,7 @@ namespace TitansUC.GameServer.World
         /// </summary>
         private void Think(Npc npc, long now, double seconds)
         {
-            if (npc.Weapon == null || npc.IsVendor)
+            if (!npc.Armed)
             {
                 return;
             }
@@ -544,47 +566,115 @@ namespace TitansUC.GameServer.World
             if (target != null)
             {
                 var c = target.Coord;
-                var template = ItemTemplates.Get(npc.Weapon.StaticID);
-                double keep = Math.Max(300, Math.Min(template.Range * 4 * 0.6, 3000));
-                if (WorldDistance(npc, c.X, c.Y, c.Z) > keep)
+                double distance = WorldDistance(npc, c.X, c.Y, c.Z);
+                if (npc.MeleeMode || npc.Weapon == null)
                 {
-                    Step(npc, c.X, c.Y, c.Z, ChaseSpeed * seconds);
+                    // Close in to strike: stop just short of the target.
+                    double reach = MeleeReach(npc) * 4 * 0.6;
+                    if (distance > reach)
+                    {
+                        Step(npc, c.X, c.Y, c.Z, Math.Min(ChaseSpeed * 1.3 * seconds, distance - reach * 0.8));
+                    }
+                    else
+                    {
+                        Face(npc, c.X - (double)npc.X, c.Y - (double)npc.Y);
+                    }
                 }
                 else
                 {
-                    Face(npc, c.X - (double)npc.X, c.Y - (double)npc.Y);
-                }
-                npc.HasWaypoint = false;
-                return;
-            }
-
-            if (fromHome > PatrolRadius || (npc.Zone != (ushort)Common.Characters.Zone.SPACE && fromHome > 50))
-            {
-                if (Step(npc, npc.SpawnX, npc.SpawnY, npc.SpawnZ, ChaseSpeed * seconds) && npc.Zone != (ushort)Common.Characters.Zone.SPACE)
-                {
-                    npc.Direction = npc.SpawnDirection;
-                }
-                npc.HasWaypoint = false;
-                return;
-            }
-
-            if (npc.Zone == (ushort)Common.Characters.Zone.SPACE)
-            {
-                if (!npc.HasWaypoint)
-                {
-                    lock (random)
+                    var template = ItemTemplates.Get(npc.Weapon.StaticID);
+                    double keep = Math.Max(300, Math.Min(template.Range * 4 * 0.6, 3000));
+                    if (distance > keep)
                     {
-                        npc.WaypointX = npc.SpawnX + random.Next(-PatrolRadius, PatrolRadius);
-                        npc.WaypointY = npc.SpawnY + random.Next(-PatrolRadius, PatrolRadius);
-                        npc.WaypointZ = npc.SpawnZ + random.Next(-PatrolRadius / 3, PatrolRadius / 3);
+                        Step(npc, c.X, c.Y, c.Z, ChaseSpeed * seconds);
                     }
-                    npc.HasWaypoint = true;
+                    else
+                    {
+                        Strafe(npc, c, seconds);
+                    }
                 }
-                if (Step(npc, npc.WaypointX, npc.WaypointY, npc.WaypointZ, PatrolSpeed * seconds))
+                npc.HasWaypoint = false;
+                return;
+            }
+
+            bool space = npc.Zone == (ushort)Common.Characters.Zone.SPACE;
+            int radius = space ? PatrolRadius : GroundPatrolRadius;
+            if (fromHome > radius + 100)
+            {
+                // Back from a chase.
+                Step(npc, npc.SpawnX, npc.SpawnY, npc.SpawnZ, ChaseSpeed * seconds);
+                npc.HasWaypoint = false;
+                return;
+            }
+
+            // Patrol: to a random point around home, in space without stopping, on Earth with a pause at each
+            // point and at the height it spawned at.
+            if (Now < npc.IdleUntil)
+            {
+                return;
+            }
+            if (!npc.HasWaypoint)
+            {
+                lock (random)
                 {
-                    npc.HasWaypoint = false;
+                    npc.WaypointX = npc.SpawnX + random.Next(-radius, radius);
+                    npc.WaypointY = npc.SpawnY + random.Next(-radius, radius);
+                    npc.WaypointZ = space ? npc.SpawnZ + random.Next(-radius / 3, radius / 3) : npc.SpawnZ;
+                }
+                npc.HasWaypoint = true;
+            }
+            if (Step(npc, npc.WaypointX, npc.WaypointY, npc.WaypointZ, PatrolSpeed * seconds))
+            {
+                npc.HasWaypoint = false;
+                if (!space)
+                {
+                    npc.IdleUntil = Now + Next(3000, 10000);
                 }
             }
+        }
+
+        /// <summary>
+        /// Circles the target at its distance while firing, turning the other way now and then.
+        /// </summary>
+        private void Strafe(Npc npc, CoordData c, double seconds)
+        {
+            long now = Now;
+            if (now >= npc.NextStrafeChange)
+            {
+                npc.StrafeSign = Next(0, 2) == 0 ? -1 : 1;
+                npc.NextStrafeChange = now + Next(3000, 7000);
+            }
+            double dx = c.X - (double)npc.X, dy = c.Y - (double)npc.Y;
+            double d = Math.Sqrt(dx * dx + dy * dy);
+            if (d >= 1)
+            {
+                double step = PatrolSpeed * 1.5 * seconds;
+                npc.X += (int)Math.Round(-dy / d * step * npc.StrafeSign);
+                npc.Y += (int)Math.Round(dx / d * step * npc.StrafeSign);
+            }
+            Face(npc, c.X - (double)npc.X, c.Y - (double)npc.Y);
+        }
+
+        /// <summary>
+        /// How close (in the client's distance units) it must be to strike with its melee weapon.
+        /// </summary>
+        private static int MeleeReach(Npc npc)
+        {
+            var template = npc.Melee != null ? ItemTemplates.Get(npc.Melee.StaticID) : null;
+            return template != null && template.Range > 0 ? template.Range : DefaultMeleeReach;
+        }
+
+        /// <summary>
+        /// Chooses between closing in with the melee weapon and firing from a distance.
+        /// </summary>
+        private void ChooseMode(Npc npc, long now)
+        {
+            if (now < npc.NextModeChange)
+            {
+                return;
+            }
+            npc.NextModeChange = now + ModeSeconds * 1000L;
+            npc.MeleeMode = npc.Melee != null && (npc.Weapon == null || Next(0, 100) < MeleeChancePercent);
         }
 
         /// <summary>
@@ -694,8 +784,24 @@ namespace TitansUC.GameServer.World
                 return;
             }
             var c = t.Coord;
+            ChooseMode(npc, now);
+            int distance = Distance(npc, c);
+            if (npc.Melee != null && distance <= MeleeReach(npc))
+            {
+                // Within reach: strike at once (the official melee had no fire effect, only the lock on and
+                // the result, hand_to_hand_0.1.pcap).
+                LockOn(npc, t);
+                Hit(npc, t, npc.Melee);
+                npc.NextShot = now + MeleeIntervalMs;
+                return;
+            }
+            if (npc.Weapon == null)
+            {
+                npc.NextShot = now + 500;
+                return;
+            }
             var template = ItemTemplates.Get(npc.Weapon.StaticID);
-            if (Distance(npc, c) > template.Range)
+            if (distance > template.Range)
             {
                 npc.NextShot = now + 1000;
                 return;
@@ -714,6 +820,14 @@ namespace TitansUC.GameServer.World
             Bytes.PutU32(effect, 32, (uint)c.Z);
             GameWorld.Instance.SendNear(npc.Zone, c.X, c.Y, UCGameSession.BroadcastDistance,
                 () => new SM_RAW((uint)GSOpcode.SM_BROADCAST, effect));
+            LockOn(npc, t);
+            npc.ShotTarget = t.CharacterID;
+            npc.ShotDue = now + ShotDelayMs;
+            npc.NextShot = now + Next(MinShotIntervalMs, MaxShotIntervalMs);
+        }
+
+        private static void LockOn(Npc npc, UCGameSession t)
+        {
             if (npc.LockedOn.Add(t.CharacterID))
             {
                 var lockOn = new byte[9];
@@ -721,16 +835,18 @@ namespace TitansUC.GameServer.World
                 lockOn[8] = 1;
                 t.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_LOCK_ON, lockOn));
             }
-            npc.ShotTarget = t.CharacterID;
-            npc.ShotDue = now + ShotDelayMs;
-            npc.NextShot = now + Next(MinShotIntervalMs, MaxShotIntervalMs);
         }
 
         private void Hit(Npc npc, UCGameSession target)
         {
-            // NPC guns never run dry or wear out.
-            npc.Weapon.Loaded = 1 << 20;
-            var r = target.TakeHit(npc.Weapon, Distance(npc, target.Coord));
+            Hit(npc, target, npc.Weapon);
+        }
+
+        private void Hit(Npc npc, UCGameSession target, ItemNode weapon)
+        {
+            // NPC weapons never run dry or wear out.
+            weapon.Loaded = 1 << 20;
+            var r = target.TakeHit(weapon, Distance(npc, target.Coord));
             if (r == null)
             {
                 return;

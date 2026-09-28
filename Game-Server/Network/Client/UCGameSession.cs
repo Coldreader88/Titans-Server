@@ -596,8 +596,8 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
-            if (p.CharacterID != CharacterID ||
-                (p.MiniOp != CM_SPACE_PICKUP_ITEM.PickUpItem && p.MiniOp != CM_SPACE_PICKUP_ITEM.GetIn))
+            if (p.CharacterID != CharacterID || p.MiniOp < CM_SPACE_PICKUP_ITEM.PickUpItem ||
+                p.MiniOp > CM_SPACE_PICKUP_ITEM.PickUpOntoStack)
             {
                 RefuseGround("pick up", p.ItemUniqueID, "mini op " + p.MiniOp + " for character " + p.CharacterID);
                 return;
@@ -613,6 +613,21 @@ namespace TitansUC.GameServer.Network.Client
             {
                 RefuseGround("pick up", p.ItemUniqueID, "nothing there they can take");
                 return;
+            }
+
+            // Mini ops 2 (money) and 4: onto the stack of the same item already there.
+            if (!vehicle && p.MiniOp != CM_SPACE_PICKUP_ITEM.PickUpItem)
+            {
+                var stack = Inventory.PickUpOntoStack(ground.Node, p.DestUniqueID);
+                if (stack != null)
+                {
+                    Logger.ShowInfo(string.Format("{0} picked up {1} x {2} onto their stack of {3}.", Character.Name,
+                        ground.Node.StaticID, ground.Node.Amount, stack.Amount));
+                    this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, stack, ground.UniqueID, ground.Node.Format));
+                    BroadcastGround(SM_UPDATE_ITEM_INFO.ItemPickedUp, ground);
+                    SaveItems();
+                    return;
+                }
             }
 
             bool ok = vehicle ? Inventory.Board(ground.Node, p.DestUniqueID) : Inventory.PickUp(ground.Node, p.DestUniqueID);
@@ -1437,7 +1452,7 @@ namespace TitansUC.GameServer.Network.Client
         /// on the ground next to the GM, or a hostile NPC. Returns the message for the GM.
         /// <code>
         /// id::templateID[::amount]     name::item name        ideng::vehicleID::engine (id or name)
-        /// npc[::vehicleID]             (default: the GM's own vehicle, else a ZAKU II or a GM)
+        /// npc[::vehicleID]             (default: a random mobile suit; either way a random loadout)
         /// </code>
         /// Items and vehicles belong to the GM, so only the GM can get in a spawned vehicle.
         /// </summary>
@@ -1454,14 +1469,16 @@ namespace TitansUC.GameServer.Network.Client
             if (type == "npc")
             {
                 byte enemy = Character.Faction == Faction.ZEON ? (byte)1 : (byte)2;
-                int template = args.Length > 1 && int.TryParse(args[1], out n) ? n
-                    : Inventory.Piloting != null ? Inventory.Piloting.StaticID
-                    : enemy == 1 ? 410000 : 410007;
-                var npc = NpcManager.Instance.Spawn(template, enemy, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction);
-                Logger.ShowInfo(string.Format("{0} spawned NPC {1} ({2}) at {3}, {4}, {5}.", Character.Name, npc.ID, template, npc.X, npc.Y, npc.Z));
+                ItemTemplate suit = args.Length > 1 && int.TryParse(args[1], out n) ? ItemTemplates.Get(n) : Loadouts.RandomMobileSuit();
+                int template = suit != null ? suit.ID : enemy == 1 ? 410000 : 410007;
+                suit = suit ?? ItemTemplates.Get(template);
+                string weapons = "its default guns";
+                int[] armaments = suit != null && Loadouts.Applies(suit) ? Loadouts.RandomArmaments(suit, out weapons) : null;
+                var npc = NpcManager.Instance.Spawn(template, enemy, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments);
+                Logger.ShowInfo(string.Format("{0} spawned NPC {1} ({2}, {3}) at {4}, {5}, {6}.", Character.Name, npc.ID, template, weapons, npc.X, npc.Y, npc.Z));
                 var vt = VehicleTemplates.Get(template);
-                return string.Format("Spawned a hostile {0} ({1}) 1000 away. It fires back once you attack it.",
-                    vt != null ? vt.Name : template.ToString(), enemy == 1 ? "EF" : "Zeon");
+                return string.Format("Spawned a hostile {0} ({1}) 1000 away with {2}.",
+                    vt != null ? vt.Name : template.ToString(), enemy == 1 ? "EF" : "Zeon", weapons);
             }
 
             ItemTemplate item = null;
