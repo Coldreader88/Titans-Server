@@ -96,6 +96,8 @@ namespace TitansUC.GameServer.World
                 t.Name = ReadString(d, ref p);
                 p += 4;
                 t.Price = ReadInt(d, ref p);
+                int m = p + 75;
+                t.CombatValue = ReadInt(d, ref m);
                 p += 116;
                 t.EngineID = ReadInt(d, ref p);
                 if (t.EngineID == 0)
@@ -151,5 +153,11 @@ namespace TitansUC.GameServer.World
         public int Price { get; set; }
         public int EngineID { get; set; }
         public int Health { get; set; }
+
+        /// <summary>
+        /// The int32 at 75 bytes after the price: what the official attack results (0x800F) carried as their
+        /// unknown "m" value for this target (GM/ZAKU/ACGUY 1000, ZOGOK/GOGG 1250, DOM 1400, RX-79G 1700).
+        /// </summary>
+        public int CombatValue { get; set; }
     }
 }
