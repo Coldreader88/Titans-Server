@@ -165,12 +165,12 @@ namespace TitansUC.GameServer.Network.Link
 
         public void OnSpawn(uint characterID, string args)
         {
-            if (GameWorld.Instance.Get(characterID) == null)
+            var player = GameWorld.Instance.Get(characterID);
+            if (player == null)
             {
                 return;
             }
-            Logger.ShowInfo(string.Format("#spawn {0} from character {1}: not supported yet.", args, characterID));
-            SystemMessage(characterID, "#spawn is not supported by this game server yet.");
+            SystemMessage(characterID, player.GmSpawn(args.Split(new[] { "::" }, StringSplitOptions.None)));
         }
 
         public void OnPositionLog(uint characterID, string message)

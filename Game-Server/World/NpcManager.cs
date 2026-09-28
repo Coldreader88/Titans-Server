@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -48,7 +48,13 @@ namespace TitansUC.GameServer.World
         private static readonly NpcManager instance = new NpcManager();
         public static NpcManager Instance { get { return instance; } }
 
-        private readonly Dictionary<uint, Npc> npcs = new Dictionary<uint, Npc>();
+        /// <summary>
+        /// Replaced, never changed, once the server runs (#spawn::npc adds NPCs while the AI reads it).
+        /// </summary>
+        private volatile Dictionary<uint, Npc> npcs = new Dictionary<uint, Npc>();
+        private readonly object addLock = new object();
+        private uint nextSpawnedID = 90000000;
+        private int nextSpawnedSquad = 90000000;
         private readonly Stopwatch clock = Stopwatch.StartNew();
         private readonly Random random = new Random();
         private Timer timer;
@@ -89,6 +95,36 @@ namespace TitansUC.GameServer.World
             return result;
         }
 
+        /// <summary>
+        /// Default armaments of a spawned NPC mobile suit: the official GM and ZAKU II guns (as the NPCs in
+        /// the captures carried them).
+        /// </summary>
+        private static readonly int[] EfArmaments = { 280003, -1, 280000, 280000 };
+        private static readonly int[] ZeonArmaments = { 280006, -1, 280006, 280006 };
+
+        /// <summary>
+        /// A GM's #spawn::npc: a hostile NPC of <paramref name="faction"/> at a point. It fights like the others
+        /// but does not come back once destroyed.
+        /// </summary>
+        public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction)
+        {
+            lock (addLock)
+            {
+                var armaments = faction == 1 ? EfArmaments : ZeonArmaments;
+                var npc = Parse(new[]
+                {
+                    (nextSpawnedID++).ToString(), "Spawned", faction.ToString(), templateID.ToString(), (nextSpawnedSquad++).ToString(),
+                    zone.ToString(), x.ToString(), y.ToString(), z.ToString(), "0", "0", direction.ToString(), "6", "48",
+                    string.Join("/", armaments), "0",
+                });
+                npc.Temporary = true;
+                var copy = new Dictionary<uint, Npc>(npcs);
+                copy[npc.ID] = npc;
+                npcs = copy;
+                return npc;
+            }
+        }
+
         private void Load()
         {
             string path;
@@ -119,6 +155,7 @@ namespace TitansUC.GameServer.World
                 }
             }
             Logger.ShowInfo(string.Format("Loaded {0} NPCs.", npcs.Count));
+            npcs = new Dictionary<uint, Npc>(npcs);
         }
 
         private static Npc Parse(string[] f)
@@ -259,7 +296,7 @@ namespace TitansUC.GameServer.World
                 {
                     if (!npc.Alive)
                     {
-                        if (now >= npc.RespawnAt)
+                        if (!npc.Temporary && now >= npc.RespawnAt)
                         {
                             Respawn(npc);
                         }

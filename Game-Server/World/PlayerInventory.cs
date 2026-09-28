@@ -858,6 +858,20 @@ namespace TitansUC.GameServer.World
         /// A vehicle with its armaments and inventory, registered. <paramref name="item"/>.Amount is the engine
         /// id (0 or -1: the template's).
         /// </summary>
+        /// <summary>
+        /// A new, empty vehicle that belongs to no container yet (#spawn puts it on the ground).
+        /// <paramref name="engineID"/> -1 gives it the template's engine.
+        /// </summary>
+        public ItemNode CreateVehicle(int templateID, int engineID)
+        {
+            lock (sync)
+            {
+                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Amount = engineID });
+                UnregisterTree(vehicle);
+                return vehicle;
+            }
+        }
+
         private ItemNode NewVehicle(CharacterItem item)
         {
             var template = VehicleTemplates.Get(item.ItemID);

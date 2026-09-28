@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Common.Characters;
 using SmartEngine.Core;
@@ -51,6 +52,19 @@ namespace TitansUC.GameServer.World
             EnsureLoaded();
             ItemTemplate t;
             return templates.TryGetValue(id, out t) ? t : null;
+        }
+
+        /// <summary>
+        /// The template named <paramref name="name"/> (any case), else the shortest name containing it; null
+        /// when none does (for #spawn::name).
+        /// </summary>
+        public static ItemTemplate Find(string name)
+        {
+            EnsureLoaded();
+            name = name.Trim();
+            var exact = templates.Values.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+            return exact ?? templates.Values.Where(t => t.Name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                .OrderBy(t => t.Name.Length).ThenBy(t => t.ID).FirstOrDefault();
         }
 
         public static int Count

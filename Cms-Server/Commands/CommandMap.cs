@@ -87,8 +87,8 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "spawn", Usage = "#spawn::id::itemID | #spawn::name::item name | #spawn::ideng::vehicleID::engineName | #spawn::npc", Level = AccessLevel.GM, MinArguments = 1,
-                Description = "Asks the game server to spawn an item or vehicle next to you.",
+                Name = "spawn", Usage = "#spawn::id::itemID[::amount] | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
+                Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away.",
                 Run = Spawn,
             });
             Add(new Command
