@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace TitansUC.GameServer.World
 {
@@ -66,6 +66,11 @@ namespace TitansUC.GameServer.World
         public ItemNode Weapon { get; set; }
 
         public bool Alive { get; set; }
+
+        /// <summary>
+        /// Spawned by a GM: not in npcs.csv, and gone for good once destroyed.
+        /// </summary>
+        public bool Temporary { get; set; }
         public long RespawnAt { get; set; }
         public ushort UpdateCounter { get; set; }
         public int AttackNumber { get; set; }

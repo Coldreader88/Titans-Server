@@ -98,6 +98,24 @@ namespace TitansUC.GameServer
                             Network<GSOpcode>.SuppressPacketHeaderPrintOut = Network<GSOpcode>.SuppressPacketPrintOut;
                             break;
 
+                        case "spawn":
+                            // spawn <character name or id> <#spawn arguments, e.g. id::540000::100 or npc>
+                            if (args.Length < 3)
+                            {
+                                Logger.ShowInfo("Usage: spawn <character name or id> id::itemID[::amount] | name::item name | ideng::vehicleID::engine | npc[::vehicleID]");
+                                break;
+                            }
+                            uint spawnID;
+                            var gm = uint.TryParse(args[1], out spawnID) ? GameWorld.Instance.Get(spawnID)
+                                : GameWorld.Instance.Players.Find(s => string.Equals(s.Character.Name, args[1], StringComparison.OrdinalIgnoreCase));
+                            if (gm == null)
+                            {
+                                Logger.ShowInfo(args[1] + " is not online.");
+                                break;
+                            }
+                            Logger.ShowInfo(gm.GmSpawn(string.Join(" ", args, 2, args.Length - 2).Split(new[] { "::" }, StringSplitOptions.None)));
+                            break;
+
                         case "online":
                             foreach (UCGameSession player in GameWorld.Instance.Players)
                             {

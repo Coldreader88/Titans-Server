@@ -905,6 +905,88 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// A GM's #spawn (from the CMS server's chat command), as the Java server did it: an item or vehicle
+        /// on the ground next to the GM, or a hostile NPC. Returns the message for the GM.
+        /// <code>
+        /// id::templateID[::amount]     name::item name        ideng::vehicleID::engine (id or name)
+        /// npc[::vehicleID]             (default: the GM's own vehicle, else a ZAKU II or a GM)
+        /// </code>
+        /// Items and vehicles belong to the GM, so only the GM can get in a spawned vehicle.
+        /// </summary>
+        public string GmSpawn(string[] args)
+        {
+            if (!InGame || Coord == null || args.Length == 0)
+            {
+                return "Usage: #spawn::id::itemID | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]";
+            }
+            var c = Coord;
+            string type = args[0].Trim().ToLowerInvariant();
+            int n;
+
+            if (type == "npc")
+            {
+                byte enemy = Character.Faction == Faction.ZEON ? (byte)1 : (byte)2;
+                int template = args.Length > 1 && int.TryParse(args[1], out n) ? n
+                    : Inventory.Piloting != null ? Inventory.Piloting.StaticID
+                    : enemy == 1 ? 410000 : 410007;
+                var npc = NpcManager.Instance.Spawn(template, enemy, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction);
+                Logger.ShowInfo(string.Format("{0} spawned NPC {1} ({2}) at {3}, {4}, {5}.", Character.Name, npc.ID, template, npc.X, npc.Y, npc.Z));
+                var vt = VehicleTemplates.Get(template);
+                return string.Format("Spawned a hostile {0} ({1}) 1000 away. It fires back once you attack it.",
+                    vt != null ? vt.Name : template.ToString(), enemy == 1 ? "EF" : "Zeon");
+            }
+
+            ItemTemplate item = null;
+            int amount = 1, engine = -1;
+            if (type == "id" && args.Length > 1 && int.TryParse(args[1], out n))
+            {
+                item = ItemTemplates.Get(n);
+                if (args.Length > 2 && int.TryParse(args[2], out n) && n > 0)
+                {
+                    amount = n;
+                }
+            }
+            else if (type == "name" && args.Length > 1)
+            {
+                item = ItemTemplates.Find(string.Join(" ", args.Skip(1)));
+            }
+            else if (type == "ideng" && args.Length > 2 && int.TryParse(args[1], out n))
+            {
+                item = ItemTemplates.Get(n);
+                var eng = int.TryParse(args[2], out n) ? ItemTemplates.Get(n) : ItemTemplates.Find(string.Join(" ", args.Skip(2)));
+                if (eng == null)
+                {
+                    return "No engine \"" + args[2] + "\".";
+                }
+                engine = eng.ID;
+            }
+            else
+            {
+                return "Bad spawn type \"" + args[0] + "\". Use id, name, ideng or npc.";
+            }
+            if (item == null)
+            {
+                return "No such item.";
+            }
+
+            ItemNode node;
+            if (item.IsVehicle)
+            {
+                node = Inventory.CreateVehicle(item.ID, engine);
+            }
+            else
+            {
+                node = PlayerInventory.NewItem(item.ID, item.Stacks ? amount : 1, item.Name);
+            }
+            // Items 300 in front (Java: 500 along y), vehicles where the GM stands.
+            var ground = new GroundItem(node, c.ClusterID, c.X, item.IsVehicle ? c.Y : c.Y + 300, c.Z, new byte[6], CharacterID);
+            GameWorld.Instance.Place(ground);
+            BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, ground);
+            Logger.ShowInfo(string.Format("{0} spawned {1} ({2}) x {3}.", Character.Name, item.Name, item.ID, node.Amount));
+            return string.Format("You are spawning {0}{1}.", item.Name, node.Amount > 1 ? " x " + node.Amount : "");
+        }
+
+        /// <summary>
         /// Packets a client may have sent to other players with 0x39: lock on (0x8010) and trade (0x802A-0x8031).
         /// </summary>
         private static bool CanRelay(uint opcode)
