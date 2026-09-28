@@ -62,6 +62,11 @@ namespace TitansUC.GameServer.Network.Client
 
         public bool InGame { get { return Character != null; } }
 
+        /// <summary>
+        /// Set once the player took off for the other side's server (0x40).
+        /// </summary>
+        private bool departed;
+
         public override void OnDisconnect()
         {
             if (Character == null)
@@ -69,7 +74,9 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            if (GameWorld.Instance.Remove(this))
+            // After a flight everything was saved at take-off, and the other side's server may already have
+            // loaded (and changed) the character: saving again here could undo that.
+            if (GameWorld.Instance.Remove(this) && !departed)
             {
                 Save();
             }
@@ -112,6 +119,13 @@ namespace TitansUC.GameServer.Network.Client
                     RefuseLogin(string.Format("character {0} does not exist", p.CharacterID));
                     return;
                 }
+                if ((ushort)character.Zone != Configuration.Instance.Zone)
+                {
+                    RefuseLogin(string.Format("{0} is in {1}, but this is the {2} server (port {3}); the Lobby should send them to port {4}",
+                        character.Name, (ushort)character.Zone == Configuration.ZoneSpace ? "Space" : "Earth", Configuration.Instance.InstanceName,
+                        Configuration.Instance.ListenPort, Configuration.Instance.TransferPort));
+                    return;
+                }
                 if (accountID != 0 && character.AccountID != accountID)
                 {
                     RefuseLogin(string.Format("character {0} does not belong to account {1}", character.Name, accountID));
@@ -129,20 +143,12 @@ namespace TitansUC.GameServer.Network.Client
                 this.Coord.MachineID = MachineID;
                 this.sessionKey = p.SessionKey;
 
-                // Arriving from a flight between Earth and Space: still in the shuttle.
-                var flight = GameWorld.Instance.GetFlight(character.ClientID);
-                if (flight != null && flight.Shuttle != null)
+                // Back in the vehicle they were piloting when they left (a shuttle, after a flight between Earth
+                // and Space). Vehicles they left on the ground are still lying there.
+                if (Inventory.Piloting != null)
                 {
-                    Inventory.Resume(flight.Shuttle);
+                    Inventory.KeepPilotingID(WorldDatabase.FlightShuttleID(character.ClientID));
                     SetVehicle(Inventory.Piloting);
-                }
-
-                // Vehicles left on the ground were saved in the hangar; they are back there now.
-                foreach (var vehicle in GameWorld.Instance.TakeGroundVehicles(character.ClientID))
-                {
-                    var taken = vehicle;
-                    GameWorld.Instance.SendNear(taken.ClusterID, taken.X, taken.Y, BroadcastDistance,
-                        () => new SM_UPDATE_ITEM_INFO(SM_UPDATE_ITEM_INFO.VehicleTaken, taken, character.ClientID));
                 }
 
                 var previous = GameWorld.Instance.Add(this);
@@ -290,12 +296,14 @@ namespace TitansUC.GameServer.Network.Client
         public const int OpenDistance = 3000;
 
         /// <summary>
-        /// Whether this player may open that vehicle on the ground: any wreck, or their own vehicle, near them.
+        /// Whether this player may open that vehicle on the ground: their own vehicle or a wreck they made, near them.
         /// </summary>
         private bool CanOpen(GroundItem g)
         {
             var c = Coord;
-            return g != null && g.IsVehicle && c != null && g.ClusterID == c.ClusterID && (g.IsWreck || g.OwnerID == CharacterID) &&
+            // A wreck belongs to whoever destroyed it; one an NPC destroyed is open to anyone (its pilot first of all).
+            bool mine = g != null && (g.OwnerID == CharacterID || (g.IsWreck && (g.OwnerID == 0xFFFFFFFF || Npc.IsNpcID(g.OwnerID))));
+            return g != null && g.IsVehicle && c != null && g.ClusterID == c.ClusterID && mine &&
                 Math.Abs((long)g.X - c.X) <= OpenDistance && Math.Abs((long)g.Y - c.Y) <= OpenDistance;
         }
 
@@ -404,6 +412,7 @@ namespace TitansUC.GameServer.Network.Client
                 return true;
             }
 
+            GameWorld.Instance.GroundChanged();
             Logger.ShowInfo(string.Format("{0} took {1} x {2} out of {3} {4:X8}.", Character.Name, taken.StaticID, taken.Amount,
                 g.IsWreck ? "the wreck" : "the vehicle", g.UniqueID));
             this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
@@ -776,9 +785,11 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x40: the player takes off for the other side (Earth or Space). This server handles both, so the
-        /// client is sent back here (TransferHost / TransferPort); it logs in again with the same session key
-        /// and arrives in the other cluster.
+        /// 0x40: the player takes off in a shuttle for the other side. As on the Java server (RequestReserveAnotherGameFE,
+        /// NotifyReserveAnotherGameFE) the character's zone changes and 0x8040 sends the client to the other side's
+        /// game server (TransferHost, Port or Port + 1), where it logs in again with the same session key. The
+        /// shuttle is saved as the vehicle being piloted and the take-off point in the flights table, for the
+        /// other server's 0x805F.
         /// </summary>
         public void OnReserveAnotherGameFE(CM_RESERVE_ANOTHER_GAME_FE p)
         {
@@ -792,26 +803,31 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            GameWorld.Instance.StartFlight(CharacterID, new Flight
+            try
             {
-                Cluster = p.Cluster,
-                Shuttle = Inventory.Piloting,
-                Transport = lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 },
-            });
+                WorldDatabase.SaveFlight(CharacterID, p.Cluster, Inventory.Piloting != null ? Inventory.Piloting.UniqueID : 0,
+                    lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 });
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
             Character.Zone = (Common.Characters.Zone)p.Cluster;
             if (Configuration.Instance.CheckSessionKey)
             {
                 LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
             }
 
-            Logger.ShowInfo(string.Format("{0} takes off for {1}.", Character.Name, p.Cluster == 2 ? "Space" : "Earth"));
-            this.Network.SendPacket(new SM_RESERVE_ANOTHER_GAME_FE(CharacterID, p.Cluster,
+            Logger.ShowInfo(string.Format("{0} takes off for {1} ({2}:{3}).", Character.Name, p.Cluster == 2 ? "Space" : "Earth",
                 Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
             Save();
+            departed = true;
+            this.Network.SendPacket(new SM_RESERVE_ANOTHER_GAME_FE(CharacterID, p.Cluster,
+                Configuration.Instance.TransferHost, Configuration.Instance.TransferPort));
         }
 
         /// <summary>
-        /// 0x5F: the player info, asked for after a flight.
+        /// 0x5F: the player info, asked for after a flight: the shuttle they arrived in and where it took off.
         /// </summary>
         public void OnGCPlayerInfo(CM_GC_PLAYER_INFO p)
         {
@@ -820,10 +836,17 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            var flight = GameWorld.Instance.GetFlight(CharacterID);
-            GameWorld.Instance.EndFlight(CharacterID);
-            int vehicle = flight != null && flight.Shuttle != null ? flight.Shuttle.StaticID : 0;
-            this.Network.SendPacket(new SM_GC_PLAYER_INFO(AccountID, Character, vehicle, flight != null ? flight.Transport : null));
+            Common.Characters.Transport transport = null;
+            try
+            {
+                transport = WorldDatabase.TakeFlight(CharacterID);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+            var shuttle = Inventory.Piloting;
+            this.Network.SendPacket(new SM_GC_PLAYER_INFO(AccountID, Character, shuttle != null ? shuttle.StaticID : 0, transport));
         }
 
         /// <summary>
@@ -899,7 +922,7 @@ namespace TitansUC.GameServer.Network.Client
             }
             if (r.Destroyed)
             {
-                ground.BecomeWreck();
+                ground.BecomeWreck(CharacterID);
                 Logger.ShowInfo(string.Format("{0} destroyed the empty {1} of character {2}.", Character.Name, ground.Node.Name, ground.OwnerID));
                 var owner = GameWorld.Instance.Get(ground.OwnerID);
                 if (owner != null)
@@ -1040,14 +1063,14 @@ namespace TitansUC.GameServer.Network.Client
             {
                 Logger.ShowInfo(string.Format("{0} destroyed {1}'s {2}.", Character.Name, target.Character.Name, r.DamagedItem.Name));
             }
-            target.ApplyHit(r);
+            target.ApplyHit(r, CharacterID);
         }
 
         /// <summary>
         /// After the results of a hit on this player went out: a broken shield is gone, a destroyed vehicle
         /// becomes a wreck.
         /// </summary>
-        public void ApplyHit(HitResult r)
+        public void ApplyHit(HitResult r, uint killerID)
         {
             if (r.ShieldBroken)
             {
@@ -1056,15 +1079,16 @@ namespace TitansUC.GameServer.Network.Client
             }
             if (r.Destroyed)
             {
-                LoseVehicle();
+                LoseVehicle(killerID);
             }
         }
 
         /// <summary>
         /// The piloted vehicle was destroyed: it becomes a wreck on the ground (0x8035 action 1, health 0) that
-        /// lies for ten minutes and cannot be boarded, and the player is on foot.
+        /// lies for ten minutes and cannot be boarded, and the player is on foot. The wreck belongs to whoever
+        /// destroyed it (<paramref name="killerID"/>, a player or an NPC).
         /// </summary>
-        public void LoseVehicle()
+        public void LoseVehicle(uint killerID)
         {
             var vehicle = Inventory.LoseVehicle();
             if (vehicle == null)
@@ -1076,7 +1100,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 (byte)(c.Tilt >> 8), (byte)c.Tilt, (byte)(c.Roll >> 8), (byte)c.Roll, (byte)(c.Direction >> 8), (byte)c.Direction,
             };
-            var wreck = new GroundItem(vehicle, c.ClusterID, c.X, c.Y, c.Z, rotation, CharacterID) { IsWreck = true };
+            var wreck = new GroundItem(vehicle, c.ClusterID, c.X, c.Y, c.Z, rotation, killerID) { IsWreck = true };
             GameWorld.Instance.Place(wreck);
             SetVehicle(null);
             BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, wreck);
@@ -1507,7 +1531,7 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// Writes the player's position and items back to the database.
         /// </summary>
-        private void Save()
+        public void Save()
         {
             lastSave = DateTime.UtcNow;
             try
@@ -1533,17 +1557,14 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// Writes the player's items back to the container table (with the vehicles they left on the ground),
-        /// and their money when it changed.
+        /// Writes the player's items back to the container table (with the vehicle they are piloting), and
+        /// their money when it changed. Vehicles they left on the ground are saved with the ground.
         /// </summary>
         public void SaveItems()
         {
             try
             {
-                // The shuttle of a flight is not saved: it is thrown away on arrival.
-                var flight = GameWorld.Instance.GetFlight(CharacterID);
-                bool flying = flight != null && flight.Shuttle != null && flight.Shuttle == Inventory.Piloting;
-                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows(GameWorld.Instance.GroundVehicles(CharacterID), flying));
+                CharacterDatabase.Instance.SaveItems(Character, Inventory.ToRows());
                 var money = Inventory.Money;
                 if (money != null && money.Amount != Character.Money)
                 {

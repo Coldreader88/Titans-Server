@@ -20,7 +20,7 @@ namespace TitansUC.GameServer.World
         private readonly Dictionary<uint, UCGameSession> players = new Dictionary<uint, UCGameSession>();
         private readonly Dictionary<uint, GroundItem> ground = new Dictionary<uint, GroundItem>();
         private ushort groundCounter;
-        private readonly Dictionary<uint, Flight> flights = new Dictionary<uint, Flight>();
+        private bool groundChanged;
 
         /// <summary>
         /// Set while the server is closed for maintenance (#shutdown on the CMS server); logins are refused.
@@ -110,6 +110,7 @@ namespace TitansUC.GameServer.World
             {
                 item.Counter = ++groundCounter;
                 ground[item.UniqueID] = item;
+                groundChanged = true;
             }
         }
 
@@ -128,6 +129,7 @@ namespace TitansUC.GameServer.World
                 }
                 ground.Remove(uniqueID);
                 item.Counter = ++groundCounter;
+                groundChanged = true;
                 return item;
             }
         }
@@ -185,30 +187,38 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The vehicles a character left on the ground (saved as hangar rows).
+        /// Whether anything was put on or taken off the ground since the last call (the world saver asks).
         /// </summary>
-        public List<ItemNode> GroundVehicles(uint ownerID)
+        public bool TakeGroundChanged()
         {
             lock (sync)
             {
-                return ground.Values.Where(g => g.IsVehicle && !g.IsWreck && g.OwnerID == ownerID).Select(g => g.Node).ToList();
+                bool changed = groundChanged;
+                groundChanged = false;
+                return changed;
             }
         }
 
         /// <summary>
-        /// Takes a character's vehicles off the ground (they are back in the hangar when they log in again).
+        /// Marks the ground as changed (something inside a vehicle on the ground was taken out).
         /// </summary>
-        public List<GroundItem> TakeGroundVehicles(uint ownerID)
+        public void GroundChanged()
         {
             lock (sync)
             {
-                var taken = ground.Values.Where(g => g.IsVehicle && !g.IsWreck && g.OwnerID == ownerID).ToList();
-                foreach (var item in taken)
-                {
-                    ground.Remove(item.UniqueID);
-                    item.Counter = ++groundCounter;
-                }
-                return taken;
+                groundChanged = true;
+            }
+        }
+
+        /// <summary>
+        /// Everything lying on the ground now, for saving.
+        /// </summary>
+        public List<GroundItem> AllGround()
+        {
+            lock (sync)
+            {
+                RemoveExpired();
+                return ground.Values.ToList();
             }
         }
 
@@ -229,38 +239,6 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        /// <summary>
-        /// Records a shuttle flight between Earth and Space until the character logs in on the other side.
-        /// </summary>
-        public void StartFlight(uint characterID, Flight flight)
-        {
-            lock (sync)
-            {
-                flights[characterID] = flight;
-            }
-        }
-
-        /// <summary>
-        /// The character's flight, if they are on one (it stays until <see cref="EndFlight"/>).
-        /// </summary>
-        public Flight GetFlight(uint characterID)
-        {
-            lock (sync)
-            {
-                Flight flight;
-                flights.TryGetValue(characterID, out flight);
-                return flight;
-            }
-        }
-
-        public void EndFlight(uint characterID)
-        {
-            lock (sync)
-            {
-                flights.Remove(characterID);
-            }
-        }
-
         private static bool IsExpired(GroundItem item)
         {
             return item.CanExpire && item.Expires <= UnixTime();
@@ -271,6 +249,7 @@ namespace TitansUC.GameServer.World
             foreach (var item in ground.Values.Where(IsExpired).ToList())
             {
                 ground.Remove(item.UniqueID);
+                groundChanged = true;
             }
         }
 

@@ -39,7 +39,7 @@ namespace TitansUC.GameServer.World
         /// <summary>
         /// Unique id of this container or item; the client asks for it by this id.
         /// </summary>
-        public uint UniqueID { get; private set; }
+        public uint UniqueID { get; set; }
 
         public int Format { get; private set; }
 

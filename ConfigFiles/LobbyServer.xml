@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+﻿<?xml version="1.0"?>
 <LobbyServer>
   <Port>42018</Port>
 
@@ -11,7 +11,8 @@
   <!-- Money a new character starts with (Java reference: default_money = 50000). -->
   <DefaultMoney>50000</DefaultMoney>
 
-  <!-- Game server the client connects to after picking a character (sent in 0x38005). -->
+  <!-- Game server the client connects to after picking a character (sent in 0x38005): the Earth server's
+       port. Characters in Space go to the Space server on the next port (GameServer.xml Port + 1). -->
   <GameServerIP>127.0.0.1</GameServerIP>
   <GameServerPort>42010</GameServerPort>
 

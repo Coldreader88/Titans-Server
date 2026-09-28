@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Common.Characters;
 using SmartEngine.Core;
@@ -71,6 +72,12 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public const int CreditRow = 500001;
 
+        /// <summary>
+        /// container_id of the row that stores the vehicle the character was piloting when they left (a shuttle
+        /// in flight too), so they log in again sitting in it. Not a real container's static id.
+        /// </summary>
+        public const int PilotingRow = 500002;
+
         public PlayerInventory(Character character, IEnumerable<CharacterItem> items)
         {
             Containers = new List<ItemNode>();
@@ -119,6 +126,16 @@ namespace TitansUC.GameServer.World
                 if (item.ContainerID == CreditRow)
                 {
                     Credit.Amount = item.Amount;
+                    continue;
+                }
+                if (item.ContainerID == PilotingRow)
+                {
+                    if (Piloting == null && item.ItemID > 0)
+                    {
+                        var vehicle = NewVehicle(item);
+                        weared.SetSlot(PilotSlot, vehicle);
+                        Piloting = vehicle;
+                    }
                     continue;
                 }
 
@@ -773,10 +790,10 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The rows to write back to the container table: every item in the top-level containers except
-        /// weared (clothes are in the garments table). A piloted vehicle, and the player's vehicles left on
-        /// the ground (<paramref name="groundVehicles"/>), are saved in the hangar, with their inventories.
+        /// weared (clothes are in the garments table). The piloted vehicle has its own row
+        /// (<see cref="PilotingRow"/>); vehicles left on the ground are saved with the world (WorldDatabase).
         /// </summary>
-        public List<CharacterItem> ToRows(IEnumerable<ItemNode> groundVehicles = null, bool skipPiloting = false)
+        public List<CharacterItem> ToRows()
         {
             var rows = new List<CharacterItem>();
             lock (sync)
@@ -797,16 +814,9 @@ namespace TitansUC.GameServer.World
                     }
                 }
 
-                if (Piloting != null && !skipPiloting)
+                if (Piloting != null)
                 {
-                    rows.Add(ToRow(PlayerContainers.Hangar, Piloting));
-                }
-                if (groundVehicles != null)
-                {
-                    foreach (var vehicle in groundVehicles)
-                    {
-                        rows.Add(ToRow(PlayerContainers.Hangar, vehicle));
-                    }
+                    rows.Add(ToRow(PilotingRow, Piloting));
                 }
                 if (Credit.Amount != 0)
                 {
@@ -817,9 +827,24 @@ namespace TitansUC.GameServer.World
             return rows;
         }
 
+        /// <summary>
+        /// The saved row of an item or (<paramref name="vehicle"/>) a vehicle with its cargo and armaments.
+        /// </summary>
+        public static CharacterItem Describe(int containerID, ItemNode item, bool vehicle)
+        {
+            return new CharacterItem
+            {
+                ContainerID = containerID,
+                ItemID = item.StaticID,
+                Name = item.Name,
+                Amount = vehicle ? item.EngineID : item.Amount,
+                Children = vehicle ? VehicleChildren(item) : null,
+            };
+        }
+
         private static CharacterItem ToRow(int containerID, ItemNode item)
         {
-            bool vehicle = containerID == PlayerContainers.Hangar;
+            bool vehicle = containerID == PlayerContainers.Hangar || containerID == PilotingRow;
             return new CharacterItem
             {
                 ContainerID = containerID,
@@ -875,6 +900,18 @@ namespace TitansUC.GameServer.World
 
         private ItemNode NewVehicle(CharacterItem item)
         {
+            var vehicle = BuildVehicle(item);
+            RegisterTree(vehicle);
+            return vehicle;
+        }
+
+        /// <summary>
+        /// A vehicle with its armaments and inventory from its saved row, registered nowhere (the world's
+        /// saved vehicles on the ground are built with it too). <paramref name="item"/>.Amount is the engine id
+        /// (0 or -1: the template's); item.Children holds its cargo, armaments and health.
+        /// </summary>
+        public static ItemNode BuildVehicle(CharacterItem item)
+        {
             var template = VehicleTemplates.Get(item.ItemID);
             int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
             int engine = item.Amount > 0 ? item.Amount : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
@@ -888,20 +925,26 @@ namespace TitansUC.GameServer.World
             vehicle.Health = health;
             vehicle.MaxHealth = health;
             vehicle.Options = new byte[6][];
-            vehicle.Options[5] = VehicleStats(health, health, engine);
-            Register(vehicle);
 
-            Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleArmaments) { Name = "armaments", Modified = -1, Created = -1 }));
-            var inventory = Register(vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 }));
+            vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleArmaments) { Name = "armaments", Modified = -1, Created = -1 });
+            var inventory = vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 });
 
             // Java's container.child format: "itemID-amount" separated by spaces; equipped armaments are
-            // written "@slot-itemID".
+            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle.
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
             foreach (var entry in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
             {
+                int first, second;
+                if (entry.StartsWith("!"))
+                {
+                    if (int.TryParse(entry.Substring(1), out first) && first >= 0 && first < health)
+                    {
+                        vehicle.Health = first;
+                    }
+                    continue;
+                }
                 bool armament = entry.StartsWith("@");
                 var parts = entry.TrimStart('@').Split('-');
-                int first, second;
                 if (parts.Length != 2 || !int.TryParse(parts[0], out first) || !int.TryParse(parts[1], out second))
                 {
                     continue;
@@ -909,13 +952,14 @@ namespace TitansUC.GameServer.World
                 if (armament && first >= 0 && first < MaxArmamentSlots && second > 0)
                 {
                     PadSlots(armaments, first);
-                    armaments.SetSlot(first, Register(NewItem(second, 1, null)));
+                    armaments.SetSlot(first, NewItem(second, 1, null));
                 }
                 else if (!armament && first > 0)
                 {
-                    Register(inventory.Add(NewItem(first, second > 0 ? second : 1, null)));
+                    inventory.Add(NewItem(first, second > 0 ? second : 1, null));
                 }
             }
+            vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine);
             return vehicle;
         }
 
@@ -940,6 +984,10 @@ namespace TitansUC.GameServer.World
                         entries.Add("@" + i + "-" + armaments.Children[i].StaticID);
                     }
                 }
+            }
+            if (vehicle.MaxHealth > 0 && vehicle.Health < vehicle.MaxHealth)
+            {
+                entries.Add("!" + Math.Max(0, vehicle.Health));
             }
             return string.Join(" ", entries);
         }
@@ -1048,6 +1096,33 @@ namespace TitansUC.GameServer.World
         public static uint NewUniqueID()
         {
             return (uint)Interlocked.Increment(ref nextUniqueID);
+        }
+
+        /// <summary>
+        /// The Space server numbers its items from 0x08400000, the Earth server from 0x00400000, so a shuttle
+        /// keeps its unique id on the other side after a flight without meeting another item's.
+        /// </summary>
+        public static void SetUniqueIDBase(bool space)
+        {
+            nextUniqueID = space ? 0x08400000 : 0x00400000;
+        }
+
+        /// <summary>
+        /// Gives the piloted vehicle the unique id it had on the other side's server (a shuttle after a flight:
+        /// the client throws it away by that id).
+        /// </summary>
+        public void KeepPilotingID(uint uniqueID)
+        {
+            lock (sync)
+            {
+                if (Piloting == null || uniqueID == 0 || nodes.ContainsKey(uniqueID))
+                {
+                    return;
+                }
+                nodes.Remove(Piloting.UniqueID);
+                Piloting.UniqueID = uniqueID;
+                nodes[uniqueID] = Piloting;
+            }
         }
 
         private static int UnixNow()

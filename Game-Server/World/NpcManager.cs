@@ -177,7 +177,11 @@ namespace TitansUC.GameServer.World
                 try
                 {
                     var npc = Parse(line.Split(','));
-                    npcs[npc.ID] = npc;
+                    // Each server runs one side: Earth NPCs on the Earth server, Space NPCs on the Space one.
+                    if (npc.Zone == TitansUC.GameServer.Configuration.Instance.Zone)
+                    {
+                        npcs[npc.ID] = npc;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -328,7 +332,7 @@ namespace TitansUC.GameServer.World
                     Health = 0,
                     MaxHealth = npc.MaxHealth,
                 };
-                wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6], 0xFFFFFFFF) { IsWreck = true };
+                wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6], attacker.CharacterID) { IsWreck = true };
             }
             Logger.ShowInfo(string.Format("{0} destroyed NPC {1} ({2}).", attacker.Character.Name, npc.Name, npc.TemplateID));
             // Warships drop their loot on the ground first, then the wreck, as the official Magellans did. Mobile
@@ -731,7 +735,7 @@ namespace TitansUC.GameServer.World
             var c = target.Coord;
             GameWorld.Instance.SendNear(c.ClusterID, c.X, c.Y, UCGameSession.BroadcastDistance,
                 () => new SM_ATTACK_RESULT_NEAR(npc.ID, target.CharacterID, r));
-            target.ApplyHit(r);
+            target.ApplyHit(r, npc.ID);
             if (r.Destroyed)
             {
                 Logger.ShowInfo(string.Format("NPC {0} destroyed {1}'s {2}.", npc.Name, target.Character.Name, r.DamagedItem.Name));

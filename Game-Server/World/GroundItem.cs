@@ -51,7 +51,7 @@ namespace TitansUC.GameServer.World
         public int Z { get; private set; }
         public byte[] Rotation { get; private set; }
         public uint OwnerID { get; private set; }
-        public int Placed { get; private set; }
+        public int Placed { get; set; }
         public ushort Counter { get; set; }
 
         public bool IsVehicle { get { return Node.Format == ItemNode.Multi; } }
@@ -63,11 +63,13 @@ namespace TitansUC.GameServer.World
         public bool IsWreck { get; set; }
 
         /// <summary>
-        /// A vehicle destroyed where it stood: from now on a wreck, lying for its own ten minutes.
+        /// A vehicle destroyed where it stood: from now on a wreck of whoever destroyed it, lying for its own
+        /// ten minutes.
         /// </summary>
-        public void BecomeWreck()
+        public void BecomeWreck(uint killerID)
         {
             IsWreck = true;
+            OwnerID = killerID;
             Placed = GameWorld.UnixTime();
         }
 
