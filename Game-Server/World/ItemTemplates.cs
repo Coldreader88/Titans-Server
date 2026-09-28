@@ -58,6 +58,16 @@ namespace TitansUC.GameServer.World
         /// The template named <paramref name="name"/> (any case), else the shortest name containing it; null
         /// when none does (for #spawn::name).
         /// </summary>
+        /// <summary>
+        /// The engine a new vehicle of this template gets (<see cref="VehicleTemplates.DefaultEngine"/> when
+        /// its template names none).
+        /// </summary>
+        public static int EngineOf(int templateID)
+        {
+            var t = Get(templateID);
+            return t != null && t.EngineID > 0 ? t.EngineID : VehicleTemplates.DefaultEngine;
+        }
+
         public static ItemTemplate Find(string name)
         {
             EnsureLoaded();
@@ -164,6 +174,12 @@ namespace TitansUC.GameServer.World
                 t.IsVehicle = vehicles;
                 t.Category = category;
                 ReadEquipmentStats(d, p, t);
+                if (vehicles && p + 120 <= d.Length)
+                {
+                    int q = p + 116;
+                    int engine = ReadInt(d, ref q);
+                    t.EngineID = engine >= 290000 && engine < 300000 ? engine : 0;
+                }
                 result[t.ID] = t;
             }
         }
@@ -293,6 +309,13 @@ namespace TitansUC.GameServer.World
         /// Weapons and shields (see ItemTemplates.ReadEquipmentStats): durability; weapons also range, power
         /// (the third value of the weapon's stats list), a rate-like value and rounds per magazine (0 for melee).
         /// </summary>
+        /// <summary>
+        /// A vehicle's engine, from the int32 BE 116 bytes after the price in every vehicle template file
+        /// (CARTEMPLATE.DAT: elecars 290008, MIDIA and FAT-UNCLE 290231 "Thermonuclear jet engine",
+        /// FREIGHTER and the space cargoboats 290232 "Thermonuclear rocket engine"); 0 when it names none.
+        /// </summary>
+        public int EngineID { get; set; }
+
         public int Durability { get; set; }
         public int Range { get; set; }
         public int Power { get; set; }

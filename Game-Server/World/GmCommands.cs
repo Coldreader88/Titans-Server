@@ -38,6 +38,8 @@ namespace TitansUC.GameServer.World
                     return Near(gm, args);
                 case "tp":
                     return TeleportTo(gm, args);
+                case "npcs":
+                    return Npcs(gm, args);
                 default:
                     return new List<string> { "This game server does not know #" + parts[0] + "." };
             }
@@ -118,6 +120,84 @@ namespace TitansUC.GameServer.World
                 lines.Add(string.Format("... and {0} more farther away; #near::radius narrows it.", found.Count - NearLines));
             }
             return lines;
+        }
+
+        /// <summary>
+        /// #npcs[::filter][::page]: the NPC spawns outside your view, nearest first (your zone first, then the
+        /// other one). The filter matches a name, vehicle, faction (ef, zeon), zone (earth, space), "vendor",
+        /// "hostile" or "dead"; "all" also lists the NPCs in view.
+        /// </summary>
+        public static List<string> Npcs(UCGameSession gm, IList<string> args)
+        {
+            var me = gm.Coord;
+            int page = 1, n;
+            bool all = false;
+            var filters = new List<string>();
+            foreach (var a in args)
+            {
+                if (int.TryParse(a, out n))
+                {
+                    page = n;
+                }
+                else if (a.Equals("all", StringComparison.OrdinalIgnoreCase))
+                {
+                    all = true;
+                }
+                else
+                {
+                    filters.Add(a.ToLowerInvariant());
+                }
+            }
+
+            int view = ViewDistance;
+            var list = NpcManager.Instance.All
+                .Select(npc => new { Npc = npc, Here = npc.Zone == me.ClusterID, Distance = npc.Zone == me.ClusterID ? Distance(me, npc.X, npc.Y, npc.Z) : double.MaxValue })
+                .Where(x => all || !x.Here || x.Distance > view)
+                .Where(x => filters.All(f => NpcMatches(x.Npc, f)))
+                .OrderBy(x => x.Here ? 0 : 1).ThenBy(x => x.Distance).ThenBy(x => x.Npc.ID)
+                .ToList();
+
+            var lines = new List<string>();
+            int pages = Math.Max(1, (list.Count + ItemsPerPage - 1) / ItemsPerPage);
+            page = Math.Max(1, Math.Min(page, pages));
+            lines.Add(string.Format("{0} NPCs{1}{2}, page {3}/{4} (#tp::id goes there):", list.Count,
+                all ? "" : " outside your view", filters.Count > 0 ? " matching \"" + string.Join(" ", filters) + "\"" : "", page, pages));
+            foreach (var x in list.Skip((page - 1) * ItemsPerPage).Take(ItemsPerPage))
+            {
+                var npc = x.Npc;
+                string where = x.Here ? string.Format("{0:0} away", x.Distance) : "in " + ZoneName(npc.Zone);
+                int respawn = NpcManager.Instance.SecondsToRespawn(npc);
+                string state = npc.Alive ? (npc.Damage > 0 ? ", " + npc.Damage + "% damaged" : "")
+                    : respawn > 0 ? ", destroyed, back in " + respawn + " s" : ", destroyed";
+                lines.Add(string.Format("{0} - NPC {1}, {2}, {3}{4}, {5}{6}", npc.Name, npc.ID, FactionName(npc.Faction),
+                    VehicleName(npc.TemplateID), npc.IsVendor ? ", vendor" : "", where, state));
+            }
+            if (page < pages)
+            {
+                lines.Add(string.Format("#npcs::{0}{1} for more.", filters.Count > 0 || all ? string.Join("::", (all ? new[] { "all" } : new string[0]).Concat(filters)) + "::" : "", page + 1));
+            }
+            return lines;
+        }
+
+        private static string ZoneName(int zone)
+        {
+            return zone == 2 ? "Space" : "Earth";
+        }
+
+        private static bool NpcMatches(Npc npc, string f)
+        {
+            switch (f)
+            {
+                case "ef": return npc.Faction == 1;
+                case "zeon": return npc.Faction == 2;
+                case "earth": return npc.Zone == 1;
+                case "space": return npc.Zone == 2;
+                case "vendor": return npc.IsVendor;
+                case "hostile": return !npc.IsVendor;
+                case "dead": return !npc.Alive;
+            }
+            return (npc.Name ?? "").ToLowerInvariant().Contains(f) || VehicleName(npc.TemplateID).ToLowerInvariant().Contains(f)
+                || npc.ID.ToString() == f;
         }
 
         /// <summary>

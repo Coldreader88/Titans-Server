@@ -84,6 +84,13 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "npcs", Usage = "#npcs[::filter][::page]", Level = AccessLevel.GM,
+                Description = "Lists the NPC spawns outside your view, nearest first, 15 per page, with id, vehicle, distance and whether they are destroyed. Filters: a name or vehicle, ef, zeon, earth, space, hostile, vendor, dead; all also lists the ones in view.",
+                Examples = new[] { "#npcs", "#npcs::2 (page 2)", "#npcs::zeon", "#npcs::zaku", "#npcs::space::hostile", "#npcs::dead", "#npcs::all" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "npcs", a)),
+            });
+            Add(new Command
+            {
                 Name = "sys", Usage = "#sys::message", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Sends a system message to all online players.",
                 Examples = new[] { "#sys::Server restart in 10 minutes" },
@@ -113,9 +120,10 @@ namespace TitansUC.CmsServer.Commands
             Add(new Command
             {
                 Name = "spawn", Usage = "#spawn::id::itemID[::amount] | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
-                Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away. #items finds the ids.",
+                Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away. An MS/MA spawned without an engine gets random weapons, a shield, ammo and a lv.3 engine. #items finds the ids.",
                 Examples = new[] { "#spawn::id::280048 (75mm machine gun)", "#spawn::id::540000::100 (100 cartridges)",
-                    "#spawn::name::elecar aaron", "#spawn::id::410000 (a GM to ride)", "#spawn::npc", "#spawn::npc::410007 (a ZAKU II)" },
+                    "#spawn::name::elecar aaron", "#spawn::id::410000 (a GM with random weapons, ammo and a lv.3 engine)",
+                    "#spawn::ideng::410000::290033 (a bare GM with that engine)", "#spawn::npc", "#spawn::npc::410007 (a ZAKU II)" },
                 Run = Spawn,
             });
             Add(new Command

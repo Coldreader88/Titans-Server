@@ -81,6 +81,14 @@ namespace TitansUC.GameServer.World
 
         private long Now { get { return clock.ElapsedMilliseconds; } }
 
+        /// <summary>
+        /// Seconds until a destroyed NPC respawns (0 when it is alive or does not come back).
+        /// </summary>
+        public int SecondsToRespawn(Npc npc)
+        {
+            return npc.Alive || npc.Temporary ? 0 : (int)Math.Max(0, (npc.RespawnAt - Now + 999) / 1000);
+        }
+
         public void Start()
         {
             Load();

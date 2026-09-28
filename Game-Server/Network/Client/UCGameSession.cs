@@ -997,12 +997,11 @@ namespace TitansUC.GameServer.Network.Client
             else if (type == "ideng" && args.Length > 2 && int.TryParse(args[1], out n))
             {
                 item = ItemTemplates.Get(n);
-                var eng = int.TryParse(args[2], out n) ? ItemTemplates.Get(n) : ItemTemplates.Find(string.Join(" ", args.Skip(2)));
-                if (eng == null)
+                engine = EngineTemplates.Find(string.Join(" ", args.Skip(2)));
+                if (engine == 0)
                 {
-                    return "No engine \"" + args[2] + "\".";
+                    return "No engine \"" + args[2] + "\" (an id like 290033 or a name like jet engine typeA lv.3).";
                 }
-                engine = eng.ID;
             }
             else
             {
@@ -1014,7 +1013,14 @@ namespace TitansUC.GameServer.Network.Client
             }
 
             ItemNode node;
-            if (item.IsVehicle)
+            string loadout = null;
+            if (item.IsVehicle && engine < 0 && Loadouts.Applies(item))
+            {
+                // No engine named: a random loadout and a lv.3 engine, ready to fight.
+                engine = Loadouts.Engine(c.ClusterID);
+                node = Inventory.CreateVehicle(item.ID, engine, Loadouts.Random(item, out loadout));
+            }
+            else if (item.IsVehicle)
             {
                 node = Inventory.CreateVehicle(item.ID, engine);
             }
@@ -1026,7 +1032,16 @@ namespace TitansUC.GameServer.Network.Client
             var ground = new GroundItem(node, c.ClusterID, c.X, item.IsVehicle ? c.Y : c.Y + 300, c.Z, new byte[6], CharacterID);
             GameWorld.Instance.Place(ground);
             BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, ground);
-            Logger.ShowInfo(string.Format("{0} spawned {1} ({2}) x {3}.", Character.Name, item.Name, item.ID, node.Amount));
+            Logger.ShowInfo(string.Format("{0} spawned {1} ({2}) x {3}{4}.", Character.Name, item.Name, item.ID, node.Amount,
+                loadout != null ? " with " + loadout + ", engine " + engine : ""));
+            if (loadout != null)
+            {
+                return string.Format("You are spawning {0} with {1} and a {2}.", item.Name, loadout, EngineTemplates.Name(engine) ?? engine.ToString());
+            }
+            if (engine > 0)
+            {
+                return string.Format("You are spawning {0} with a {1}.", item.Name, EngineTemplates.Name(engine) ?? engine.ToString());
+            }
             return string.Format("You are spawning {0}{1}.", item.Name, node.Amount > 1 ? " x " + node.Amount : "");
         }
 
