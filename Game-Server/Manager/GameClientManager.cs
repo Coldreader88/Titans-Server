@@ -26,6 +26,7 @@ namespace TitansUC.GameServer.Manager
             RegisterPacketHandler(GSOpcode.CM_CHAIN_EXPLOSION, new CM_CHAIN_EXPLOSION());
             RegisterPacketHandler(GSOpcode.CM_CHANGE_MACHINE_OWNER, new CM_CHANGE_MACHINE_OWNER());
             RegisterPacketHandler(GSOpcode.CM_REPAIR_PLAYER, new CM_REPAIR_PLAYER());
+            RegisterPacketHandler(GSOpcode.CM_EXCAVATION, new CM_EXCAVATION());
             RegisterPacketHandler(GSOpcode.CM_UPDATE_DEPOSIT, new CM_UPDATE_DEPOSIT());
             RegisterPacketHandler(GSOpcode.CM_BUY_ITEM, new CM_BUY_ITEM());
             RegisterPacketHandler(GSOpcode.CM_ATTACK_RESULT, new CM_ATTACK_RESULT());

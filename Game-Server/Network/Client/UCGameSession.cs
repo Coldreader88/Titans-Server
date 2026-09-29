@@ -1069,6 +1069,77 @@ namespace TitansUC.GameServer.Network.Client
             SaveItems();
         }
 
+        private int lastDig;
+
+        public const int MiningWeaponKind = 29;
+
+        /// <summary>
+        /// 0x32: mine the block the player's vehicle stands on (see <see cref="Mining.Dig"/>); 0x8032 always
+        /// answers, so the client is never left waiting. Attempts closer together than the block's mining time
+        /// (the client's own progress bar, about 10 seconds) fail.
+        /// </summary>
+        public void OnExcavation(CM_EXCAVATION p)
+        {
+            if (!CheckInGame("Mining") || p.CharacterID != CharacterID)
+            {
+                return;
+            }
+
+            var vehicle = Inventory.Piloting;
+            // The mining weapon: sub-type 29 (0x1D), as the client checks (uc.exe 0x7cc6c4).
+            var weapon = vehicle != null ? Enumerable.Range(0, 8).Select(i => Inventory.Armament(i))
+                .FirstOrDefault(a => a != null && a.UniqueID == p.WeaponUniqueID) : null;
+            var weaponTemplate = weapon != null ? ItemTemplates.Get(weapon.StaticID) : null;
+            if (weaponTemplate == null || weaponTemplate.Kind != MiningWeaponKind)
+            {
+                weapon = null;
+            }
+            var cargo = vehicle != null ? vehicle.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory) : null;
+            var block = Mining.Block(p.BlockID);
+            int now = Environment.TickCount;
+            ushort code;
+            ItemNode mined = null;
+            int template = 0, amount = 0;
+            if (vehicle == null || vehicle.UniqueID != p.VehicleUniqueID || weapon == null)
+            {
+                code = Mining.Error;
+            }
+            else if (block == null)
+            {
+                code = Mining.Exhausted;
+            }
+            else if (cargo == null)
+            {
+                code = Mining.ContainerFull;
+            }
+            else if (lastDig != 0 && now - lastDig < block.MiningTimeMs * 8 / 10)
+            {
+                code = Mining.Failed;
+            }
+            else
+            {
+                lastDig = now;
+                code = Mining.Dig(block, Character.GetSkill(Skill.MINING), out template, out amount);
+            }
+
+            if (weapon != null && weapon.Stats != null && weapon.Stats.Length > 0)
+            {
+                weapon.Stats[0] = Math.Max(0, weapon.Stats[0] - 1);
+            }
+            if (code == Mining.Success)
+            {
+                mined = Inventory.Produce(cargo, template, amount);
+                GainSkill(new List<KeyValuePair<Skill, int>> { new KeyValuePair<Skill, int>(Skill.MINING, 0) });
+            }
+            this.Network.SendPacket(new SM_EXCAVATION(p.Body, code, mined, amount));
+            Logger.ShowInfo(string.Format("{0} mined block {1}: {2}", Character.Name, p.BlockID,
+                code == Mining.Success ? amount + " x " + template : "code " + code));
+            if (weapon != null)
+            {
+                SaveItems();
+            }
+        }
+
         /// <summary>
         /// Health an MR tool kit restores in one use: VEHICLEREPAIRTEMPLATE value_a, by kit (280167-280170 MS/MA
         /// Lv.1-4, 280171-280174 tank/fighter Lv.1-4). The official Lv.4 kit restored 1088 and 1050, all that
