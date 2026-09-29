@@ -59,7 +59,7 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The template named <paramref name="name"/> (any case), else the shortest name containing it; null
-        /// when none does (for #spawn::name).
+        /// when none does (for #spawn name).
         /// </summary>
         /// <summary>
         /// The engine a new vehicle of this template gets (<see cref="VehicleTemplates.DefaultEngine"/> when

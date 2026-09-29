@@ -82,7 +82,7 @@ namespace TitansUC.GameServer.World
         public static NpcManager Instance { get { return instance; } }
 
         /// <summary>
-        /// Replaced, never changed, once the server runs (#spawn::npc adds NPCs while the AI reads it).
+        /// Replaced, never changed, once the server runs (#spawn npc adds NPCs while the AI reads it).
         /// </summary>
         private volatile Dictionary<uint, Npc> npcs = new Dictionary<uint, Npc>();
         private readonly object addLock = new object();
@@ -149,7 +149,7 @@ namespace TitansUC.GameServer.World
         private static readonly int[] ZeonArmaments = { 280006, -1, 280006, 280006 };
 
         /// <summary>
-        /// A GM's #spawn::npc: a hostile NPC of <paramref name="faction"/> at a point. It fights like the others
+        /// A GM's #spawn npc: a hostile NPC of <paramref name="faction"/> at a point. It fights like the others
         /// but does not come back once destroyed.
         /// </summary>
         public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null)

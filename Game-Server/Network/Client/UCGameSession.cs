@@ -1921,8 +1921,8 @@ namespace TitansUC.GameServer.Network.Client
         /// A GM's #spawn (from the CMS server's chat command), as the Java server did it: an item or vehicle
         /// on the ground next to the GM, or a hostile NPC. Returns the message for the GM.
         /// <code>
-        /// id::templateID[::amount]     name::item name        ideng::vehicleID::engine (id or name)
-        /// npc[::vehicleID]             (default: a random mobile suit; either way a random loadout)
+        /// id templateID [amount]     name item name        ideng vehicleID engine (id or name)
+        /// npc [vehicleID]             (default: a random mobile suit; either way a random loadout)
         /// </code>
         /// Items and vehicles belong to the GM, so only the GM can get in a spawned vehicle.
         /// </summary>
@@ -1930,7 +1930,7 @@ namespace TitansUC.GameServer.Network.Client
         {
             if (!InGame || Coord == null || args.Length == 0)
             {
-                return "Usage: #spawn::id::itemID | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]";
+                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [vehicleID]";
             }
             var c = Coord;
             string type = args[0].Trim().ToLowerInvariant();

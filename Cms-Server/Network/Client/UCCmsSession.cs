@@ -249,7 +249,7 @@ namespace TitansUC.CmsServer.Network.Client
 
         /// <summary>
         /// 0x03: pass the message to the recipients the client picked and echo it to the sender, or run a
-        /// GM command (#name::arg::arg).
+        /// GM command (#name arg arg).
         /// </summary>
         public void OnChatMsg(CM_CHAT_MSG p)
         {
