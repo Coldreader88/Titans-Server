@@ -41,6 +41,61 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public static string Random(ItemTemplate vehicle, out string summary)
         {
+            ItemTemplate gun, shield, blade;
+            Pick(vehicle, out gun, out shield, out blade);
+            var entries = new List<string>();
+            var names = new List<string>();
+            if (gun != null)
+            {
+                int ammo = AmmoFor(gun.Name);
+                int amount = Math.Max(gun.Magazine, 20) * 5;
+                entries.Add("@0-" + gun.ID);
+                entries.Add(ammo + "-" + amount);
+                var ammoTemplate = ItemTemplates.Get(ammo);
+                names.Add(gun.Name + " with " + amount + " " + (ammoTemplate != null ? ammoTemplate.Name : ammo.ToString()));
+            }
+            if (shield != null)
+            {
+                entries.Add("@1-" + shield.ID);
+                names.Add(shield.Name);
+            }
+            if (blade != null)
+            {
+                entries.Add("@2-" + blade.ID);
+                names.Add(blade.Name);
+            }
+            summary = names.Count > 0 ? string.Join(", ", names) : "no weapons";
+            return string.Join(" ", entries);
+        }
+
+        /// <summary>
+        /// A random loadout for an NPC: its 4 armament slots (0 gun, 1 shield, 2 melee weapon, 3 empty; -1 for
+        /// an empty slot), as <see cref="Random(ItemTemplate, out string)"/> picks them.
+        /// </summary>
+        public static int[] RandomArmaments(ItemTemplate vehicle, out string summary)
+        {
+            ItemTemplate gun, shield, blade;
+            Pick(vehicle, out gun, out shield, out blade);
+            var names = new[] { gun, shield, blade }.Where(t => t != null).Select(t => t.Name).ToList();
+            summary = names.Count > 0 ? string.Join(", ", names) : "no weapons";
+            return new[] { gun != null ? gun.ID : -1, shield != null ? shield.ID : -1, blade != null ? blade.ID : -1, -1 };
+        }
+
+        /// <summary>
+        /// A random mobile suit (template) for an NPC, of any model the vehicle tables know.
+        /// </summary>
+        public static ItemTemplate RandomMobileSuit()
+        {
+            var suits = ItemTemplates.InCategory("ms").Where(t => t.IsVehicle && VehicleTemplates.Get(t.ID) != null &&
+                !Excluded.Any(x => t.Name.ToLowerInvariant().Contains(x))).ToList();
+            lock (random)
+            {
+                return Pick(suits);
+            }
+        }
+
+        private static void Pick(ItemTemplate vehicle, out ItemTemplate gun, out ItemTemplate shield, out ItemTemplate blade)
+        {
             var template = VehicleTemplates.Get(vehicle.ID);
             string model = Normalize(template != null ? template.Model : vehicle.Name);
             bool armor = vehicle.Category == "ma";
@@ -51,35 +106,12 @@ namespace TitansUC.GameServer.World
             var shields = armor ? new List<ItemTemplate>()
                 : ItemTemplates.InCategory("shield").Where(s => s.ForSale && Code(s.Name) != null && Fits(s.Name, model, false)).ToList();
 
-            var entries = new List<string>();
-            var names = new List<string>();
             lock (random)
             {
-                var gun = Pick(ranged);
-                if (gun != null)
-                {
-                    int ammo = AmmoFor(gun.Name);
-                    int amount = Math.Max(gun.Magazine, 20) * 5;
-                    entries.Add("@0-" + gun.ID);
-                    entries.Add(ammo + "-" + amount);
-                    var ammoTemplate = ItemTemplates.Get(ammo);
-                    names.Add(gun.Name + " with " + amount + " " + (ammoTemplate != null ? ammoTemplate.Name : ammo.ToString()));
-                }
-                var shield = Pick(shields);
-                if (shield != null)
-                {
-                    entries.Add("@1-" + shield.ID);
-                    names.Add(shield.Name);
-                }
-                var blade = Pick(melee);
-                if (blade != null)
-                {
-                    entries.Add("@2-" + blade.ID);
-                    names.Add(blade.Name);
-                }
+                gun = Pick(ranged);
+                shield = Pick(shields);
+                blade = Pick(melee);
             }
-            summary = names.Count > 0 ? string.Join(", ", names) : "no weapons";
-            return string.Join(" ", entries);
         }
 
         private static ItemTemplate Pick(List<ItemTemplate> list)
@@ -87,7 +119,7 @@ namespace TitansUC.GameServer.World
             return list.Count > 0 ? list[random.Next(list.Count)] : null;
         }
 
-        private static bool IsMelee(string name)
+        public static bool IsMelee(string name)
         {
             var n = name.ToLowerInvariant();
             return Melee.Any(m => n.Contains(m));

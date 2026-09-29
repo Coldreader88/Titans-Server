@@ -14,8 +14,9 @@ namespace TitansUC.GameServer.World
     /// <code>
     /// uint32 BE (skipped), UC size = number of templates, then per template:
     /// uint32 BE id, uint32 BE 0, 3 x UC size + UTF-16LE (comment, model code, name),
-    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 60 bytes, uint32 BE health,
-    /// then 30 bytes (37 for a few ids, see <see cref="LongRecords"/>)
+    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 4 bytes, UC size modifications
+    /// (7 bytes each), 1 byte, UC size lists (UC size int32s each), 12 bytes (speed, hover speed, -1),
+    /// uint32 BE health, then 30 bytes (wreckage id and others). Full layout: client-data-csv VEHICLE_TEMPLATES.
     /// </code>
     /// Java reference: mina_common template/MSTemplate.java (same skips); checked to parse both files to
     /// their last byte. Other vehicles (cars, fighters, ships) are not loaded and use defaults.
@@ -28,8 +29,6 @@ namespace TitansUC.GameServer.World
         /// Engine the Java server gave vehicles whose template names none (Engine.DEFAULT_ID).
         /// </summary>
         public const int DefaultEngine = 290012;
-
-        private static readonly HashSet<int> LongRecords = new HashSet<int> { 410011, 410020, 410012, 410013, 410044, 410056, 410061 };
 
         private static readonly object loadLock = new object();
         private static Dictionary<int, VehicleTemplate> templates;
@@ -104,9 +103,21 @@ namespace TitansUC.GameServer.World
                 {
                     t.EngineID = DefaultEngine;
                 }
-                p += 60;
+                p += 4;
+                // Modifications: UC size, 7 bytes each (int16, byte, int32). Most vehicles have one; GUNTANK,
+                // GOUF, GIGAN, ZAKUTANK and a few others have two.
+                int mods = ReadSize(d, ref p);
+                p += mods * 7 + 1;
+                // Two resistance lists of int32.
+                int lists = ReadSize(d, ref p);
+                for (int k = 0; k < lists; k++)
+                {
+                    int values = ReadSize(d, ref p);
+                    p += values * 4;
+                }
+                p += 12;
                 t.Health = ReadInt(d, ref p);
-                p += LongRecords.Contains(t.ID) ? 37 : 30;
+                p += 30;
                 result[t.ID] = t;
             }
         }

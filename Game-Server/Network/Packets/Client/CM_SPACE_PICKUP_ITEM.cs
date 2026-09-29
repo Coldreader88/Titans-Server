@@ -8,7 +8,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// 0x24: picks an item up from the ground, or gets in a vehicle standing there.
     ///
     /// <code>
-    /// uint16 BE   mini op: 1 = pick up an item, 3 = get in a vehicle
+    /// uint16 BE   mini op: 1 = pick up an item, 2 = pick up money onto the money there, 3 = get in a
+    ///             vehicle, 4 = pick up an item onto the stack of it there
     /// uint16 BE   0
     /// uint32 BE   character id
     /// uint32 BE   ground item unique id, format
@@ -25,7 +26,9 @@ namespace TitansUC.GameServer.Network.Packets.Client
     public class CM_SPACE_PICKUP_ITEM : UCPacket<GSOpcode>
     {
         public const int PickUpItem = 1;
+        public const int PickUpMoney = 2;
         public const int GetIn = 3;
+        public const int PickUpOntoStack = 4;
 
         public CM_SPACE_PICKUP_ITEM()
         {

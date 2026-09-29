@@ -71,6 +71,35 @@ namespace TitansUC.GameServer.World
         public ItemNode Weapon { get; set; }
 
         /// <summary>
+        /// Its melee weapon (heat hawk, beam saber...), or null. It closes in and strikes with it now and then,
+        /// and whenever its target is within reach.
+        /// </summary>
+        public ItemNode Melee { get; set; }
+
+        /// <summary>
+        /// Whether it is closing in to strike with <see cref="Melee"/> rather than keeping its distance and
+        /// firing; chosen again every so often while fighting.
+        /// </summary>
+        public bool MeleeMode { get; set; }
+        public long NextModeChange { get; set; }
+
+        /// <summary>
+        /// Which way it circles its target while firing (1 or -1), and when it turns the other way.
+        /// </summary>
+        public int StrafeSign { get; set; } = 1;
+        public long NextStrafeChange { get; set; }
+
+        /// <summary>
+        /// A patrolling NPC waits at each point it reaches until then.
+        /// </summary>
+        public long IdleUntil { get; set; }
+
+        /// <summary>
+        /// Whether it can fight at all.
+        /// </summary>
+        public bool Armed { get { return !IsVendor && (Weapon != null || Melee != null); } }
+
+        /// <summary>
         /// Where it spawns and walks back to, and the action it shows while not fighting.
         /// </summary>
         public int SpawnX { get; set; }

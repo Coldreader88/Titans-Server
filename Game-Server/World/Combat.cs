@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 
 namespace TitansUC.GameServer.World
@@ -28,6 +28,20 @@ namespace TitansUC.GameServer.World
         public const int WreckLifetime = 600;
 
         public const int ShieldSlot = 1;
+
+        /// <summary>
+        /// The chance in percent that a destroyed vehicle leaves a wreck; otherwise nothing is left of it
+        /// (GameServer.xml WreckChance, 70 by default).
+        /// </summary>
+        public static int WreckChance = 70;
+
+        public static bool LeavesWreck()
+        {
+            lock (random)
+            {
+                return random.Next(100) < WreckChance;
+            }
+        }
 
         /// <summary>
         /// The attack number: one counter for every attack on the server, misses included (the official Earth
@@ -183,5 +197,17 @@ namespace TitansUC.GameServer.World
         public int M { get; set; }
         public int DurabilityUsed { get; set; }
         public int RoundsUsed { get; set; }
+
+        /// <summary>
+        /// The target is of the attacker's faction: "relation to target" 0 in 0x800F and 0x8067 (1 = enemy), which
+        /// the client uses to count the kill as a friendly one.
+        /// </summary>
+        public bool Friendly { get; set; }
+
+        /// <summary>
+        /// The attack was a crime (see <see cref="Criminal"/>): the crime bit of 0x800F, counted in 0x8067 and
+        /// 0x8068. The attacker's client adds the crime points itself.
+        /// </summary>
+        public bool Crime { get; set; }
     }
 }

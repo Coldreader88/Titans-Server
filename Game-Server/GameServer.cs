@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Common.Database;
 using Common.Network;
 using Common.Network.Packets;
@@ -80,6 +81,10 @@ namespace TitansUC.GameServer
             }
 
             World.NpcManager.Instance.Start();
+            if (Configuration.Instance.Zone == (ushort)Common.Characters.Zone.EARTH)
+            {
+                World.Occupation.Start();
+            }
 
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
@@ -106,7 +111,11 @@ namespace TitansUC.GameServer
                         // No console (input closed): keep serving; the ground is saved as it changes.
                         System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
                     }
-                    args = cmd.Split(' ');
+                    args = Common.Utils.SplitCommand(cmd).ToArray();
+                    if (args.Length == 0)
+                    {
+                        continue;
+                    }
                     switch (args[0].ToLower())
                     {
                         case "printthreads":
@@ -119,10 +128,10 @@ namespace TitansUC.GameServer
                             break;
 
                         case "spawn":
-                            // spawn <character name or id> <#spawn arguments, e.g. id::540000::100 or npc>
+                            // spawn <character name or id> <#spawn arguments, e.g. id 540000 100 or npc>
                             if (args.Length < 3)
                             {
-                                Logger.ShowInfo("Usage: spawn <character name or id> id::itemID[::amount] | name::item name | ideng::vehicleID::engine | npc[::vehicleID]");
+                                Logger.ShowInfo("Usage: spawn <character name or id> id itemID [amount] | name item name | ideng vehicleID engine | npc [vehicleID]");
                                 break;
                             }
                             uint spawnID;
@@ -133,14 +142,14 @@ namespace TitansUC.GameServer
                                 Logger.ShowInfo(args[1] + " is not online.");
                                 break;
                             }
-                            Logger.ShowInfo(gm.GmSpawn(string.Join(" ", args, 2, args.Length - 2).Split(new[] { "::" }, StringSplitOptions.None)));
+                            Logger.ShowInfo(gm.GmSpawn(args.Skip(2).ToArray()));
                             break;
 
                         case "gm":
-                            // gm <character name or id> <command>, e.g. gm Brian items::weapon or gm Brian skill::ambac::80
+                            // gm <character name or id> <command>, e.g. gm Brian items weapon or gm Brian skill ambac 80
                             if (args.Length < 3)
                             {
-                                Logger.ShowInfo("Usage: gm <character name or id> items[::category[::filter][::page]] | skill[::name::level]");
+                                Logger.ShowInfo("Usage: gm <character name or id> items [category [filter] [page]] | skill [name level]");
                                 break;
                             }
                             uint gmID;
@@ -151,7 +160,7 @@ namespace TitansUC.GameServer
                                 Logger.ShowInfo(args[1] + " is not online.");
                                 break;
                             }
-                            foreach (var line in GmCommands.Run(who, string.Join(" ", args, 2, args.Length - 2)))
+                            foreach (var line in GmCommands.Run(who, string.Join("::", args.Skip(2))))
                             {
                                 Logger.ShowInfo(line);
                             }

@@ -10,6 +10,32 @@
   <!-- How far away other players are visible, in position units. 0 uses what the client asks for (8000 on foot). -->
   <ViewDistance>0</ViewDistance>
 
+  <!-- Chance in percent that a destroyed vehicle (a player's or an NPC's) leaves a wreck; otherwise nothing is left. -->
+  <WreckChance>70</WreckChance>
+
+  <!-- Skills, in tenths (1000 = 100.0). All skills together stop at SkillTotalCap (the Java server's 800.0;
+       0 = no cap); past it a gain takes the same from skills whose arrow in the Status Setting window points down.
+       Strength, spirit and luck rise by play up to StatusCap. SkillGainRate scales every growth chance (percent). -->
+  <SkillTotalCap>8000</SkillTotalCap>
+  <StatusCap>170</StatusCap>
+  <SkillGainRate>100</SkillGainRate>
+
+  <!-- Criminals: attacking a player of your own faction (or their empty vehicle) adds crime points; the client
+       lowers them by one every 3 minutes online (30 s for the last). At CrimeExileCount points (0 = never) the
+       player is exiled: disconnected and moved to the exile point of their side ("x, y, z"; empty = stays put). -->
+  <CrimeExileCount>30</CrimeExileCount>
+  <CrimeExileEarth></CrimeExileEarth>
+  <CrimeExileSpace></CrimeExileSpace>
+
+  <!-- Battle towns Richmond and Newman (Earth server only): peace for OccupationPeaceMinutes, then the town is open
+       to attack until the other faction hits one of its laser communication towers, which starts a war of
+       OccupationWarMinutes. Taking all five ICFs wins the town; otherwise the owner keeps it.
+       OccupationMedals: medal points for joining a war, per ICF captured, and for the winners who took part. -->
+  <OccupationEnabled>true</OccupationEnabled>
+  <OccupationWarMinutes>60</OccupationWarMinutes>
+  <OccupationPeaceMinutes>180</OccupationPeaceMinutes>
+  <OccupationMedals>1, 5, 10</OccupationMedals>
+
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
 

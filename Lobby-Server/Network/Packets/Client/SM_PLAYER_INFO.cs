@@ -9,11 +9,11 @@ namespace TitansUC.LobbyServer.Network.Packets.Client
     /// </summary>
     public class SM_PLAYER_INFO : UCPacket<LSOpcode>
     {
-        public SM_PLAYER_INFO(uint accountID, Character c)
+        public SM_PLAYER_INFO(uint accountID, Character c, int created)
         {
             this.ID = LSOpcode.SM_PLAYER_INFO;
 
-            PlayerInfoWriter.Write(this, accountID, c);
+            PlayerInfoWriter.Write(this, accountID, c, created: created);
         }
     }
 }

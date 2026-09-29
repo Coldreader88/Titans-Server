@@ -7,7 +7,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// 0x8035: tells the players around that something was put on or taken off the ground.
     ///
     /// <code>
-    /// uint32 BE   action: 1 item dropped, 2 item picked up, 3 vehicle left, 4 vehicle taken
+    /// uint32 BE   action: 0 owner changed (Transfer_Oggo.pcap), 1 item dropped, 2 item picked up, 3 vehicle left, 4 vehicle taken
     /// record     the ground item (see <see cref="GroundItem"/>; expires is 0 once taken)
     /// uint32 BE   character id of the player who did it
     /// uint16 BE   FFFF
@@ -17,6 +17,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_UPDATE_ITEM_INFO : UCPacket<GSOpcode>
     {
+        public const uint OwnerChanged = 0;
         public const uint ItemDropped = 1;
         public const uint ItemPickedUp = 2;
         public const uint VehicleLeft = 3;

@@ -37,7 +37,7 @@ namespace TitansUC.CmsServer.Commands
     }
 
     /// <summary>
-    /// The GM commands, typed in chat as #name::arg::arg (the Java syntax) or #name arg arg.
+    /// The GM commands, typed in chat as #name arg arg, split at white space; "double quotes" keep an argument with spaces together. (The Java server used #name::arg::arg.)
     /// Java reference: mina_cmsserver model/command (CommandMap.java and one class per command).
     /// Commands that act in the game world are sent to the game servers over the game link
     /// (<see cref="GameLinkManager"/>).
@@ -63,9 +63,9 @@ namespace TitansUC.CmsServer.Commands
         {
             Add(new Command
             {
-                Name = "help", Usage = "#help[::command]", Level = AccessLevel.GM,
+                Name = "help", Usage = "#help [command]", Level = AccessLevel.GM,
                 Description = "Lists the commands you can use, or one command with examples.",
-                Examples = new[] { "#help", "#help::items" },
+                Examples = new[] { "#help", "#help items" },
                 Run = Help,
             });
             Add(new Command
@@ -77,88 +77,95 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "near", Usage = "#near[::radius]", Level = AccessLevel.GM,
+                Name = "near", Usage = "#near [radius]", Level = AccessLevel.GM,
                 Description = "Lists the players, NPCs and ground vehicles around you (view distance, 8000 by default), nearest first, with their ids.",
-                Examples = new[] { "#near", "#near::2000" },
+                Examples = new[] { "#near", "#near 2000" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "near", a)),
             });
             Add(new Command
             {
-                Name = "npcs", Usage = "#npcs[::filter][::page]", Level = AccessLevel.GM,
+                Name = "npcs", Usage = "#npcs [filter] [page]", Level = AccessLevel.GM,
                 Description = "Lists the NPC spawns outside your view, nearest first, 15 per page, with id, vehicle, distance and whether they are destroyed. Filters: a name or vehicle, ef, zeon, earth, space, hostile, vendor, dead; all also lists the ones in view.",
-                Examples = new[] { "#npcs", "#npcs::2 (page 2)", "#npcs::zeon", "#npcs::zaku", "#npcs::space::hostile", "#npcs::dead", "#npcs::all" },
+                Examples = new[] { "#npcs", "#npcs 2 (page 2)", "#npcs zeon", "#npcs zaku", "#npcs space hostile", "#npcs dead", "#npcs all" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "npcs", a)),
             });
             Add(new Command
             {
-                Name = "sys", Usage = "#sys::message", Level = AccessLevel.GM, MinArguments = 1,
+                Name = "sys", Usage = "#sys message", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Sends a system message to all online players.",
-                Examples = new[] { "#sys::Server restart in 10 minutes" },
+                Examples = new[] { "#sys Server restart in 10 minutes" },
                 Run = (s, a) => CmsWorld.Instance.SystemMessage(string.Join(" ", a)),
             });
             Add(new Command
             {
-                Name = "tele", Usage = "#tele::x::y::z", Level = AccessLevel.GM, MinArguments = 3,
+                Name = "tele", Usage = "#tele x y z", Level = AccessLevel.GM, MinArguments = 3,
                 Description = "Teleports you to the given coordinates.",
-                Examples = new[] { "#tele::1000::2000::30" },
+                Examples = new[] { "#tele 1000 2000 30" },
                 Run = Teleport,
             });
             Add(new Command
             {
-                Name = "tp", Usage = "#tp::target[::player]", Level = AccessLevel.GM, MinArguments = 1,
+                Name = "tp", Usage = "#tp target [player]", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Teleports you (or player) next to a player, NPC or ground vehicle, by id or name. #near and #online show the ids.",
-                Examples = new[] { "#tp::Char", "#tp::13", "#tp::1000000043", "#tp::Burchard", "#tp::Amuro::Char (moves Char to Amuro)" },
+                Examples = new[] { "#tp Char", "#tp 13", "#tp 1000000043", "#tp Burchard", "#tp Amuro Char (moves Char to Amuro)" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "tp", a)),
             });
             Add(new Command
             {
-                Name = "bookmark", Usage = "#bookmark::name", Level = AccessLevel.GM, MinArguments = 1,
+                Name = "bookmark", Usage = "#bookmark name", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Teleports you to a place from the tele_bookmark table.",
-                Examples = new[] { "#bookmark::Sydney" },
+                Examples = new[] { "#bookmark Sydney" },
                 Run = Bookmark,
             });
             Add(new Command
             {
-                Name = "spawn", Usage = "#spawn::id::itemID[::amount] | #spawn::name::item name | #spawn::ideng::vehicleID::engine | #spawn::npc[::vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
+                Name = "spawn", Usage = "#spawn id itemID [amount] | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away. An MS/MA spawned without an engine gets random weapons, a shield, ammo and a lv.3 engine. #items finds the ids.",
-                Examples = new[] { "#spawn::id::280048 (75mm machine gun)", "#spawn::id::540000::100 (100 cartridges)",
-                    "#spawn::name::elecar aaron", "#spawn::id::410000 (a GM with random weapons, ammo and a lv.3 engine)",
-                    "#spawn::ideng::410000::290033 (a bare GM with that engine)", "#spawn::npc", "#spawn::npc::410007 (a ZAKU II)" },
+                Examples = new[] { "#spawn id 280048 (75mm machine gun)", "#spawn id 540000 100 (100 cartridges)",
+                    "#spawn name elecar aaron", "#spawn id 410000 (a GM with random weapons, ammo and a lv.3 engine)",
+                    "#spawn ideng 410000 290033 (a bare GM with that engine)", "#spawn npc", "#spawn npc 410007 (a ZAKU II)" },
                 Run = Spawn,
             });
             Add(new Command
             {
-                Name = "items", Usage = "#items[::category[::name filter][::page]]", Level = AccessLevel.GM,
+                Name = "items", Usage = "#items [category [name filter] [page]]", Level = AccessLevel.GM,
                 Description = "Lists the item templates you can #spawn, with their ids, 15 per page. Categories: " + ItemCategories + ".",
-                Examples = new[] { "#items (categories and counts)", "#items::weapon", "#items::weapon::2 (page 2)",
-                    "#items::weapon::zaku", "#items::ms::gundam", "#items::all::shield" },
+                Examples = new[] { "#items (categories and counts)", "#items weapon", "#items weapon 2 (page 2)",
+                    "#items weapon zaku", "#items ms gundam", "#items all shield" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "items", a)),
             });
             Add(new Command
             {
-                Name = "skill", Usage = "#skill[::skill name::level]", Level = AccessLevel.GM,
+                Name = "skill", Usage = "#skill [name level]", Level = AccessLevel.GM,
                 Description = "Shows your skills, or sets one (skills with one decimal; strength, spirit and luck whole numbers; all = every combat skill).",
-                Examples = new[] { "#skill", "#skill::ambac::85.5", "#skill::ms::100", "#skill::all::100", "#skill::spirit::80" },
+                Examples = new[] { "#skill", "#skill ambac 85.5", "#skill ms 100", "#skill all 100", "#skill spirit 80" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "skill", a)),
             });
             Add(new Command
             {
-                Name = "poslog", Usage = "#poslog::message", Level = AccessLevel.VIP, MinArguments = 1,
+                Name = "crime", Usage = "#crime [count]", Level = AccessLevel.GM,
+                Description = "Shows your criminal count and previous offenses, or sets the count (0 clears it).",
+                Examples = new[] { "#crime", "#crime 5", "#crime 0" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "crime", a)),
+            });
+            Add(new Command
+            {
+                Name = "poslog", Usage = "#poslog message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
-                Examples = new[] { "#poslog::stuck in wall" },
+                Examples = new[] { "#poslog stuck in wall" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.PositionLog(s.CharacterID, string.Join(" ", a))),
             });
             Add(new Command
             {
-                Name = "script", Usage = "#script::game|cms::file", Level = AccessLevel.GM, MinArguments = 2,
+                Name = "script", Usage = "#script game|cms file", Level = AccessLevel.GM, MinArguments = 2,
                 Description = "Runs a script (Jython on the Java server; not available in the C# servers).",
                 Run = (s, a) => CmsWorld.Instance.SystemMessage(s, "Scripts are not supported by the C# servers."),
             });
             Add(new Command
             {
-                Name = "shutdown", Usage = "#shutdown::seconds (-1 ends maintenance)", Level = AccessLevel.Admin, MinArguments = 1,
+                Name = "shutdown", Usage = "#shutdown seconds (-1 ends maintenance)", Level = AccessLevel.Admin, MinArguments = 1,
                 Description = "Counts down to maintenance, then closes the game servers. -1 ends the maintenance.",
-                Examples = new[] { "#shutdown::300", "#shutdown::-1" },
+                Examples = new[] { "#shutdown 300", "#shutdown -1" },
                 Run = Shutdown,
             });
         }
@@ -218,20 +225,11 @@ namespace TitansUC.CmsServer.Commands
         }
 
         /// <summary>
-        /// Splits "name::a::b" (Java) or "name a b".
+        /// Splits "name a b" at white space ("double quotes" keep spaces in one argument).
         /// </summary>
         public static List<string> Split(string line)
         {
-            line = (line ?? string.Empty).Trim();
-            string[] parts = line.Contains("::")
-                ? line.Split(new[] { "::" }, StringSplitOptions.None)
-                : line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var list = parts.Select(p => p.Trim()).ToList();
-            if (list.Count > 0 && list[0].Length == 0)
-            {
-                list.Clear();
-            }
-            return list;
+            return Common.Utils.SplitCommand(line);
         }
 
         private void Describe(UCCmsSession session, Command command)
@@ -240,7 +238,7 @@ namespace TitansUC.CmsServer.Commands
         }
 
         /// <summary>
-        /// #help lists every command with its examples; #help::name shows one.
+        /// #help lists every command with its examples; #help name shows one.
         /// </summary>
         private void Help(UCCmsSession session, List<string> args)
         {
@@ -282,7 +280,7 @@ namespace TitansUC.CmsServer.Commands
             int x, y, z;
             if (!TryInt(args[0], out x) || !TryInt(args[1], out y) || !TryInt(args[2], out z))
             {
-                CmsWorld.Instance.SystemMessage(session, "Usage: #tele::x::y::z");
+                CmsWorld.Instance.SystemMessage(session, "Usage: #tele x y z");
                 return;
             }
             ToGame(session, GameLinkManager.Instance.Teleport(session.CharacterID, x, y, z));
@@ -310,7 +308,7 @@ namespace TitansUC.CmsServer.Commands
             int seconds;
             if (!TryInt(args[0], out seconds) || seconds < -1)
             {
-                CmsWorld.Instance.SystemMessage(session, "Usage: #shutdown::seconds (-1 ends maintenance)");
+                CmsWorld.Instance.SystemMessage(session, "Usage: #shutdown seconds (-1 ends maintenance)");
                 return;
             }
 

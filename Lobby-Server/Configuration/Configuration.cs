@@ -27,6 +27,8 @@ namespace TitansUC.LobbyServer
         string gameServerIP = "127.0.0.1";
         int gameServerPort = 42010;
         int defaultMoney = 50000;
+        int staffDeleteWaitMinutes = 5;
+        int playerDeleteWaitMinutes = 240;
 
         private List<WorldInfo> worlds = new List<WorldInfo>();
 
@@ -54,6 +56,16 @@ namespace TitansUC.LobbyServer
         /// Game server port sent to the client when it enters the game (0x38005).
         /// </summary>
         public int GameServerPort { get { return gameServerPort; } }
+
+        /// <summary>
+        /// How long after creation a character of a GM or admin account (levels 4 and 9) can be deleted.
+        /// </summary>
+        public int StaffDeleteWaitMinutes { get { return staffDeleteWaitMinutes; } }
+
+        /// <summary>
+        /// How long after creation any other account's character can be deleted.
+        /// </summary>
+        public int PlayerDeleteWaitMinutes { get { return playerDeleteWaitMinutes; } }
 
         /// <summary>
         /// 日志等级
@@ -118,6 +130,12 @@ namespace TitansUC.LobbyServer
                             break;
                         case "defaultmoney":
                             this.defaultMoney = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "staffdeletewaitminutes":
+                            this.staffDeleteWaitMinutes = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "playerdeletewaitminutes":
+                            this.playerDeleteWaitMinutes = int.Parse(i.InnerText.Trim());
                             break;
                         case "database":
                             foreach (object l in i.ChildNodes)

@@ -59,7 +59,7 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The template named <paramref name="name"/> (any case), else the shortest name containing it; null
-        /// when none does (for #spawn::name).
+        /// when none does (for #spawn name).
         /// </summary>
         /// <summary>
         /// The engine a new vehicle of this template gets (<see cref="VehicleTemplates.DefaultEngine"/> when
@@ -204,6 +204,14 @@ namespace TitansUC.GameServer.World
             }
             int p;
             p = afterPrice + 45; t.Durability = ReadInt(d, ref p);
+            if (afterPrice + 95 <= d.Length)
+            {
+                // Two skill references after the magazine: (byte group, int16 BE index), the operation skill
+                // (shooting, sniping, CQB, hand to hand; defence on shields) and the weapon type skill (beam or
+                // shell). Group 0 is the combat table; 255 / -1 is none.
+                t.OperationSkill = CombatSkill(d, afterPrice + 89);
+                t.TypeSkill = CombatSkill(d, afterPrice + 92);
+            }
             if (range == 36)
             {
                 return;
@@ -212,6 +220,15 @@ namespace TitansUC.GameServer.World
             p = afterPrice + 49; t.Power = ReadInt(d, ref p);
             p = afterPrice + 57; t.Rate = ReadInt(d, ref p);
             p = afterPrice + 85; t.Magazine = ReadInt(d, ref p);
+        }
+
+        private static Skill? CombatSkill(byte[] d, int p)
+        {
+            if (d[p] != 0)
+            {
+                return null;
+            }
+            return SkillTables.Get(0, (short)((d[p + 1] << 8) | d[p + 2]));
         }
 
         /// <summary>
@@ -333,6 +350,13 @@ namespace TitansUC.GameServer.World
         public int Power { get; set; }
         public int Rate { get; set; }
         public int Magazine { get; set; }
+
+        /// <summary>
+        /// The combat skill that operates this weapon (shooting, sniping, CQB, hand to hand; defence for a shield),
+        /// and the weapon type skill (beam or shell firing); null when it names none.
+        /// </summary>
+        public Skill? OperationSkill { get; set; }
+        public Skill? TypeSkill { get; set; }
 
         public bool IsWeapon { get { return ID / 10000 == 28; } }
         public bool IsShield { get { return ID / 10000 == 36; } }

@@ -16,7 +16,8 @@ namespace TitansUC.GameServer.World
     /// uint16 BE cluster id (zone: 1 = Earth)
     /// uint32 BE vehicle unique id (0 on foot), int32 BE vehicle template id (-1 on foot)
     /// byte rank, byte account level (GM tag), byte action, byte state
-    /// uint16 BE faction, uint16 BE equipment sum, uint16 BE update counter
+    /// byte player state (bit 0: criminal), byte nationality (faction), uint16 BE equipment sum,
+    /// uint16 BE update counter
     /// int32 BE team id (-1 = none)
     /// byte vehicle damage, int32 BE attack number
     /// </code>
@@ -42,7 +43,20 @@ namespace TitansUC.GameServer.World
         public byte AccountLevel { get; set; }
         public byte Action { get; set; }
         public byte State { get; set; }
+        /// <summary>
+        /// Player state (high byte; bit 0 = criminal, which the client draws in the criminal colours) and
+        /// nationality (low byte).
+        /// </summary>
         public ushort Faction { get; set; }
+
+        /// <summary>
+        /// The <see cref="Faction"/> value of a character: its nationality, and the criminal bit while its
+        /// criminal count is above 0. The server always sets it (the client's own value is not trusted).
+        /// </summary>
+        public static ushort StateAndNationality(Character c)
+        {
+            return (ushort)((c.IsCriminal ? 0x100 : 0) | ((byte)c.Faction));
+        }
         public ushort EquipSum { get; set; }
         public ushort UpdateCounter { get; set; }
         public int TeamID { get; set; }
@@ -69,7 +83,7 @@ namespace TitansUC.GameServer.World
                 VehicleTemplateID = -1,
                 Rank = (byte)c.Rank,
                 AccountLevel = accountLevel,
-                Faction = (ushort)c.Faction,
+                Faction = StateAndNationality(c),
                 TeamID = c.TeamID,
                 Damage = 0xFF,
             };

@@ -58,6 +58,7 @@
     <Compile Include="Characters\CharacterData.cs" />
     <Compile Include="Characters\CharacterTypes.cs" />
     <Compile Include="Characters\StarterKit.cs" />
+    <Compile Include="Characters\SkillTables.cs" />
     <Compile Include="Account\Account.cs" />
     <Compile Include="Actors\Actor\UActorPC.cs" />
     <Compile Include="Actors\Actor\UActorNPC.cs" />
