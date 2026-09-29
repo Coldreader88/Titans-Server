@@ -1086,7 +1086,8 @@ namespace TitansUC.GameServer.World
         {
             lock (sync)
             {
-                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Amount = engineID, Children = children });
+                var template = ItemTemplates.Get(templateID);
+                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Name = template != null ? template.Name : null, Amount = engineID, Children = children });
                 UnregisterTree(vehicle);
                 return vehicle;
             }

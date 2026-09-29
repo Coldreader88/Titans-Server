@@ -394,63 +394,131 @@ namespace TitansUC.GameServer.Network.Client
                 return false;
             }
 
-            ItemNode taken;
+            var taken = TakeOut(g, item, p.Amount);
+            if (taken == null)
+            {
+                return false;
+            }
+            if (!Inventory.PickUp(taken, p.DestUniqueID))
+            {
+                PutBack(g, item, taken);
+                RefuseMove(p, "cannot take it out of the vehicle into that container");
+                return true;
+            }
+
+            TookOut(g, taken);
+            this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
+            return true;
+        }
+
+        /// <summary>
+        /// 0x24 with an item that lies in a vehicle or wreck on the ground (opened with 0x26): the client drags
+        /// it out of the "Wreckage Container" window this way. Takes it (or <see cref="CM_SPACE_PICKUP_ITEM.Amount"/>
+        /// of the stack) into the destination, onto a stack there for mini ops 2 and 4. False when the item is not
+        /// in one; true once answered or refused.
+        /// </summary>
+        private bool PickUpFromGroundVehicle(CM_SPACE_PICKUP_ITEM p)
+        {
+            ItemNode item;
+            var g = GameWorld.Instance.FindHolder(p.ItemUniqueID, out item);
+            if (g == null || item == g.Node || !CanOpen(g))
+            {
+                return false;
+            }
+
+            var taken = TakeOut(g, item, p.Amount);
+            if (taken == null)
+            {
+                return false;
+            }
+            if (p.MiniOp != CM_SPACE_PICKUP_ITEM.PickUpItem)
+            {
+                var stack = Inventory.PickUpOntoStack(taken, p.DestUniqueID);
+                if (stack != null)
+                {
+                    TookOut(g, taken);
+                    this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, stack, taken.UniqueID, taken.Format));
+                    return true;
+                }
+            }
+            if (!Inventory.PickUp(taken, p.DestUniqueID))
+            {
+                PutBack(g, item, taken);
+                RefuseGround("pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it out of the wreck");
+                return true;
+            }
+
+            TookOut(g, taken);
+            this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, taken));
+            return true;
+        }
+
+        /// <summary>
+        /// Takes <paramref name="amount"/> of an item (all of it when 0 or more than there is) out of a vehicle or
+        /// wreck on the ground: the item itself, or a new item split off its stack. Null when it is not in there.
+        /// </summary>
+        private static ItemNode TakeOut(GroundItem g, ItemNode item, int amount)
+        {
             lock (g.Node)
             {
                 var parent = item.Parent;
                 if (parent == null)
                 {
-                    return false;
+                    return null;
                 }
-                int amount = p.Amount > 0 ? p.Amount : item.Amount;
+                if (amount <= 0 || amount > item.Amount)
+                {
+                    amount = item.Amount;
+                }
                 if (item.Format == ItemNode.Singleton && amount < item.Amount)
                 {
                     item.Amount -= amount;
-                    taken = PlayerInventory.NewItem(item.StaticID, amount, item.Name);
-                    taken.Created = item.Created;
+                    var split = PlayerInventory.NewItem(item.StaticID, amount, item.Name);
+                    split.Created = item.Created;
+                    return split;
                 }
-                else if (parent.StaticID == PlayerInventory.VehicleArmaments)
+                if (parent.StaticID == PlayerInventory.VehicleArmaments)
                 {
                     parent.SetSlot(parent.Children.IndexOf(item), ItemNode.EmptySlot(0));
-                    taken = item;
                 }
                 else
                 {
                     parent.Remove(item);
-                    taken = item;
                 }
+                return item;
             }
+        }
 
-            if (!Inventory.PickUp(taken, p.DestUniqueID))
+        /// <summary>
+        /// Puts what <see cref="TakeOut"/> took back when it had nowhere to go.
+        /// </summary>
+        private static void PutBack(GroundItem g, ItemNode item, ItemNode taken)
+        {
+            lock (g.Node)
             {
-                // Nowhere to put it: back where it was.
-                lock (g.Node)
+                var cargo = g.Node.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory);
+                if (taken != item)
                 {
-                    var cargo = g.Node.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory);
-                    if (taken != item)
-                    {
-                        item.Amount += taken.Amount;
-                    }
-                    else if (cargo != null)
-                    {
-                        cargo.Add(taken);
-                    }
+                    item.Amount += taken.Amount;
                 }
-                RefuseMove(p, "cannot take it out of the vehicle into that container");
-                return true;
+                else if (cargo != null)
+                {
+                    cargo.Add(taken);
+                }
             }
+        }
 
+        private void TookOut(GroundItem g, ItemNode taken)
+        {
             GameWorld.Instance.GroundChanged();
             Logger.ShowInfo(string.Format("{0} took {1} x {2} out of {3} {4:X8}.", Character.Name, taken.StaticID, taken.Amount,
                 g.IsWreck ? "the wreck" : "the vehicle", g.UniqueID));
-            this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
             SaveItems();
             var owner = g.IsWreck ? null : GameWorld.Instance.Get(g.OwnerID);
             if (owner != null && owner != this)
             {
                 owner.SaveItems();
             }
-            return true;
         }
 
         private void RefuseMove(CM_MOVE_ITEM p, string reason)
@@ -685,6 +753,10 @@ namespace TitansUC.GameServer.Network.Client
             }
 
             bool vehicle = p.MiniOp == CM_SPACE_PICKUP_ITEM.GetIn;
+            if (!vehicle && PickUpFromGroundVehicle(p))
+            {
+                return;
+            }
             var zone = (ushort)Character.Zone;
             // A vehicle of theirs can also be dragged into the factory (mini op 1 with the factory as destination).
             bool toFactory = !vehicle && PlayerInventory.IsFactory(Inventory.Get(p.DestUniqueID));
