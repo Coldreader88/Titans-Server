@@ -176,6 +176,7 @@ namespace TitansUC.CmsServer.Network.Client
         public void OnHeartbeat(CM_HEARTBEAT p)
         {
             Send(new SM_HEARTBEAT());
+            Send(new SM_PING());
         }
 
         /// <summary>
@@ -248,7 +249,7 @@ namespace TitansUC.CmsServer.Network.Client
 
         /// <summary>
         /// 0x03: pass the message to the recipients the client picked and echo it to the sender, or run a
-        /// GM command (#name::arg::arg).
+        /// GM command (#name arg arg).
         /// </summary>
         public void OnChatMsg(CM_CHAT_MSG p)
         {
@@ -735,6 +736,19 @@ namespace TitansUC.CmsServer.Network.Client
         public void OnGroupChatLeave(CM_GROUP_CHAT_LEAVE p)
         {
             if (!CheckLoggedIn("Leave group chat"))
+            {
+                return;
+            }
+
+            LeaveGroupChat(p.ChatID, true);
+        }
+
+        /// <summary>
+        /// 0x1B: release a group chat channel; the same as leaving it.
+        /// </summary>
+        public void OnGroupChatRelease(CM_GROUP_CHAT_RELEASE p)
+        {
+            if (!CheckLoggedIn("Release group chat"))
             {
                 return;
             }

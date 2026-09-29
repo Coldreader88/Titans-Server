@@ -140,7 +140,7 @@ namespace TitansUC.LobbyServer.Network.Client
                 return;
             }
 
-            this.Network.SendPacket(new SM_PLAYER_INFO(this.account.AccountID, character));
+            this.Network.SendPacket(new SM_PLAYER_INFO(this.account.AccountID, character, ReportedCreationTime(character)));
         }
 
         /// <summary>
@@ -261,6 +261,14 @@ namespace TitansUC.LobbyServer.Network.Client
                     return;
                 }
 
+                int wait = SecondsUntilDeletable(character);
+                if (wait > 0)
+                {
+                    Logger.ShowWarning(string.Format("Refused to delete character {0} for {1}: it can be deleted in {2} minute(s).",
+                        character.Name, account.UserName, (wait + 59) / 60));
+                    return;
+                }
+
                 if (!CharacterDatabase.Instance.Delete(this.account.AccountID, character))
                 {
                     Logger.ShowWarning(string.Format("Refused to delete character {0} for {1}: it is no longer in the database.",
@@ -278,6 +286,42 @@ namespace TitansUC.LobbyServer.Network.Client
             {
                 Logger.ShowError(ex);
             }
+        }
+
+        /// <summary>
+        /// The client refuses on its own to delete a character created less than 14 days ago ("作成後一定期間が
+        /// 経過するまでは削除できません", UCClient 0x44cbbc: difftime(now, creation time from 0x38002) in minutes
+        /// against a fixed 20160). The server's own waits (LobbyServer.xml StaffDeleteWaitMinutes and
+        /// PlayerDeleteWaitMinutes) are shorter, so once a character may be deleted the 0x38002 creation time is
+        /// reported at least 14 days back; until then it is the real one.
+        /// </summary>
+        public const int ClientDeleteWaitSeconds = 20160 * 60;
+
+        private static int UnixNow()
+        {
+            return (int)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        }
+
+        private int DeleteWaitSeconds()
+        {
+            var level = (Account.AccountLevel)this.account.GMLevel;
+            bool staff = level == Account.AccountLevel.GM || level == Account.AccountLevel.ADMIN;
+            var config = Configuration.Instance;
+            return 60 * (staff ? config.StaffDeleteWaitMinutes : config.PlayerDeleteWaitMinutes);
+        }
+
+        /// <summary>
+        /// Seconds until this account may delete the character (0 or less: now).
+        /// </summary>
+        private int SecondsUntilDeletable(Character character)
+        {
+            return character.Created + DeleteWaitSeconds() - UnixNow();
+        }
+
+        private int ReportedCreationTime(Character character)
+        {
+            return SecondsUntilDeletable(character) > 0 ? character.Created
+                : Math.Min(character.Created, UnixNow() - ClientDeleteWaitSeconds - 60);
         }
 
         /// <summary>

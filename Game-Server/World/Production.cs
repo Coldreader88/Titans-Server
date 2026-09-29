@@ -218,7 +218,7 @@ namespace TitansUC.GameServer.World
             return null;
         }
 
-        private class Reader
+        internal class Reader
         {
             private readonly byte[] d;
 

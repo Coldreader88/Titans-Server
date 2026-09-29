@@ -11,7 +11,7 @@ using TitansUC.GameServer.Network.Packets.Client;
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// GM chat commands the game server answers itself (the CMS server forwards them): #items and #skill.
+    /// GM chat commands the game server answers itself (the CMS server forwards them): #items, #skill, #near, #tp and #crime.
     /// Each returns the lines to show the GM as system messages.
     /// </summary>
     public static class GmCommands
@@ -38,6 +38,8 @@ namespace TitansUC.GameServer.World
                     return Near(gm, args);
                 case "tp":
                     return TeleportTo(gm, args);
+                case "crime":
+                    return CrimeCommand(gm, args);
                 case "npcs":
                     return Npcs(gm, args);
                 default:
@@ -70,7 +72,7 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// #near[::radius]: players, NPCs and vehicles on the ground within the view distance (or the radius),
+        /// #near [radius]: players, NPCs and vehicles on the ground within the view distance (or the radius),
         /// nearest first, with the ids #tp takes.
         /// </summary>
         public static List<string> Near(UCGameSession gm, IList<string> args)
@@ -110,20 +112,20 @@ namespace TitansUC.GameServer.World
 
             found.RemoveAll(f => f.Key > radius);
             var lines = new List<string>();
-            lines.Add(string.Format("{0} within {1} (#tp::id goes there):", found.Count, radius));
+            lines.Add(string.Format("{0} within {1} (#tp id goes there):", found.Count, radius));
             foreach (var f in found.OrderBy(f => f.Key).Take(NearLines))
             {
                 lines.Add(string.Format("{0} ({1:0} away)", f.Value, f.Key));
             }
             if (found.Count > NearLines)
             {
-                lines.Add(string.Format("... and {0} more farther away; #near::radius narrows it.", found.Count - NearLines));
+                lines.Add(string.Format("... and {0} more farther away; #near radius narrows it.", found.Count - NearLines));
             }
             return lines;
         }
 
         /// <summary>
-        /// #npcs[::filter][::page]: the NPC spawns outside your view, nearest first (your zone first, then the
+        /// #npcs [filter] [page]: the NPC spawns outside your view, nearest first (your zone first, then the
         /// other one). The filter matches a name, vehicle, faction (ef, zeon), zone (earth, space), "vendor",
         /// "hostile" or "dead"; "all" also lists the NPCs in view.
         /// </summary>
@@ -160,7 +162,7 @@ namespace TitansUC.GameServer.World
             var lines = new List<string>();
             int pages = Math.Max(1, (list.Count + ItemsPerPage - 1) / ItemsPerPage);
             page = Math.Max(1, Math.Min(page, pages));
-            lines.Add(string.Format("{0} NPCs{1}{2}, page {3}/{4} (#tp::id goes there):", list.Count,
+            lines.Add(string.Format("{0} NPCs{1}{2}, page {3}/{4} (#tp id goes there):", list.Count,
                 all ? "" : " outside your view", filters.Count > 0 ? " matching \"" + string.Join(" ", filters) + "\"" : "", page, pages));
             foreach (var x in list.Skip((page - 1) * ItemsPerPage).Take(ItemsPerPage))
             {
@@ -174,7 +176,7 @@ namespace TitansUC.GameServer.World
             }
             if (page < pages)
             {
-                lines.Add(string.Format("#npcs::{0}{1} for more.", filters.Count > 0 || all ? string.Join("::", (all ? new[] { "all" } : new string[0]).Concat(filters)) + "::" : "", page + 1));
+                lines.Add(string.Format("#npcs {0}{1} for more.", filters.Count > 0 || all ? string.Join(" ", (all ? new[] { "all" } : new string[0]).Concat(filters)) + " " : "", page + 1));
             }
             return lines;
         }
@@ -244,14 +246,14 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// #tp::target[::player]: teleports you (or the player) next to a player, NPC or ground vehicle.
+        /// #tp target [player]: teleports you (or the player) next to a player, NPC or ground vehicle.
         /// </summary>
         public static List<string> TeleportTo(UCGameSession gm, IList<string> args)
         {
             var lines = new List<string>();
             if (args.Count == 0)
             {
-                lines.Add("Usage: #tp::target[::player]. Target: a player's id or name, an NPC's id or name, or a ground vehicle's id (#near lists them).");
+                lines.Add("Usage: #tp target [player]. Target: a player's id or name, an NPC's id or name, or a ground vehicle's id (#near lists them).");
                 return lines;
             }
 
@@ -290,15 +292,15 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// #items: the categories; #items::weapon[::page]; #items::weapon::zaku[::page] (names containing
-        /// "zaku"); #items::all::zaku searches every category.
+        /// #items: the categories; #items weapon [page]; #items weapon zaku [page] (names containing
+        /// "zaku"); #items all zaku searches every category.
         /// </summary>
         public static List<string> Items(IList<string> args)
         {
             var lines = new List<string>();
             if (args.Count == 0)
             {
-                lines.Add("Item categories (#items::category[::name filter][::page]):");
+                lines.Add("Item categories (#items category [name filter] [page]):");
                 lines.Add(string.Join(", ", ItemTemplates.Categories().Select(c => c.Key + " (" + c.Value + ")")));
                 return lines;
             }
@@ -312,18 +314,13 @@ namespace TitansUC.GameServer.World
             }
 
             int page = 1, n;
-            string filter = null;
-            foreach (var a in args.Skip(1))
+            var words = args.Skip(1).ToList();
+            if (words.Count > 0 && int.TryParse(words[words.Count - 1], out n))
             {
-                if (int.TryParse(a, out n))
-                {
-                    page = n;
-                }
-                else
-                {
-                    filter = a;
-                }
+                page = n;
+                words.RemoveAt(words.Count - 1);
             }
+            string filter = words.Count > 0 ? string.Join(" ", words) : null;
             if (filter != null)
             {
                 items = items.Where(t => t.Name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
@@ -339,8 +336,8 @@ namespace TitansUC.GameServer.World
             }
             if (page < pages)
             {
-                lines.Add(string.Format("#items::{0}{1}::{2} for more. Spawn one with #spawn::id::<id>.",
-                    category, filter != null ? "::" + filter : "", page + 1));
+                lines.Add(string.Format("#items {0}{1} {2} for more. Spawn one with #spawn id <id>.",
+                    category, filter != null ? " " + filter : "", page + 1));
             }
             return lines;
         }
@@ -372,18 +369,6 @@ namespace TitansUC.GameServer.World
             { "defense", Skill.DEFENCE }, { "er", Skill.EMERGENCY_REPAIR }, { "repair", Skill.EMERGENCY_REPAIR },
             { "msconstruction", Skill.MSMA_CONSTRUCTION }, { "shipconstruction", Skill.BATTLESHIP_CONSTRUCTION },
             { "weaponconstruction", Skill.ARMS_CONSTRUCTION }, { "clothingmanufacturing", Skill.CLOTHING_MANUFACTURING },
-        };
-
-        /// <summary>
-        /// The skills of the player info's combat list, in its order: a skill's place is its id in 0x8034
-        /// (see <see cref="PlayerInfoWriter"/>).
-        /// </summary>
-        private static readonly Skill?[] CombatList =
-        {
-            Skill.MOBILE_SUIT, Skill.MOBILE_ARMOR, null, Skill.FIGHTER, Skill.SPACE_ENGAGEMENT, Skill.GROUND_ENGAGEMENT, null,
-            Skill.AIR_ENGAGEMENT, Skill.BEAMCARTRIDGE_WEAPON, Skill.SHELLFIRING_WEAPON, null, Skill.WEAPON_MANIPULATION,
-            Skill.SHOOTING, Skill.SNIPING, Skill.CQB, Skill.HANDTOHAND_COMBAT, Skill.TACTICS, Skill.AMBAC, Skill.DEFENCE,
-            Skill.EVASION, Skill.EMERGENCY_REPAIR,
         };
 
         private static KeyValuePair<string, Skill> Named(string name, Skill skill)
@@ -421,8 +406,28 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// #skill: shows every skill; #skill::ambac::85.5 sets one (skills in points with one decimal,
-        /// strength, spirit and luck as whole numbers); #skill::all::100 sets every combat skill.
+        /// #crime: shows the GM's criminal count and previous offenses; #crime 10 sets the count (0 clears it).
+        /// The client is told with 0x8008.
+        /// </summary>
+        public static List<string> CrimeCommand(UCGameSession gm, IList<string> args)
+        {
+            var c = gm.Character;
+            int count;
+            if (args.Count == 0 || !int.TryParse(args[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out count) || count < 0)
+            {
+                return new List<string>
+                {
+                    string.Format("Criminal count {0}, previous offenses {1}. #crime n sets the count.", c.CrimeCount, c.PreviousOffense),
+                };
+            }
+            gm.SetCrimeCount(count);
+            Logger.ShowInfo(string.Format("{0} set their criminal count to {1} with #crime.", c.Name, count));
+            return new List<string> { string.Format("Criminal count is now {0} (previous offenses {1}).", c.CrimeCount, c.PreviousOffense) };
+        }
+
+        /// <summary>
+        /// #skill: shows every skill; #skill ambac 85.5 sets one (skills in points with one decimal,
+        /// strength, spirit and luck as whole numbers); #skill all 100 sets every combat skill.
         /// Saved at once; the client is sent the change as a gain (0x8034), so its window updates too.
         /// </summary>
         public static List<string> SkillCommand(UCGameSession gm, IList<string> args)
@@ -431,7 +436,7 @@ namespace TitansUC.GameServer.World
             var lines = new List<string>();
             if (args.Count < 2)
             {
-                lines.Add("Your skills (#skill::name::level, e.g. #skill::ambac::85.5 or #skill::all::100):");
+                lines.Add("Your skills (#skill name level, e.g. #skill ambac 85.5 or #skill all 100):");
                 var row = new List<string>();
                 foreach (var n in SkillNames)
                 {
@@ -459,7 +464,7 @@ namespace TitansUC.GameServer.World
             List<Skill> skills;
             if (args[0].ToLowerInvariant() == "all")
             {
-                skills = CombatList.Where(s => s.HasValue).Select(s => s.Value).ToList();
+                skills = SkillTables.Combat.Where(s => s.HasValue).Select(s => s.Value).ToList();
             }
             else
             {
@@ -472,8 +477,7 @@ namespace TitansUC.GameServer.World
                 skills = new List<Skill> { s.Value };
             }
 
-            var stats = new List<KeyValuePair<byte, int>>();
-            var gains = new List<KeyValuePair<ushort, int>>();
+            var changes = new List<KeyValuePair<Skill, int>>();
             foreach (var s in skills)
             {
                 int level = IsStat(s) ? (int)Math.Round(value) : (int)Math.Round(value * 10);
@@ -489,29 +493,20 @@ namespace TitansUC.GameServer.World
                     Logger.ShowError(ex);
                     lines.Add("Could not save " + s + ": " + ex.Message);
                 }
-                int combat = Array.IndexOf(CombatList, s);
-                if (IsStat(s))
+                if (gain != 0)
                 {
-                    stats.Add(new KeyValuePair<byte, int>((byte)s, gain));
-                }
-                else if (combat >= 0)
-                {
-                    gains.Add(new KeyValuePair<ushort, int>((ushort)combat, gain));
+                    changes.Add(new KeyValuePair<Skill, int>(s, gain));
                 }
             }
-            if (stats.Count > 0 || gains.Count > 0)
+            if (changes.Count > 0)
             {
-                gm.Network.SendPacket(new SM_SKILL_GAIN(gm.CharacterID, stats, gains));
+                gm.Network.SendPacket(new SM_SKILL_GAIN(gm.CharacterID, changes, true));
             }
 
             Logger.ShowInfo(string.Format("{0} set {1} to {2} with #skill.", c.Name, args[0], args[1]));
             lines.Add(skills.Count == 1
                 ? string.Format("{0} is now {1}.", args[0], Show(skills[0], c.GetSkill(skills[0])))
                 : string.Format("All {0} combat skills are now {1}.", skills.Count, Show(skills[0], c.GetSkill(skills[0]))));
-            if (skills.Any(s => !IsStat(s) && Array.IndexOf(CombatList, s) < 0))
-            {
-                lines.Add("Construction skills show in the skill window after your next login.");
-            }
             return lines;
         }
     }

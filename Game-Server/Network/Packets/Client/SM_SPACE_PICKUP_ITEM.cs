@@ -20,5 +20,27 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutBytes(body);
             this.PutBytes(item.BuildTail());
         }
+
+        /// <summary>
+        /// Mini ops 2 and 4: the item joined <paramref name="stack"/>. Official (Backpack_Pickup_11222_EF.pcap):
+        /// the stack's unique id replaces the ground item's in bytes 8-11, the ground item's unique id and format
+        /// go in bytes 40-47, and the description is the stack's, with its new amount.
+        /// </summary>
+        public SM_SPACE_PICKUP_ITEM(CM_SPACE_PICKUP_ITEM request, ItemNode stack, uint groundUniqueID, int groundFormat)
+        {
+            this.ID = GSOpcode.SM_SPACE_PICKUP_ITEM;
+
+            var body = (byte[])request.Body.Clone();
+            body[2] = 0;
+            body[3] = 2;
+            Bytes.PutU32(body, 8, stack.UniqueID);
+            if (body.Length >= 48)
+            {
+                Bytes.PutU32(body, 40, groundUniqueID);
+                Bytes.PutU32(body, 44, (uint)groundFormat);
+            }
+            this.PutBytes(body);
+            this.PutBytes(stack.BuildTail());
+        }
     }
 }

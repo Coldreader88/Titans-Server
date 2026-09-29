@@ -253,31 +253,6 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        /// <summary>
-        /// When the occupation cities' current state ends, one Unix time per city in
-        /// <see cref="Network.Packets.Client.SM_OCCUPATION_CITY_INFO_LIST"/> order. The official server sent fixed
-        /// times 26 and 48 minutes ahead of its clock (UCGOZone-Login.pcap), the same in every 0x8070. Sending the
-        /// current time instead makes the value move with the server clock, which the client may compare with
-        /// its own; so these are set once and only move forward (by an hour) once they have passed.
-        /// </summary>
-        private static readonly int[] occupationTimes = { UnixTime() + 26 * 60, UnixTime() + 48 * 60 };
-
-        public static int[] OccupationTimes()
-        {
-            int now = UnixTime();
-            lock (occupationTimes)
-            {
-                for (int i = 0; i < occupationTimes.Length; i++)
-                {
-                    while (occupationTimes[i] <= now)
-                    {
-                        occupationTimes[i] += 60 * 60;
-                    }
-                }
-                return (int[])occupationTimes.Clone();
-            }
-        }
-
         public static int UnixTime()
         {
             return (int)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;

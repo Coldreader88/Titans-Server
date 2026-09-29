@@ -71,3 +71,15 @@ CREATE TABLE IF NOT EXISTS `container` (
   `item_amount` INT(10) NOT NULL default '0',
   `child` TEXT
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+-- Score counters and skill arrows (Common CharacterDatabase creates it when missing). char_id is the client id.
+-- scores: the player info's ten counters, comma separated (Common.Characters.ScoreSlot: NPC kills and deaths,
+-- criminal count, previous offense, player kills and deaths). management: one digit per skill_idx (0 raise,
+-- 1 lower, 2 lock). medals: points of the Medal of Richmond and the Medal of Newman, comma separated.
+CREATE TABLE IF NOT EXISTS `character_state` (
+  `char_id` int(10) unsigned NOT NULL,
+  `scores` varchar(255) NOT NULL default '',
+  `management` varchar(64) NOT NULL default '',
+  `medals` varchar(64) NOT NULL default '',
+  PRIMARY KEY (`char_id`)
+);

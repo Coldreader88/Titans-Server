@@ -11,13 +11,14 @@ namespace Common.Characters
     /// 0x8F options: 60 bytes, then uint32 BE rank
     /// UC string   name
     /// uint32 BE   creation time (Unix seconds)
-    /// 0x8A score: 10 x uint32 BE, then 0x80
+    /// 0x8A score: 10 x uint32 BE (see ScoreSlot), then 0x80
     /// 0x8B containers: 11 x (uint32 BE container id, uint32 BE format)
-    /// 0x82 medals: 2 x uint32 BE, character id
+    /// 0x82 medal points (Richmond, Newman): 2 x uint32 BE, character id
     /// uint16 BE 0x0095 combat skills: 21 x uint32 BE, character id
     /// uint16 BE 0x0187 construction skills: 7 x uint32 BE, character id
     /// uint16 BE 0x028A other skills: 10 x uint32 BE, character id, 03, 0x85 5 x uint32 BE, character id
     /// 0x83 strength, spirit, luck, their sum (uint32 BE each), character id
+    /// Every skill and status value carries its Status Setting arrow in its top four bits.
     /// 00 01 gender
     /// 0x94 looks: 8 x (uint16 BE wear id, style), 00 00, skin, 00, face, 00 00, hair style, hair colour, 00, 26 x 00
     /// -1, -1, 0x82 8 x 00, 0x82 00 00, 0x80 00 00, character id
@@ -36,7 +37,10 @@ namespace Common.Characters
         /// </summary>
         private static readonly byte[] DefaultOptions = BuildDefaultOptions();
 
-        public static void Write<T>(UCPacket<T> p, uint accountID, Character c, int vehicleTemplateID = 0, Transport transport = null)
+        /// <param name="created">The creation time to report, when not the character's own (see the Lobby's
+        /// character deletion wait).</param>
+        public static void Write<T>(UCPacket<T> p, uint accountID, Character c, int vehicleTemplateID = 0, Transport transport = null,
+            int? created = null)
         {
             uint id = c.ClientID;
 
@@ -55,18 +59,14 @@ namespace Common.Characters
             p.PutIntBE(c.Rank);
 
             p.PutUCString(c.Name);
-            p.PutIntBE(c.Created);
+            p.PutIntBE(created ?? c.Created);
 
-            // Score (Java: PlayerScoreWriter; characters.char_score is the player wins)
-            p.PutSize(10);
-            p.PutIntBE(0);           // enemy NPC wins
-            p.PutIntBE(0);           // enemy NPC losses
-            p.PutIntBE(c.Score);     // player wins
-            p.PutIntBE(0);           // player losses
-            p.PutIntBE(0);           // penalty
-            for (int i = 0; i < 5; i++)
+            // Score: the ten counters of ScoreSlot (NPC kills and deaths, criminal count, previous offense,
+            // player kills and deaths), then an empty list
+            p.PutSize(ScoreSlot.Count);
+            for (int i = 0; i < ScoreSlot.Count; i++)
             {
-                p.PutIntBE(0);
+                p.PutIntBE(c.Scores[i]);
             }
             p.PutSize(0);
 
@@ -78,33 +78,31 @@ namespace Common.Characters
                 p.PutIntBE(container.Item3);
             }
 
-            // Medals
-            p.PutSize(2);
-            p.PutIntBE(0);
-            p.PutIntBE(0);
+            // Medal points: Medal of Richmond, Medal of Newman
+            p.PutSize(c.Medals.Length);
+            foreach (int medal in c.Medals)
+            {
+                p.PutIntBE(medal);
+            }
             p.PutUIntBE(id);
 
             // Combat skills
             p.PutUShortBE(0x0095);
-            PutSkills(p, c, Skill.MOBILE_SUIT, Skill.MOBILE_ARMOR, null, Skill.FIGHTER, Skill.SPACE_ENGAGEMENT,
-                Skill.GROUND_ENGAGEMENT, null, Skill.AIR_ENGAGEMENT, Skill.BEAMCARTRIDGE_WEAPON, Skill.SHELLFIRING_WEAPON,
-                null, Skill.WEAPON_MANIPULATION, Skill.SHOOTING, Skill.SNIPING, Skill.CQB, Skill.HANDTOHAND_COMBAT,
-                Skill.TACTICS, Skill.AMBAC, Skill.DEFENCE, Skill.EVASION, Skill.EMERGENCY_REPAIR);
+            PutSkills(p, c, SkillTables.Combat);
             p.PutUIntBE(id);
 
             // Construction skills
             p.PutUShortBE(0x0187);
-            PutSkills(p, c, Skill.MINING, Skill.REFINERY, Skill.MSMA_CONSTRUCTION, Skill.BATTLESHIP_CONSTRUCTION,
-                Skill.ARMS_CONSTRUCTION, null, null);
+            PutSkills(p, c, SkillTables.Construction);
             p.PutUIntBE(id);
 
             // Other skills
             p.PutUShortBE(0x028A);
-            PutSkills(p, c, null, null, null, null, null, Skill.CLOTHING_MANUFACTURING, null, null, null, null);
+            PutSkills(p, c, SkillTables.Other);
             p.PutUIntBE(id);
             p.PutByte(0x03);
             p.PutSize(5);
-            PutSkills(p, c, null, null, null, null, null);
+            PutSkills(p, c, SkillTables.Extra);
             p.PutUIntBE(id);
 
             // Strength, spirit, luck
@@ -112,9 +110,9 @@ namespace Common.Characters
             int spirit = c.GetSkill(Skill.SPIRIT);
             int luck = c.GetSkill(Skill.LUCK);
             p.PutSize(3);
-            p.PutIntBE(strength);
-            p.PutIntBE(spirit);
-            p.PutIntBE(luck);
+            p.PutIntBE(WithManagement(c, Skill.STRENGTH, strength));
+            p.PutIntBE(WithManagement(c, Skill.SPIRIT, spirit));
+            p.PutIntBE(WithManagement(c, Skill.LUCK, luck));
             p.PutIntBE(strength + spirit + luck);
             p.PutUIntBE(id);
 
@@ -192,14 +190,23 @@ namespace Common.Characters
         }
 
         /// <summary>
-        /// Writes each skill level as uint32 BE; null writes 0.
+        /// Writes each skill level as uint32 BE with its arrow in the top four bits; null writes 0.
         /// </summary>
         private static void PutSkills<T>(UCPacket<T> p, Character c, params Skill?[] skills)
         {
             foreach (var skill in skills)
             {
-                p.PutIntBE(skill.HasValue ? c.GetSkill(skill.Value) : 0);
+                p.PutIntBE(skill.HasValue ? WithManagement(c, skill.Value, c.GetSkill(skill.Value)) : 0);
             }
+        }
+
+        /// <summary>
+        /// A skill or status value as the client reads it: the level in the low 28 bits, the Status Setting
+        /// arrow (<see cref="SkillManagement"/>) in the top 4 (official player infos: 0x10000047 is 7.1 set to 1).
+        /// </summary>
+        private static int WithManagement(Character c, Skill skill, int value)
+        {
+            return (c.GetManagement(skill) << 28) | (value & 0x0FFFFFFF);
         }
 
         private static byte[] BuildDefaultOptions()

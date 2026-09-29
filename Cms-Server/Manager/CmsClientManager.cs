@@ -32,6 +32,7 @@ namespace TitansUC.CmsServer.Manager
             RegisterPacketHandler(CMSOpcode.CM_GROUP_CHAT_MEMBERS, new CM_GROUP_CHAT_MEMBERS());
             RegisterPacketHandler(CMSOpcode.CM_GROUP_CHAT_ADD_MEMBER, new CM_GROUP_CHAT_ADD_MEMBER());
             RegisterPacketHandler(CMSOpcode.CM_GROUP_CHAT_LEAVE, new CM_GROUP_CHAT_LEAVE());
+            RegisterPacketHandler(CMSOpcode.CM_GROUP_CHAT_RELEASE, new CM_GROUP_CHAT_RELEASE());
             RegisterPacketHandler(CMSOpcode.CM_COMMUNITY_LIST, new CM_COMMUNITY_LIST());
             RegisterPacketHandler(CMSOpcode.CM_ADD_FRIEND, new CM_ADD_FRIEND());
             RegisterPacketHandler(CMSOpcode.CM_DELETE_FRIEND, new CM_DELETE_FRIEND());

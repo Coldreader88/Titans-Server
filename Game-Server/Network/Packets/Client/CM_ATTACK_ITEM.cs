@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
 
@@ -6,7 +6,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
 {
     /// <summary>
     /// 0x11: attack something on the ground (a vehicle nobody is in, a wreck): uint32 BE attacker, byte
-    /// armament slot, byte 0, uint16 BE FFFF (sometimes 0000; echoed back), uint32 BE item unique id, format,
+    /// armament slot, byte crime flag (1 when the client knows the vehicle is another player's of its own faction;
+    /// UC_Attack "CrimeFlag"), uint16 BE FFFF (sometimes 0000; echoed back), uint32 BE item unique id, format,
     /// template. Layout from the official captures (TEST_Z_GUNDAM.pcap, 88 attacks).
     /// </summary>
     public class CM_ATTACK_ITEM : UCPacket<GSOpcode>
@@ -24,6 +25,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public uint AttackerID { get; private set; }
         public int Slot { get; private set; }
         public ushort Echo { get; private set; }
+        public bool CrimeFlag { get; private set; }
         public uint ItemUniqueID { get; private set; }
 
         public override void OnProcess(Session<GSOpcode> client)
@@ -34,7 +36,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             }
             AttackerID = this.GetUIntBE();
             Slot = this.GetByte();
-            this.GetByte();
+            CrimeFlag = this.GetByte() == 1;
             Echo = this.GetUShortBE();
             ItemUniqueID = this.GetUIntBE();
 
