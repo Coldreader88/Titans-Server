@@ -27,6 +27,15 @@
   <CrimeExileEarth></CrimeExileEarth>
   <CrimeExileSpace></CrimeExileSpace>
 
+  <!-- Battle towns Richmond and Newman (Earth server only): peace for OccupationPeaceMinutes, then the town is open
+       to attack until the other faction hits one of its laser communication towers, which starts a war of
+       OccupationWarMinutes. Taking all five ICFs wins the town; otherwise the owner keeps it.
+       OccupationMedals: medal points for joining a war, per ICF captured, and for the winners who took part. -->
+  <OccupationEnabled>true</OccupationEnabled>
+  <OccupationWarMinutes>60</OccupationWarMinutes>
+  <OccupationPeaceMinutes>180</OccupationPeaceMinutes>
+  <OccupationMedals>1, 5, 10</OccupationMedals>
+
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
 

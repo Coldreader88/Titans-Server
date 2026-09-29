@@ -80,6 +80,10 @@ namespace TitansUC.GameServer
             }
 
             World.NpcManager.Instance.Start();
+            if (Configuration.Instance.Zone == (ushort)Common.Characters.Zone.EARTH)
+            {
+                World.Occupation.Start();
+            }
 
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");

@@ -223,11 +223,12 @@ namespace Common.Database
             {
                 EnsureStateTable(connection);
                 using (var cmd = new MySqlCommand(
-                    "REPLACE INTO character_state (char_id, scores, management) VALUES (@id, @scores, @management)", connection))
+                    "REPLACE INTO character_state (char_id, scores, management, medals) VALUES (@id, @scores, @management, @medals)", connection))
                 {
                     cmd.Parameters.AddWithValue("@id", character.ClientID);
                     cmd.Parameters.AddWithValue("@scores", string.Join(",", character.Scores));
                     cmd.Parameters.AddWithValue("@management", string.Concat(character.Management));
+                    cmd.Parameters.AddWithValue("@medals", string.Join(",", character.Medals));
                     cmd.ExecuteNonQuery();
                 }
                 using (var cmd = new MySqlCommand("UPDATE characters SET char_score = @score, char_lost = @lost WHERE char_id = @id", connection))
@@ -485,7 +486,8 @@ namespace Common.Database
             "CREATE TABLE IF NOT EXISTS character_state (" +
             " char_id INT UNSIGNED NOT NULL PRIMARY KEY," +
             " scores VARCHAR(255) NOT NULL DEFAULT ''," +
-            " management VARCHAR(64) NOT NULL DEFAULT '')";
+            " management VARCHAR(64) NOT NULL DEFAULT ''," +
+            " medals VARCHAR(64) NOT NULL DEFAULT '')";
 
         private static volatile bool stateTableReady;
 
@@ -502,12 +504,24 @@ namespace Common.Database
             {
                 cmd.ExecuteNonQuery();
             }
+            // Tables made before the medals column.
+            try
+            {
+                using (var cmd = new MySqlCommand("ALTER TABLE character_state ADD COLUMN medals VARCHAR(64) NOT NULL DEFAULT ''", connection))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (MySqlException)
+            {
+                // It is there already.
+            }
             stateTableReady = true;
         }
 
         /// <summary>
-        /// Reads the score counters and skill arrows (character_state, keyed by the client id: scores are ten
-        /// comma separated numbers, management one digit per <see cref="Skill"/>). A character without a row
+        /// Reads the score counters, skill arrows and medal points (character_state, keyed by the client id: scores
+        /// are ten comma separated numbers, management one digit per <see cref="Skill"/>, medals two numbers). A character without a row
         /// starts with its char_score and char_lost as player kills and deaths, and every arrow at 0.
         /// </summary>
         private static void LoadState(MySqlConnection connection, Character character)
@@ -515,7 +529,7 @@ namespace Common.Database
             character.Scores[ScoreSlot.EnemyPlayerKills] = character.Score;
             character.Scores[ScoreSlot.DeathsByEnemyPlayer] = character.Lost;
             EnsureStateTable(connection);
-            using (var cmd = new MySqlCommand("SELECT scores, management FROM character_state WHERE char_id = @id", connection))
+            using (var cmd = new MySqlCommand("SELECT scores, management, medals FROM character_state WHERE char_id = @id", connection))
             {
                 cmd.Parameters.AddWithValue("@id", character.ClientID);
                 using (var reader = cmd.ExecuteReader())
@@ -531,6 +545,15 @@ namespace Common.Database
                         if (int.TryParse(scores[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out n))
                         {
                             character.Scores[i] = n;
+                        }
+                    }
+                    var medals = GetString(reader, "medals").Split(',');
+                    for (int i = 0; i < medals.Length && i < character.Medals.Length; i++)
+                    {
+                        int n;
+                        if (int.TryParse(medals[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out n))
+                        {
+                            character.Medals[i] = n;
                         }
                     }
                     var management = GetString(reader, "management");

@@ -15,7 +15,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     ///            criminal count, previous offense (the client's UC_PaperDollInfo; "Light" in
     ///            Open_Other_Player_Stat_Window.pcap had previous offense 3)
     /// int32 BE -1, int32 BE -1, 3 x FF (no vehicle)
-    /// 0x82 medals: uint32 BE 0, uint32 BE 0, character id
+    /// 0x82 medal points (Richmond, Newman), character id
     /// uint16 BE   9
     /// byte       gender
     /// looks (see <see cref="CharacterLooks"/>)
@@ -43,9 +43,11 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutIntBE(-1);
             this.PutBytes(0xFF, 0xFF, 0xFF);
 
-            this.PutSize(2);
-            this.PutIntBE(0);
-            this.PutIntBE(0);
+            this.PutSize(character.Medals.Length);
+            foreach (int medal in character.Medals)
+            {
+                this.PutIntBE(medal);
+            }
             this.PutUIntBE(character.ClientID);
 
             this.PutUShortBE(0x0009);

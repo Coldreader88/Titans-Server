@@ -13,7 +13,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// UC size    statuses, 6 bytes each: byte status (0 strength, 1 spirit, 2 luck), int32 BE change, byte ignore arrows
     /// UC size    skills, 7 bytes each: byte table, byte index (see <see cref="SkillTables"/>), int32 BE change in
     ///            tenths, byte ignore arrows
-    /// UC size    medals, 5 bytes each: byte medal, int32 BE change (none sent)
+    /// UC size    medals, 5 bytes each: byte medal (0 Richmond, 1 Newman), int32 BE change in points
     /// </code>
     /// Layout from the client (reader 0x78d04c) and the official captures (spirit_up_1.pcap, TOMINO_X_Ambaq_.3_raise.pcap).
     /// The client adds the changes as they are, without caps or arrows, and shows each in the Skill/Status
@@ -22,7 +22,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_SKILL_GAIN : UCPacket<GSOpcode>
     {
-        public SM_SKILL_GAIN(uint characterID, IList<KeyValuePair<Skill, int>> changes, bool ignoreManagement = false, int rankChange = 0)
+        public SM_SKILL_GAIN(uint characterID, IList<KeyValuePair<Skill, int>> changes, bool ignoreManagement = false, int rankChange = 0,
+            IList<KeyValuePair<byte, int>> medals = null)
         {
             this.ID = GSOpcode.SM_SKILL_GAIN;
 
@@ -62,7 +63,15 @@ namespace TitansUC.GameServer.Network.Packets.Client
                 this.PutIntBE(s.Value);
                 this.PutByte(flag);
             }
-            this.PutSize(0);
+            this.PutSize(medals != null ? medals.Count : 0);
+            if (medals != null)
+            {
+                foreach (var m in medals)
+                {
+                    this.PutByte(m.Key);
+                    this.PutIntBE(m.Value);
+                }
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ namespace Common.Characters
             Skills = new int[Enum.GetValues(typeof(Skill)).Length];
             Management = new byte[Skills.Length];
             Scores = new int[ScoreSlot.Count];
+            Medals = new int[2];
         }
 
         /// <summary>
@@ -130,6 +131,12 @@ namespace Common.Characters
         }
 
         public bool IsCriminal { get { return CrimeCount > 0; } }
+
+        /// <summary>
+        /// Medal points by medal (MEDALTYPEINFO): 0 Medal of Richmond, 1 Medal of Newman, earned in the battle
+        /// towns' wars. Stored in character_state.
+        /// </summary>
+        public int[] Medals { get; private set; }
 
         public byte GetManagement(Skill skill)
         {

@@ -91,6 +91,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            Occupation.Leave(this);
 
             // After a flight everything was saved at take-off, and the other side's server may already have
             // loaded (and changed) the character: saving again here could undo that.
@@ -479,7 +480,68 @@ namespace TitansUC.GameServer.Network.Client
         /// </summary>
         public void OnOccupationCityInfoList(CM_OCCUPATION_CITY_INFO_LIST p)
         {
-            this.Network.SendPacket(new SM_OCCUPATION_CITY_INFO_LIST(GameWorld.OccupationTimes()));
+            this.Network.SendPacket(new SM_OCCUPATION_CITY_INFO_LIST(Occupation.Snapshot()));
+        }
+
+        /// <summary>
+        /// The battle town requests (see <see cref="Occupation"/>): 0x71 start the war, 0x73 an ICF captured, 0x74 / 0x75
+        /// join or leave the war. 0x8071 and 0x8073 carry code 2 when done, 0x0C when refused (the client ignores
+        /// them); 0x8074 goes out only on success, since the client counts itself registered whatever its code.
+        /// </summary>
+        public void OnOccupation(CM_OCCUPATION p)
+        {
+            if (!CheckInGame("Battle town request"))
+            {
+                return;
+            }
+            string refusal;
+            switch (p.Request)
+            {
+                case GSOpcode.CM_START_OCCUPATION:
+                    refusal = Occupation.StartWar(this, p.CityID);
+                    this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_START_OCCUPATION, 0, refusal == null ? SM_RESULT_MSG.Done : (ushort)0x0C, p.CityID));
+                    break;
+                case GSOpcode.CM_CAPTURE_FLAG:
+                    refusal = p.CharacterID != CharacterID ? "not their character" : Occupation.Capture(this, p.CityID, p.Flag);
+                    this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_CAPTURE_FLAG, 0, refusal == null ? SM_RESULT_MSG.Done : (ushort)0x0C, p.CityID));
+                    break;
+                case GSOpcode.CM_REGISTER_OCCUPATION:
+                    refusal = p.CharacterID != CharacterID ? "not their character" : Occupation.Register(this, p.CityID);
+                    if (refusal == null)
+                    {
+                        this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_REGISTER_OCCUPATION, 0, SM_RESULT_MSG.Done, p.CityID));
+                        Logger.ShowInfo(string.Format("{0} joined the war for town {1}.", Character.Name, p.CityID));
+                    }
+                    break;
+                default:
+                    Occupation.Unregister(this, p.CityID);
+                    refusal = null;
+                    this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_UNREGISTER_OCCUPATION, 0, SM_RESULT_MSG.Done, p.CityID));
+                    break;
+            }
+            if (refusal != null)
+            {
+                Logger.ShowWarning(string.Format("{0}: battle town request 0x{1:X2} for town {2} (ICF {3}) refused: {4}.", Character.Name,
+                    (int)p.Request, p.CityID, p.Flag, refusal));
+            }
+        }
+
+        /// <summary>
+        /// Adds medal points, saves them and tells the client (0x8034's medal list).
+        /// </summary>
+        public void AddMedal(int medal, int points)
+        {
+            if (!InGame || points == 0 || medal < 0 || medal >= Character.Medals.Length)
+            {
+                return;
+            }
+            lock (Character)
+            {
+                Character.Medals[medal] += points;
+            }
+            SaveState();
+            this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, new List<KeyValuePair<Skill, int>>(), false, 0,
+                new List<KeyValuePair<byte, int>> { new KeyValuePair<byte, int>((byte)medal, points) }));
         }
 
         /// <summary>
@@ -1381,6 +1443,7 @@ namespace TitansUC.GameServer.Network.Client
                 p.CharacterID != CharacterID ? "not their character" :
                 g == null || !g.IsVehicle ? "no vehicle there" :
                 g.IsWreck ? "it is a wreck" :
+                g.IsTower ? "it is a battle town's tower" :
                 c == null || g.ClusterID != c.ClusterID || Math.Abs((long)g.X - c.X) > OpenDistance ||
                     Math.Abs((long)g.Y - c.Y) > OpenDistance ? "too far away" :
                 g.OwnerID != CharacterID && !(unowned && p.NewOwnerID == CharacterID) ? "not theirs" :
@@ -1561,6 +1624,12 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
+            if (ground.IsTower && !Occupation.CanAttackTower(ground, Character.Faction))
+            {
+                Logger.ShowWarning(string.Format("{0}: attack on the tower of town {1} refused: not open to attack by them.",
+                    Character.Name, ground.CityID));
+                return;
+            }
             var r = Combat.Attack(weapon, ground.Node, null, 0);
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
@@ -1581,7 +1650,8 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 uint formerOwner = ground.OwnerID;
-                gone = !Combat.LeavesWreck();
+                // A tower falls and is gone until the war is over.
+                gone = ground.IsTower || !Combat.LeavesWreck();
                 if (gone)
                 {
                     GameWorld.Instance.Take(ground.UniqueID, g => true);
@@ -1605,6 +1675,11 @@ namespace TitansUC.GameServer.Network.Client
             uint action = gone ? SM_UPDATE_ITEM_INFO.ItemPickedUp : r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged;
             GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance, () =>
                 new SM_UPDATE_ITEM_INFO(action, ground, attacker, echo));
+            // The client asks to start the war after this hit itself (0x71); the server does not wait for it.
+            if (ground.IsTower)
+            {
+                Occupation.StartWar(this, ground.CityID);
+            }
         }
 
         /// <summary>

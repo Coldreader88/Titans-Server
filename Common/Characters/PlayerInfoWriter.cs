@@ -13,7 +13,7 @@ namespace Common.Characters
     /// uint32 BE   creation time (Unix seconds)
     /// 0x8A score: 10 x uint32 BE (see ScoreSlot), then 0x80
     /// 0x8B containers: 11 x (uint32 BE container id, uint32 BE format)
-    /// 0x82 medals: 2 x uint32 BE, character id
+    /// 0x82 medal points (Richmond, Newman): 2 x uint32 BE, character id
     /// uint16 BE 0x0095 combat skills: 21 x uint32 BE, character id
     /// uint16 BE 0x0187 construction skills: 7 x uint32 BE, character id
     /// uint16 BE 0x028A other skills: 10 x uint32 BE, character id, 03, 0x85 5 x uint32 BE, character id
@@ -78,10 +78,12 @@ namespace Common.Characters
                 p.PutIntBE(container.Item3);
             }
 
-            // Medals
-            p.PutSize(2);
-            p.PutIntBE(0);
-            p.PutIntBE(0);
+            // Medal points: Medal of Richmond, Medal of Newman
+            p.PutSize(c.Medals.Length);
+            foreach (int medal in c.Medals)
+            {
+                p.PutIntBE(medal);
+            }
             p.PutUIntBE(id);
 
             // Combat skills
