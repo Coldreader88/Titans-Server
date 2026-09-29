@@ -11,7 +11,7 @@ using TitansUC.GameServer.Network.Packets.Client;
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// GM chat commands the game server answers itself (the CMS server forwards them): #items and #skill.
+    /// GM chat commands the game server answers itself (the CMS server forwards them): #items, #skill, #near, #tp and #crime.
     /// Each returns the lines to show the GM as system messages.
     /// </summary>
     public static class GmCommands
@@ -38,6 +38,8 @@ namespace TitansUC.GameServer.World
                     return Near(gm, args);
                 case "tp":
                     return TeleportTo(gm, args);
+                case "crime":
+                    return CrimeCommand(gm, args);
                 case "npcs":
                     return Npcs(gm, args);
                 default:
@@ -374,18 +376,6 @@ namespace TitansUC.GameServer.World
             { "weaponconstruction", Skill.ARMS_CONSTRUCTION }, { "clothingmanufacturing", Skill.CLOTHING_MANUFACTURING },
         };
 
-        /// <summary>
-        /// The skills of the player info's combat list, in its order: a skill's place is its id in 0x8034
-        /// (see <see cref="PlayerInfoWriter"/>).
-        /// </summary>
-        private static readonly Skill?[] CombatList =
-        {
-            Skill.MOBILE_SUIT, Skill.MOBILE_ARMOR, null, Skill.FIGHTER, Skill.SPACE_ENGAGEMENT, Skill.GROUND_ENGAGEMENT, null,
-            Skill.AIR_ENGAGEMENT, Skill.BEAMCARTRIDGE_WEAPON, Skill.SHELLFIRING_WEAPON, null, Skill.WEAPON_MANIPULATION,
-            Skill.SHOOTING, Skill.SNIPING, Skill.CQB, Skill.HANDTOHAND_COMBAT, Skill.TACTICS, Skill.AMBAC, Skill.DEFENCE,
-            Skill.EVASION, Skill.EMERGENCY_REPAIR,
-        };
-
         private static KeyValuePair<string, Skill> Named(string name, Skill skill)
         {
             return new KeyValuePair<string, Skill>(name, skill);
@@ -418,6 +408,26 @@ namespace TitansUC.GameServer.World
             }
             var prefix = SkillNames.Where(n => n.Key.StartsWith(key)).ToList();
             return key.Length > 0 && prefix.Count == 1 ? prefix[0].Value : (Skill?)null;
+        }
+
+        /// <summary>
+        /// #crime: shows the GM's criminal count and previous offenses; #crime::10 sets the count (0 clears it).
+        /// The client is told with 0x8008.
+        /// </summary>
+        public static List<string> CrimeCommand(UCGameSession gm, IList<string> args)
+        {
+            var c = gm.Character;
+            int count;
+            if (args.Count == 0 || !int.TryParse(args[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out count) || count < 0)
+            {
+                return new List<string>
+                {
+                    string.Format("Criminal count {0}, previous offenses {1}. #crime::n sets the count.", c.CrimeCount, c.PreviousOffense),
+                };
+            }
+            gm.SetCrimeCount(count);
+            Logger.ShowInfo(string.Format("{0} set their criminal count to {1} with #crime.", c.Name, count));
+            return new List<string> { string.Format("Criminal count is now {0} (previous offenses {1}).", c.CrimeCount, c.PreviousOffense) };
         }
 
         /// <summary>
@@ -459,7 +469,7 @@ namespace TitansUC.GameServer.World
             List<Skill> skills;
             if (args[0].ToLowerInvariant() == "all")
             {
-                skills = CombatList.Where(s => s.HasValue).Select(s => s.Value).ToList();
+                skills = SkillTables.Combat.Where(s => s.HasValue).Select(s => s.Value).ToList();
             }
             else
             {
@@ -472,8 +482,7 @@ namespace TitansUC.GameServer.World
                 skills = new List<Skill> { s.Value };
             }
 
-            var stats = new List<KeyValuePair<byte, int>>();
-            var gains = new List<KeyValuePair<ushort, int>>();
+            var changes = new List<KeyValuePair<Skill, int>>();
             foreach (var s in skills)
             {
                 int level = IsStat(s) ? (int)Math.Round(value) : (int)Math.Round(value * 10);
@@ -489,29 +498,20 @@ namespace TitansUC.GameServer.World
                     Logger.ShowError(ex);
                     lines.Add("Could not save " + s + ": " + ex.Message);
                 }
-                int combat = Array.IndexOf(CombatList, s);
-                if (IsStat(s))
+                if (gain != 0)
                 {
-                    stats.Add(new KeyValuePair<byte, int>((byte)s, gain));
-                }
-                else if (combat >= 0)
-                {
-                    gains.Add(new KeyValuePair<ushort, int>((ushort)combat, gain));
+                    changes.Add(new KeyValuePair<Skill, int>(s, gain));
                 }
             }
-            if (stats.Count > 0 || gains.Count > 0)
+            if (changes.Count > 0)
             {
-                gm.Network.SendPacket(new SM_SKILL_GAIN(gm.CharacterID, stats, gains));
+                gm.Network.SendPacket(new SM_SKILL_GAIN(gm.CharacterID, changes, true));
             }
 
             Logger.ShowInfo(string.Format("{0} set {1} to {2} with #skill.", c.Name, args[0], args[1]));
             lines.Add(skills.Count == 1
                 ? string.Format("{0} is now {1}.", args[0], Show(skills[0], c.GetSkill(skills[0])))
                 : string.Format("All {0} combat skills are now {1}.", skills.Count, Show(skills[0], c.GetSkill(skills[0]))));
-            if (skills.Any(s => !IsStat(s) && Array.IndexOf(CombatList, s) < 0))
-            {
-                lines.Add("Construction skills show in the skill window after your next login.");
-            }
             return lines;
         }
     }

@@ -197,5 +197,17 @@ namespace TitansUC.GameServer.World
         public int M { get; set; }
         public int DurabilityUsed { get; set; }
         public int RoundsUsed { get; set; }
+
+        /// <summary>
+        /// The target is of the attacker's faction: "relation to target" 0 in 0x800F and 0x8067 (1 = enemy), which
+        /// the client uses to count the kill as a friendly one.
+        /// </summary>
+        public bool Friendly { get; set; }
+
+        /// <summary>
+        /// The attack was a crime (see <see cref="Criminal"/>): the crime bit of 0x800F, counted in 0x8067 and
+        /// 0x8068. The attacker's client adds the crime points itself.
+        /// </summary>
+        public bool Crime { get; set; }
     }
 }

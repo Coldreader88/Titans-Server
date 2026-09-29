@@ -24,6 +24,8 @@ namespace Common.Characters
                 Garments[i] = Apparel.None;
             }
             Skills = new int[Enum.GetValues(typeof(Skill)).Length];
+            Management = new byte[Skills.Length];
+            Scores = new int[ScoreSlot.Count];
         }
 
         /// <summary>
@@ -95,6 +97,44 @@ namespace Common.Characters
         /// Skill levels, indexed by <see cref="Skill"/>.
         /// </summary>
         public int[] Skills { get; private set; }
+
+        /// <summary>
+        /// The arrow of each skill and status in the Status Setting window, indexed by <see cref="Skill"/>
+        /// (see <see cref="SkillManagement"/>). Stored in character_state.
+        /// </summary>
+        public byte[] Management { get; private set; }
+
+        /// <summary>
+        /// The player info's ten score counters, indexed by <see cref="ScoreSlot"/>. Stored in character_state;
+        /// characters.char_score and char_lost keep the player kills and deaths by players.
+        /// </summary>
+        public int[] Scores { get; private set; }
+
+        /// <summary>
+        /// Crime points still to serve: the client runs them down while the player is online (0x08) and draws a
+        /// criminal while it is above 0.
+        /// </summary>
+        public int CrimeCount
+        {
+            get { return Scores[ScoreSlot.CriminalCount]; }
+            set { Scores[ScoreSlot.CriminalCount] = Math.Max(0, value); }
+        }
+
+        /// <summary>
+        /// How many times the criminal count went up from 0.
+        /// </summary>
+        public int PreviousOffense
+        {
+            get { return Scores[ScoreSlot.PreviousOffense]; }
+            set { Scores[ScoreSlot.PreviousOffense] = value; }
+        }
+
+        public bool IsCriminal { get { return CrimeCount > 0; } }
+
+        public byte GetManagement(Skill skill)
+        {
+            return Management[(int)skill];
+        }
 
         public Apparel GetApparel(ApparelType type)
         {

@@ -143,6 +143,13 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "crime", Usage = "#crime[::count]", Level = AccessLevel.GM,
+                Description = "Shows your criminal count and previous offenses, or sets the count (0 clears it).",
+                Examples = new[] { "#crime", "#crime::5", "#crime::0" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "crime", a)),
+            });
+            Add(new Command
+            {
                 Name = "poslog", Usage = "#poslog::message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
                 Examples = new[] { "#poslog::stuck in wall" },

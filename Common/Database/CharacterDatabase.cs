@@ -73,6 +73,7 @@ namespace Common.Database
                 foreach (var character in result)
                 {
                     LoadSkills(connection, character);
+                    LoadState(connection, character);
                 }
             }
 
@@ -109,6 +110,7 @@ namespace Common.Database
                 if (character != null)
                 {
                     LoadSkills(connection, character);
+                    LoadState(connection, character);
                 }
                 return character;
             }
@@ -137,6 +139,8 @@ namespace Common.Database
                 ExecuteForID(connection, "DELETE FROM garments WHERE char_id = @id", character.ID.ToString(CultureInfo.InvariantCulture));
                 ExecuteForID(connection, "DELETE FROM skills WHERE char_id = @id", character.ClientID);
                 ExecuteForID(connection, "DELETE FROM container WHERE char_id = @id", character.ClientID);
+                EnsureStateTable(connection);
+                ExecuteForID(connection, "DELETE FROM character_state WHERE char_id = @id", character.ClientID);
                 return true;
             }
         }
@@ -203,6 +207,35 @@ namespace Common.Database
                         cmd.Parameters.AddWithValue("@level", character.GetSkill(skill));
                         cmd.ExecuteNonQuery();
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Saves the score counters (with char_score and char_lost, the player kills and deaths by players) and
+        /// the skill arrows.
+        /// </summary>
+        public void SaveState(Character character)
+        {
+            character.Score = character.Scores[ScoreSlot.EnemyPlayerKills];
+            character.Lost = character.Scores[ScoreSlot.DeathsByEnemyPlayer];
+            using (var connection = DatabaseConnection.Open())
+            {
+                EnsureStateTable(connection);
+                using (var cmd = new MySqlCommand(
+                    "REPLACE INTO character_state (char_id, scores, management) VALUES (@id, @scores, @management)", connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", character.ClientID);
+                    cmd.Parameters.AddWithValue("@scores", string.Join(",", character.Scores));
+                    cmd.Parameters.AddWithValue("@management", string.Concat(character.Management));
+                    cmd.ExecuteNonQuery();
+                }
+                using (var cmd = new MySqlCommand("UPDATE characters SET char_score = @score, char_lost = @lost WHERE char_id = @id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@score", character.Score);
+                    cmd.Parameters.AddWithValue("@lost", character.Lost);
+                    cmd.Parameters.AddWithValue("@id", character.ID);
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
@@ -443,6 +476,68 @@ namespace Common.Database
                         {
                             character.Skills[idx] = Convert.ToInt32(reader.GetValue(1));
                         }
+                    }
+                }
+            }
+        }
+
+        private const string StateTable =
+            "CREATE TABLE IF NOT EXISTS character_state (" +
+            " char_id INT UNSIGNED NOT NULL PRIMARY KEY," +
+            " scores VARCHAR(255) NOT NULL DEFAULT ''," +
+            " management VARCHAR(64) NOT NULL DEFAULT '')";
+
+        private static volatile bool stateTableReady;
+
+        /// <summary>
+        /// Creates character_state when it is missing (DB/SQL/characters.sql has the same definition).
+        /// </summary>
+        private static void EnsureStateTable(MySqlConnection connection)
+        {
+            if (stateTableReady)
+            {
+                return;
+            }
+            using (var cmd = new MySqlCommand(StateTable, connection))
+            {
+                cmd.ExecuteNonQuery();
+            }
+            stateTableReady = true;
+        }
+
+        /// <summary>
+        /// Reads the score counters and skill arrows (character_state, keyed by the client id: scores are ten
+        /// comma separated numbers, management one digit per <see cref="Skill"/>). A character without a row
+        /// starts with its char_score and char_lost as player kills and deaths, and every arrow at 0.
+        /// </summary>
+        private static void LoadState(MySqlConnection connection, Character character)
+        {
+            character.Scores[ScoreSlot.EnemyPlayerKills] = character.Score;
+            character.Scores[ScoreSlot.DeathsByEnemyPlayer] = character.Lost;
+            EnsureStateTable(connection);
+            using (var cmd = new MySqlCommand("SELECT scores, management FROM character_state WHERE char_id = @id", connection))
+            {
+                cmd.Parameters.AddWithValue("@id", character.ClientID);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                    {
+                        return;
+                    }
+                    var scores = GetString(reader, "scores").Split(',');
+                    for (int i = 0; i < scores.Length && i < character.Scores.Length; i++)
+                    {
+                        int n;
+                        if (int.TryParse(scores[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out n))
+                        {
+                            character.Scores[i] = n;
+                        }
+                    }
+                    var management = GetString(reader, "management");
+                    for (int i = 0; i < management.Length && i < character.Management.Length; i++)
+                    {
+                        int m = management[i] - '0';
+                        character.Management[i] = m >= 0 && m <= SkillManagement.Lock ? (byte)m : SkillManagement.Raise;
                     }
                 }
             }

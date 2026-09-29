@@ -82,6 +82,8 @@
     <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
     <Compile Include="World\ItemTemplates.cs" />
     <Compile Include="World\Mining.cs" />
+    <Compile Include="World\SkillGrowth.cs" />
+    <Compile Include="World\Criminal.cs" />
     <Compile Include="World\Production.cs" />
     <Compile Include="Network\Packets\Client\Bytes.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_PLACED_ITEM.cs" />
@@ -126,7 +128,10 @@
     <Compile Include="Network\Packets\Client\CM_REGISTER_PLAYER.cs" />
     <Compile Include="Network\Packets\Client\CM_REGIST_COORD_MGR.cs" />
     <Compile Include="Network\Packets\Client\CM_SERVER_TIME.cs" />
-    <Compile Include="Network\Packets\Client\CM_UNKNOWN_0D.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROW_BATTLE_SKILL.cs" />
+    <Compile Include="Network\Packets\Client\CM_CHANGE_MANAGEMENT.cs" />
+    <Compile Include="Network\Packets\Client\CM_DECREMENT_CRIMINAL_COUNT.cs" />
+    <Compile Include="Network\Packets\Client\SM_RESULT_MSG.cs" />
     <Compile Include="Network\Packets\Client\CM_SIMPLE_PLAYER_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_CIRCUIT_ITEM.cs" />
     <Compile Include="Network\Link\CmsLink.cs" />
