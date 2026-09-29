@@ -119,11 +119,12 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "spawn", Usage = "#spawn id itemID [amount] | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
+                Name = "spawn", Usage = "#spawn id itemID [amount] | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID]", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Spawns an item or vehicle next to you, or a hostile NPC 1000 away. An MS/MA spawned without an engine gets random weapons, a shield, ammo and a lv.3 engine. #items finds the ids.",
                 Examples = new[] { "#spawn id 280048 (75mm machine gun)", "#spawn id 540000 100 (100 cartridges)",
                     "#spawn name elecar aaron", "#spawn id 410000 (a GM with random weapons, ammo and a lv.3 engine)",
-                    "#spawn ideng 410000 290033 (a bare GM with that engine)", "#spawn npc", "#spawn npc 410007 (a ZAKU II)" },
+                    "#spawn ideng 410000 290033 (a bare GM with that engine)", "#spawn npc", "#spawn npc 410007 (a ZAKU II)",
+                    "#spawn npc friendly (one of your own faction, for testing)", "#spawn npc friendly 410000" },
                 Run = Spawn,
             });
             Add(new Command

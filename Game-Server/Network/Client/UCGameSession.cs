@@ -1922,15 +1922,21 @@ namespace TitansUC.GameServer.Network.Client
         /// on the ground next to the GM, or a hostile NPC. Returns the message for the GM.
         /// <code>
         /// id templateID [amount]     name item name        ideng vehicleID engine (id or name)
-        /// npc [vehicleID]             (default: a random mobile suit; either way a random loadout)
+        /// npc [friendly] [vehicleID] (default: a random mobile suit; either way a random loadout; "friendly" = the GM's faction)
         /// </code>
         /// Items and vehicles belong to the GM, so only the GM can get in a spawned vehicle.
         /// </summary>
+        private static bool IsFriendlyWord(string word)
+        {
+            var w = word.Trim().ToLowerInvariant();
+            return w == "friendly" || w == "friend" || w == "ally";
+        }
+
         public string GmSpawn(string[] args)
         {
             if (!InGame || Coord == null || args.Length == 0)
             {
-                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [vehicleID]";
+                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID]";
             }
             var c = Coord;
             string type = args[0].Trim().ToLowerInvariant();
@@ -1938,17 +1944,24 @@ namespace TitansUC.GameServer.Network.Client
 
             if (type == "npc")
             {
-                byte enemy = Character.Faction == Faction.ZEON ? (byte)1 : (byte)2;
-                ItemTemplate suit = args.Length > 1 && int.TryParse(args[1], out n) ? ItemTemplates.Get(n) : Loadouts.RandomMobileSuit();
-                int template = suit != null ? suit.ID : enemy == 1 ? 410000 : 410007;
+                // #spawn npc [friendly] [vehicleID]: hostile by default; "friendly" makes it of the GM's own faction.
+                bool friendly = args.Skip(1).Any(a => IsFriendlyWord(a));
+                byte own = Character.Faction == Faction.ZEON ? (byte)2 : (byte)1;
+                byte faction = friendly ? own : (byte)(3 - own);
+                string vehicleArg = args.Skip(1).FirstOrDefault(a => !IsFriendlyWord(a));
+                ItemTemplate suit = vehicleArg != null && int.TryParse(vehicleArg, out n) ? ItemTemplates.Get(n) : Loadouts.RandomMobileSuit();
+                int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
                 suit = suit ?? ItemTemplates.Get(template);
                 string weapons = "its default guns";
                 int[] armaments = suit != null && Loadouts.Applies(suit) ? Loadouts.RandomArmaments(suit, out weapons) : null;
-                var npc = NpcManager.Instance.Spawn(template, enemy, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments);
-                Logger.ShowInfo(string.Format("{0} spawned NPC {1} ({2}, {3}) at {4}, {5}, {6}.", Character.Name, npc.ID, template, weapons, npc.X, npc.Y, npc.Z));
+                var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments,
+                    friendly ? "Friendly" : "Spawned");
+                Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}.", Character.Name, friendly ? "friendly" : "hostile",
+                    npc.ID, template, weapons, npc.X, npc.Y, npc.Z));
                 var vt = VehicleTemplates.Get(template);
-                return string.Format("Spawned a hostile {0} ({1}) 1000 away with {2}.",
-                    vt != null ? vt.Name : template.ToString(), enemy == 1 ? "EF" : "Zeon", weapons);
+                return string.Format("Spawned a {0} {1} ({2}) 1000 away with {3}{4}.", friendly ? "friendly" : "hostile",
+                    vt != null ? vt.Name : template.ToString(), faction == 1 ? "EF" : "Zeon", weapons,
+                    friendly ? "; it will not attack you and fires back only when shot" : "");
             }
 
             ItemTemplate item = null;

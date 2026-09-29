@@ -149,17 +149,18 @@ namespace TitansUC.GameServer.World
         private static readonly int[] ZeonArmaments = { 280006, -1, 280006, 280006 };
 
         /// <summary>
-        /// A GM's #spawn npc: a hostile NPC of <paramref name="faction"/> at a point. It fights like the others
+        /// A GM's #spawn npc: an NPC of <paramref name="faction"/> at a point (hostile to the other faction). It fights like the others
         /// but does not come back once destroyed.
         /// </summary>
-        public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null)
+        public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null,
+            string name = "Spawned")
         {
             lock (addLock)
             {
                 armaments = armaments ?? (faction == 1 ? EfArmaments : ZeonArmaments);
                 var npc = Parse(new[]
                 {
-                    (nextSpawnedID++).ToString(), "Spawned", faction.ToString(), templateID.ToString(), (nextSpawnedSquad++).ToString(),
+                    (nextSpawnedID++).ToString(), name, faction.ToString(), templateID.ToString(), (nextSpawnedSquad++).ToString(),
                     zone.ToString(), x.ToString(), y.ToString(), z.ToString(), "0", "0", direction.ToString(), "6", "48",
                     string.Join("/", armaments), "0",
                 });
