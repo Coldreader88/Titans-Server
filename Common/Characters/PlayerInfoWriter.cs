@@ -36,7 +36,10 @@ namespace Common.Characters
         /// </summary>
         private static readonly byte[] DefaultOptions = BuildDefaultOptions();
 
-        public static void Write<T>(UCPacket<T> p, uint accountID, Character c, int vehicleTemplateID = 0, Transport transport = null)
+        /// <param name="created">The creation time to report, when not the character's own (see the Lobby's
+        /// character deletion wait).</param>
+        public static void Write<T>(UCPacket<T> p, uint accountID, Character c, int vehicleTemplateID = 0, Transport transport = null,
+            int? created = null)
         {
             uint id = c.ClientID;
 
@@ -55,7 +58,7 @@ namespace Common.Characters
             p.PutIntBE(c.Rank);
 
             p.PutUCString(c.Name);
-            p.PutIntBE(c.Created);
+            p.PutIntBE(created ?? c.Created);
 
             // Score (Java: PlayerScoreWriter; characters.char_score is the player wins)
             p.PutSize(10);
