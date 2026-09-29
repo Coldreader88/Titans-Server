@@ -11,14 +11,16 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// uint16 BE   faction
     /// byte       rank
     /// UC string   name
-    /// uint32 BE x 6 score: NPC wins, NPC losses, player wins, player losses, penalty, previous offense
+    /// uint32 BE x 6 score: enemy NPC kills, friendly NPC kills, enemy player kills, friendly player kills,
+    ///            criminal count, previous offense (the client's UC_PaperDollInfo; "Light" in
+    ///            Open_Other_Player_Stat_Window.pcap had previous offense 3)
     /// int32 BE -1, int32 BE -1, 3 x FF (no vehicle)
     /// 0x82 medals: uint32 BE 0, uint32 BE 0, character id
     /// uint16 BE   9
     /// byte       gender
     /// looks (see <see cref="CharacterLooks"/>)
     /// </code>
-    /// Java reference: PaperDoll.java, PlayerScoreWriter.java, PlayerMedalWriter.java. Not checked against a capture.
+    /// Java reference: PaperDoll.java, PlayerScoreWriter.java, PlayerMedalWriter.java. Score order from the client.
     /// </summary>
     public class SM_PAPER_DOLL_INFO : UCPacket<GSOpcode>
     {
@@ -31,12 +33,11 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutByte((byte)character.Rank);
             this.PutUCString(character.Name);
 
-            this.PutIntBE(0);
-            this.PutIntBE(0);
-            this.PutIntBE(character.Score);
-            this.PutIntBE(character.Lost);
-            this.PutIntBE(0);
-            this.PutIntBE(0);
+            foreach (int slot in new[] { ScoreSlot.EnemyNpcKills, ScoreSlot.FriendlyNpcKills, ScoreSlot.EnemyPlayerKills,
+                ScoreSlot.FriendlyPlayerKills, ScoreSlot.CriminalCount, ScoreSlot.PreviousOffense })
+            {
+                this.PutIntBE(character.Scores[slot]);
+            }
 
             this.PutIntBE(-1);
             this.PutIntBE(-1);

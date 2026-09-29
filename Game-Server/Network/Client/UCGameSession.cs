@@ -67,6 +67,24 @@ namespace TitansUC.GameServer.Network.Client
         /// </summary>
         private bool departed;
 
+        /// <summary>
+        /// When the criminal count last went down (or the player logged in, or became a criminal): the client
+        /// asks again only after <see cref="Criminal.WaitSeconds"/>.
+        /// </summary>
+        private DateTime lastCrimeDecrement = DateTime.UtcNow;
+
+        /// <summary>
+        /// When 0x0D last raised each operation skill.
+        /// </summary>
+        private readonly Dictionary<Skill, DateTime> lastOperationGrowth = new Dictionary<Skill, DateTime>();
+
+        /// <summary>
+        /// Least seconds between two raises of one operation skill by 0x0D (the client measures 300 s of travel).
+        /// </summary>
+        public const int OperationGrowthSeconds = 240;
+
+        private bool exiled;
+
         public override void OnDisconnect()
         {
             if (Character == null)
@@ -150,6 +168,7 @@ namespace TitansUC.GameServer.Network.Client
                 this.Coord = CoordData.FromCharacter(character, AccountLevel);
                 this.Coord.MachineID = MachineID;
                 this.sessionKey = p.SessionKey;
+                this.lastCrimeDecrement = DateTime.UtcNow;
 
                 // Back in the vehicle they were piloting when they left (a shuttle, after a flight between Earth
                 // and Space). Vehicles they left on the ground are still lying there.
@@ -871,8 +890,9 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// A success raises the best of the skills it used by 0.1, up to 130. The captures show no skill packet
-        /// after crafting, so the client sees it at the next login. The rate of gain is ours.
+        /// A success raises the best of the skills it used by 0.1, up to 130, under the arrows and the total cap
+        /// (see <see cref="SkillGrowth"/>), and tells the client with 0x8034 (construction table). The captures
+        /// show no 0x8034 after crafting; the client applies one correctly. The rate of gain is ours.
         /// </summary>
         private void GainSkill(List<KeyValuePair<Skill, int>> skills)
         {
@@ -881,20 +901,81 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
             var skill = skills.OrderByDescending(s => Character.GetSkill(s.Key)).First().Key;
-            int level = Character.GetSkill(skill);
-            if (level >= GmCommands.MaxSkill)
+            GrowSkills(new List<KeyValuePair<Skill, int>> { new KeyValuePair<Skill, int>(skill, 1) });
+        }
+
+        /// <summary>
+        /// Raises skills and statuses (see <see cref="SkillGrowth.Raise"/>), saves them and sends the changes to the
+        /// player in 0x8034.
+        /// </summary>
+        public void GrowSkills(IEnumerable<KeyValuePair<Skill, int>> wanted, bool ignoreManagement = false)
+        {
+            if (!InGame)
             {
                 return;
             }
-            Character.SetSkill(skill, level + 1);
+            var changes = SkillGrowth.Raise(Character, wanted, ignoreManagement);
+            if (changes.Count == 0)
+            {
+                return;
+            }
             try
             {
-                CharacterDatabase.Instance.SaveSkill(Character, skill);
+                foreach (var ch in changes)
+                {
+                    CharacterDatabase.Instance.SaveSkill(Character, ch.Key);
+                }
             }
             catch (Exception ex)
             {
                 Logger.ShowError(ex);
             }
+            this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, changes, ignoreManagement));
+            Logger.ShowDebug(string.Format("{0}: {1}.", Character.Name,
+                string.Join(", ", changes.Select(ch => ch.Key + (ch.Value > 0 ? " +" : " ") + ch.Value))));
+        }
+
+        private void GrowSkills(Skill skill, int amount)
+        {
+            GrowSkills(new List<KeyValuePair<Skill, int>> { new KeyValuePair<Skill, int>(skill, amount) });
+        }
+
+        /// <summary>
+        /// After this player's attack landed: the engagement skill of where they fight, tactics, weapon
+        /// manipulation, the weapon's operation and type skills, and now and then spirit (official captures: these
+        /// rose 0.2 to 0.5 s after the attack result; spirit_up_1.pcap).
+        /// </summary>
+        private void GrowFromAttack(ItemNode weapon)
+        {
+            var t = weapon != null ? ItemTemplates.Get(weapon.StaticID) : null;
+            var skills = new List<Skill>
+            {
+                SkillGrowth.Engagement(Coord.ClusterID, Inventory.Piloting), Skill.TACTICS, Skill.WEAPON_MANIPULATION,
+            };
+            if (t != null && t.OperationSkill.HasValue)
+            {
+                skills.Add(t.OperationSkill.Value);
+            }
+            if (t != null && t.TypeSkill.HasValue)
+            {
+                skills.Add(t.TypeSkill.Value);
+            }
+            var wanted = SkillGrowth.RollHit(Character, skills);
+            if (SkillGrowth.Roll(0.02 * SkillGrowth.GainRate / 100.0))
+            {
+                wanted.Add(new KeyValuePair<Skill, int>(Skill.SPIRIT, 1));
+            }
+            GrowSkills(wanted);
+        }
+
+        /// <summary>
+        /// This player's vehicle was attacked: AMBAC when it was hit, defence when the shield took it, evasion on a
+        /// miss (never seen in the captures). The official server sent these before the attack result.
+        /// </summary>
+        private void GrowFromHitTaken(HitResult r)
+        {
+            Skill skill = r.Result == Combat.ResultMiss ? Skill.EVASION : r.Result == Combat.ResultShield ? Skill.DEFENCE : Skill.AMBAC;
+            GrowSkills(SkillGrowth.RollHit(Character, new[] { skill }));
         }
 
         /// <summary>
@@ -1226,6 +1307,8 @@ namespace TitansUC.GameServer.Network.Client
             {
                 target.SaveItems();
             }
+            // Official: +0.2 emergency repair for mending another's vehicle, +0.1 for one's own (MS_ER_*.pcap).
+            GrowSkills(Skill.EMERGENCY_REPAIR, target != this ? 2 : 1);
         }
 
         /// <summary>
@@ -1436,6 +1519,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            MarkRelation(target, r);
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, target.CharacterID, r));
             if (target != this)
@@ -1446,6 +1530,14 @@ namespace TitansUC.GameServer.Network.Client
             GameWorld.Instance.SendNear(c.ClusterID, c.X, c.Y, BroadcastDistance,
                 () => new SM_ATTACK_RESULT_NEAR(attacker, target.CharacterID, r));
             AfterHit(target, r);
+            if (r.Crime)
+            {
+                CommitCrime(Criminal.TypeAttack, 1);
+            }
+            if (r.Result != Combat.ResultMiss)
+            {
+                GrowFromAttack(weapon);
+            }
         }
 
         /// <summary>
@@ -1470,8 +1562,17 @@ namespace TitansUC.GameServer.Network.Client
             }
 
             var r = Combat.Attack(weapon, ground.Node, null, 0);
+            // A crime when the vehicle is another player's of the same faction (the client says so itself when it
+            // knows the owner; the server checks owners who are online).
+            var owner = GameWorld.Instance.Get(ground.OwnerID);
+            r.Crime = Criminal.Counts(AccountLevel) && ground.OwnerID != CharacterID &&
+                (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction));
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, p.Echo, r, ground));
+            if (r.Crime)
+            {
+                CommitCrime(Criminal.TypeAttack, 1);
+            }
             if (r.Result == Combat.ResultMiss)
             {
                 return;
@@ -1491,7 +1592,6 @@ namespace TitansUC.GameServer.Network.Client
                 }
                 Logger.ShowInfo(string.Format("{0} destroyed the empty {1} of character {2}{3}.", Character.Name, ground.Node.Name,
                     formerOwner, gone ? "; nothing is left of it" : ""));
-                var owner = GameWorld.Instance.Get(formerOwner);
                 if (owner != null)
                 {
                     owner.SaveItems();
@@ -1522,11 +1622,28 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            r.Friendly = npc.Faction == (byte)Character.Faction;
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, npc.ID, r));
             GameWorld.Instance.SendNear(npc.Zone, npc.X, npc.Y, BroadcastDistance,
                 () => new SM_ATTACK_RESULT_NEAR(attacker, npc.ID, r));
             NpcManager.Instance.AfterAttack(npc, r, this);
+            AfterNpcHit(r);
+            if (r.Result != Combat.ResultMiss)
+            {
+                GrowFromAttack(weapon);
+            }
+        }
+
+        /// <summary>
+        /// Counts an NPC this player destroyed in the score (the client counts it too).
+        /// </summary>
+        private void AfterNpcHit(HitResult r)
+        {
+            if (r.Destroyed)
+            {
+                AddScore(r.Friendly ? ScoreSlot.FriendlyNpcKills : ScoreSlot.EnemyNpcKills);
+            }
         }
 
         /// <summary>
@@ -1558,6 +1675,7 @@ namespace TitansUC.GameServer.Network.Client
                         ? NpcManager.Instance.Attack(npc, weapon, t.Distance) : null;
                     if (hit != null)
                     {
+                        hit.Friendly = npc.Faction == (byte)Character.Faction;
                         npcHits.Add(new KeyValuePair<Npc, HitResult>(npc, hit));
                     }
                     continue;
@@ -1571,6 +1689,7 @@ namespace TitansUC.GameServer.Network.Client
                 var r = target.TakeHit(weapon, t.Distance);
                 if (r != null)
                 {
+                    MarkRelation(target, r);
                     results.Add(new KeyValuePair<uint, HitResult>(target.CharacterID, r));
                     targets.Add(target);
                 }
@@ -1597,7 +1716,28 @@ namespace TitansUC.GameServer.Network.Client
             foreach (var h in npcHits)
             {
                 NpcManager.Instance.AfterAttack(h.Key, h.Value, this);
+                AfterNpcHit(h.Value);
             }
+            int crimes = SM_MULTI_ATTACK_RESULT.Crimes(results);
+            if (crimes > 0)
+            {
+                CommitCrime(Criminal.TypeAttack, crimes);
+            }
+            if (results.Any(r => r.Value.Result != Combat.ResultMiss))
+            {
+                GrowFromAttack(weapon);
+            }
+        }
+
+        /// <summary>
+        /// Sets whether the attack on <paramref name="target"/> was on one's own faction, and whether that was a
+        /// crime: our rule is an attack on a player of one's own faction who is not a criminal (the client warns
+        /// before exactly those). Misses are no crime.
+        /// </summary>
+        private void MarkRelation(UCGameSession target, HitResult r)
+        {
+            r.Friendly = target != this && target.Character.Faction == Character.Faction;
+            r.Crime = r.Friendly && r.Result != Combat.ResultMiss && !target.Character.IsCriminal && Criminal.Counts(AccountLevel);
         }
 
         /// <summary>
@@ -1625,6 +1765,7 @@ namespace TitansUC.GameServer.Network.Client
                     }
                 }
             }
+            GrowFromHitTaken(r);
             return r;
         }
 
@@ -1633,6 +1774,11 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 Logger.ShowInfo(string.Format("{0} destroyed {1}'s {2}.", Character.Name, target.Character.Name, r.DamagedItem.Name));
+                if (target != this)
+                {
+                    AddScore(r.Friendly ? ScoreSlot.FriendlyPlayerKills : ScoreSlot.EnemyPlayerKills);
+                    target.AddScore(r.Friendly ? ScoreSlot.DeathsByFriendlyPlayer : ScoreSlot.DeathsByEnemyPlayer);
+                }
             }
             target.ApplyHit(r, CharacterID);
         }
@@ -1917,6 +2063,8 @@ namespace TitansUC.GameServer.Network.Client
                     Coord.Damage = Combat.DamagePercent(vehicle.Health, vehicle.MaxHealth);
                 }
                 SaveItems();
+                // Every official ER kit use raised emergency repair by 0.1 (Self_ER_REpair.pcap).
+                GrowSkills(Skill.EMERGENCY_REPAIR, 1);
             }
         }
 
@@ -2042,6 +2190,254 @@ namespace TitansUC.GameServer.Network.Client
                 InGame ? Character.Name : "?", p.Type, p.Text));
         }
 
+        /// <summary>
+        /// 0x0D: the client measured enough travel in its vehicle to ask for its operation skill. Always answered
+        /// with the official 0x800D (the client measures again only after it); the skill rises by 0.1 at most once
+        /// per <see cref="OperationGrowthSeconds"/>, only for the operation skill of the vehicle being piloted, on a
+        /// 50% chance (official: +0.1 in TEST_Z_GUNDAM.pcap, nothing in TEST_2.pcap).
+        /// </summary>
+        public void OnGrowBattleSkill(CM_GROW_BATTLE_SKILL p)
+        {
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_GROW_BATTLE_SKILL, 0x1A, SM_RESULT_MSG.Done));
+            if (!InGame)
+            {
+                return;
+            }
+            var skill = p.Type == 0 ? SkillTables.Get(0, p.Index) : null;
+            var operation = SkillGrowth.Operation(Inventory.Piloting);
+            if (skill == null || skill != operation)
+            {
+                Logger.ShowWarning(string.Format("{0}: operation skill growth of table {1} index {2} refused: not the skill of their vehicle.",
+                    Character.Name, p.Type, p.Index));
+                return;
+            }
+            var now = DateTime.UtcNow;
+            DateTime last;
+            lock (lastOperationGrowth)
+            {
+                if (lastOperationGrowth.TryGetValue(skill.Value, out last) && (now - last).TotalSeconds < OperationGrowthSeconds)
+                {
+                    return;
+                }
+                lastOperationGrowth[skill.Value] = now;
+            }
+            if (SkillGrowth.Roll(0.5 * SkillGrowth.GainRate / 100.0))
+            {
+                GrowSkills(skill.Value, 1);
+            }
+        }
+
+        /// <summary>
+        /// 0x0B / 0x0C: the arrows of the Status Setting window. Every entry must name a real skill (or status) and
+        /// an arrow 0 to 2, else nothing is stored and the reply's code is not 2 (the client then offers the change
+        /// again). Stored in character_state.
+        /// </summary>
+        public void OnChangeManagement(CM_CHANGE_MANAGEMENT p)
+        {
+            var reply = p.Statuses ? GSOpcode.SM_CHANGE_STATUS_MANAGEMENT : GSOpcode.SM_CHANGE_SKILL_MANAGEMENT;
+            if (!CheckInGame("Change skill arrows"))
+            {
+                return;
+            }
+            var set = new List<KeyValuePair<Skill, byte>>();
+            bool valid = p.CharacterID == CharacterID && p.Changes != null;
+            if (valid)
+            {
+                foreach (var c in p.Changes)
+                {
+                    Skill? skill = p.Statuses
+                        ? (c[1] < SkillTables.Statuses.Length ? SkillTables.Statuses[c[1]] : (Skill?)null)
+                        : SkillTables.Get(c[0], c[1]);
+                    if (c[2] > SkillManagement.Lock || (skill == null && (p.Statuses || c[0] >= SkillTables.Tables.Length ||
+                        c[1] >= SkillTables.Tables[c[0]].Length)))
+                    {
+                        valid = false;
+                        break;
+                    }
+                    // Unused places of the tables are accepted and ignored.
+                    if (skill != null)
+                    {
+                        set.Add(new KeyValuePair<Skill, byte>(skill.Value, c[2]));
+                    }
+                }
+            }
+            if (!valid)
+            {
+                Logger.ShowWarning(string.Format("{0}: {1} arrow change refused: bad entries.", Character.Name, p.Statuses ? "status" : "skill"));
+                this.Network.SendPacket(new SM_RESULT_MSG(reply, 0x1A, 0x0C));
+                return;
+            }
+            lock (Character)
+            {
+                foreach (var e in set)
+                {
+                    Character.Management[(int)e.Key] = e.Value;
+                }
+            }
+            SaveState();
+            this.Network.SendPacket(new SM_RESULT_MSG(reply, 0x1A, SM_RESULT_MSG.Done));
+            Logger.ShowInfo(string.Format("{0} set the arrows of {1}.", Character.Name,
+                string.Join(", ", set.Select(e => e.Key + " " + (e.Value == SkillManagement.Raise ? "raise" : e.Value == SkillManagement.Lower ? "lower" : "lock")))));
+        }
+
+        /// <summary>
+        /// 0x08: the client waited its time and asks to lower the criminal count. Answered with 0x8008 and the
+        /// change (-1), or 0 when the count is already 0 or the client asked too early (the client stays waiting
+        /// until it gets an answer).
+        /// </summary>
+        public void OnDecrementCriminalCount(CM_DECREMENT_CRIMINAL_COUNT p)
+        {
+            if (!CheckInGame("Criminal count"))
+            {
+                return;
+            }
+            int change = 0;
+            var now = DateTime.UtcNow;
+            lock (Character)
+            {
+                int count = Character.CrimeCount;
+                if (count > 0 && (now - lastCrimeDecrement).TotalSeconds >= Criminal.WaitSeconds(count) - 2)
+                {
+                    Character.CrimeCount = count - 1;
+                    lastCrimeDecrement = now;
+                    change = -1;
+                }
+            }
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_UPDATE_CRIMINAL_COUNT, 0, SM_RESULT_MSG.Done, change));
+            if (change != 0)
+            {
+                SaveState();
+                if (!Character.IsCriminal)
+                {
+                    UpdatePlayerState();
+                    Logger.ShowInfo(string.Format("{0} is no longer a criminal.", Character.Name));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds crimes this player's client has counted from a result packet (see <see cref="Criminal.Add"/>), and
+        /// exiles them at <see cref="Criminal.ExileCount"/>.
+        /// </summary>
+        private void CommitCrime(int type, int n)
+        {
+            if (!Criminal.Counts(AccountLevel))
+            {
+                return;
+            }
+            if (Criminal.Add(Character, type, n))
+            {
+                lastCrimeDecrement = DateTime.UtcNow;
+                UpdatePlayerState();
+            }
+            Logger.ShowInfo(string.Format("{0} committed {1} crime(s); criminal count {2}.", Character.Name, n, Character.CrimeCount));
+            SaveState();
+            if (Criminal.ExileCount > 0 && Character.CrimeCount >= Criminal.ExileCount)
+            {
+                Exile();
+            }
+        }
+
+        /// <summary>
+        /// A GM's #crime: sets the criminal count and tells the client with 0x8008 (which also counts a previous
+        /// offense when the count was 0).
+        /// </summary>
+        public void SetCrimeCount(int count)
+        {
+            int change;
+            lock (Character)
+            {
+                change = count - Character.CrimeCount;
+                if (Character.CrimeCount == 0 && change > 0)
+                {
+                    Character.PreviousOffense++;
+                }
+                Character.CrimeCount = count;
+            }
+            lastCrimeDecrement = DateTime.UtcNow;
+            SaveState();
+            UpdatePlayerState();
+            if (change != 0)
+            {
+                this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_UPDATE_CRIMINAL_COUNT, 0, SM_RESULT_MSG.Done, change));
+            }
+        }
+
+        /// <summary>
+        /// Exiles the player (0x803D: the client shows error 85 and leaves): moved to the exile point of their
+        /// side when one is set, saved, and disconnected.
+        /// </summary>
+        public void Exile()
+        {
+            if (exiled || !InGame)
+            {
+                return;
+            }
+            exiled = true;
+            var point = Character.Zone == Zone.SPACE ? Criminal.ExileSpace : Criminal.ExileEarth;
+            if (point != null)
+            {
+                lock (sync)
+                {
+                    Coord.X = point[0];
+                    Coord.Y = point[1];
+                    Coord.Z = point[2];
+                }
+            }
+            var body = new byte[9];
+            Bytes.PutU32(body, 4, CharacterID);
+            body[8] = 1;
+            this.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_EXILE_PLAYER, body));
+            Logger.ShowInfo(string.Format("{0} was exiled with criminal count {1}{2}.", Character.Name, Character.CrimeCount,
+                point != null ? string.Format(" to {0}, {1}, {2}", point[0], point[1], point[2]) : ""));
+            if (GameWorld.Instance.Remove(this))
+            {
+                Save();
+            }
+            var network = this.Network;
+            System.Threading.Tasks.Task.Delay(2000).ContinueWith(_ => network.Disconnect());
+        }
+
+        /// <summary>
+        /// Adds one to a score counter and saves it.
+        /// </summary>
+        public void AddScore(int slot)
+        {
+            if (!InGame)
+            {
+                return;
+            }
+            lock (Character)
+            {
+                Character.Scores[slot]++;
+            }
+            SaveState();
+        }
+
+        private void SaveState()
+        {
+            try
+            {
+                CharacterDatabase.Instance.SaveState(Character);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+        }
+
+        /// <summary>
+        /// Puts the criminal bit in the position record and makes the others look again.
+        /// </summary>
+        private void UpdatePlayerState()
+        {
+            lock (sync)
+            {
+                Coord.Faction = CoordData.StateAndNationality(Character);
+                Coord.UpdateCounter++;
+            }
+        }
+
         private void UpdateCoord(CoordData coord)
         {
             if (coord == null)
@@ -2059,6 +2455,7 @@ namespace TitansUC.GameServer.Network.Client
             coord.MachineID = MachineID;
             coord.AccountLevel = AccountLevel;
             coord.ClusterID = (ushort)Character.Zone;
+            coord.Faction = CoordData.StateAndNationality(Character);
 
             // The client cannot claim a vehicle it is not piloting.
             var vehicle = Inventory.Piloting;
@@ -2176,6 +2573,11 @@ namespace TitansUC.GameServer.Network.Client
 
         private bool CheckInGame(string what)
         {
+            // An exiled player is on the way out: nothing more they send counts.
+            if (exiled)
+            {
+                return false;
+            }
             if (!InGame)
             {
                 Logger.ShowWarning(what + " requested before a game login, disconnecting.");

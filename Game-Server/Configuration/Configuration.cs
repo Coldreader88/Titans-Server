@@ -141,6 +141,24 @@ namespace TitansUC.GameServer
                         case "wreckchance":
                             World.Combat.WreckChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
                             break;
+                        case "skilltotalcap":
+                            World.SkillGrowth.TotalCap = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "statuscap":
+                            World.SkillGrowth.StatusCap = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "skillgainrate":
+                            World.SkillGrowth.GainRate = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "crimeexilecount":
+                            World.Criminal.ExileCount = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "crimeexileearth":
+                            World.Criminal.ExileEarth = World.Criminal.ParsePoint(i.InnerText);
+                            break;
+                        case "crimeexilespace":
+                            World.Criminal.ExileSpace = World.Criminal.ParsePoint(i.InnerText);
+                            break;
                         case "viewdistance":
                             viewDistance = int.Parse(i.InnerText.Trim());
                             break;

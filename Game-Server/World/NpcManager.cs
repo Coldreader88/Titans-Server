@@ -860,6 +860,7 @@ namespace TitansUC.GameServer.World
             target.ApplyHit(r, npc.ID);
             if (r.Destroyed)
             {
+                target.AddScore(npc.Faction == (byte)target.Character.Faction ? ScoreSlot.DeathsByFriendlyNpc : ScoreSlot.DeathsByEnemyNpc);
                 Logger.ShowInfo(string.Format("NPC {0} destroyed {1}'s {2}.", npc.Name, target.Character.Name, r.DamagedItem.Name));
                 lock (npc)
                 {

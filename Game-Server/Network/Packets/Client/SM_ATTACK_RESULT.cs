@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using TitansUC.GameServer.World;
 
 namespace TitansUC.GameServer.Network.Packets.Client
@@ -9,9 +9,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// <code>
     /// uint32 BE   attacker, target
     /// uint32 BE   damage (health points)
-    /// byte       1
+    /// byte       relation to the target: 1 enemy, 0 same faction
     /// byte       result: 0 hit, 1 critical, 3 shield, 6 miss
-    /// 2 bytes    0
+    /// byte       0
+    /// byte       1 when the attack was a crime (the attacker's client then adds a crime point), else 0
     /// uint16 BE   FFFF
     /// byte       explosion: 0 none, 1 destroyed (a wreck stays), 3 shield broken, 4 miss
     /// byte       00 when the vehicle was damaged, FF otherwise
@@ -34,10 +35,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutUIntBE(attacker);
             this.PutUIntBE(target);
             this.PutIntBE(r.Damage);
-            this.PutByte(1);
+            this.PutByte(r.Friendly ? (byte)0 : (byte)1);
             this.PutByte(r.Result);
             this.PutByte(0);
-            this.PutByte(0);
+            this.PutByte(r.Crime ? (byte)1 : (byte)0);
             this.PutUShortBE(0xFFFF);
             this.PutByte(r.Explosion);
             this.PutByte(r.VehicleDamaged ? (byte)0 : (byte)0xFF);
