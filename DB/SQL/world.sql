@@ -32,3 +32,17 @@ CREATE TABLE IF NOT EXISTS flights (
   transport_a INT NOT NULL, transport_b INT NOT NULL,
   x INT NOT NULL, y INT NOT NULL, z INT NOT NULL
 );
+
+-- The battle towns Richmond (58) and Newman (59), kept by the Earth Game server (World/Occupation.cs creates it
+-- when missing). owner, attacker: 1 Federation, 2 Zeon. status: 0 peace, 1 open to attack, 2 war. time: Unix
+-- time the attack window opens (peace) or the war ends. icf: owner of each of the five ICFs, comma separated.
+CREATE TABLE IF NOT EXISTS `occupation_city` (
+  `city_id` int NOT NULL,
+  `owner` smallint NOT NULL,
+  `status` int NOT NULL,
+  `time` int NOT NULL,
+  `icf` varchar(32) NOT NULL,
+  `attacker` smallint NOT NULL default 0,
+  `started_by` int unsigned NOT NULL default 0,
+  PRIMARY KEY (`city_id`)
+);

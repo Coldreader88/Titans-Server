@@ -147,7 +147,7 @@ namespace TitansUC.GameServer.World
                     }
                     foreach (var g in items)
                     {
-                        if (g.ClusterID != zone)
+                        if (g.ClusterID != zone || g.IsTower)
                         {
                             continue;
                         }

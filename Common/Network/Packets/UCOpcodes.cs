@@ -84,6 +84,10 @@ namespace Common.Network.Packets
         CM_TARGET_DESTROYED = 0x6D,
         CM_PAPER_DOLL_INFO = 0x6F,
         CM_OCCUPATION_CITY_INFO_LIST = 0x70,
+        CM_START_OCCUPATION = 0x71,
+        CM_CAPTURE_FLAG = 0x73,
+        CM_REGISTER_OCCUPATION = 0x74,
+        CM_UNREGISTER_OCCUPATION = 0x75,
 
         SM_REGIST_COORD_MGR = 0x8000,
         SM_PLAYER_COORD_DATA_LIST = 0x8003,
@@ -136,6 +140,11 @@ namespace Common.Network.Packets
         SM_REPAIR_PLAYER_NEAR = 0x806A,
         SM_PAPER_DOLL_INFO = 0x806F,
         SM_OCCUPATION_CITY_INFO_LIST = 0x8070,
+        SM_START_OCCUPATION = 0x8071,
+        SM_CAPTURE_FLAG = 0x8073,
+        SM_REGISTER_OCCUPATION = 0x8074,
+        SM_UNREGISTER_OCCUPATION = 0x8075,
+        SM_OCCUPATION_EVENT = 0x8076,
     }
 
     /// <summary>

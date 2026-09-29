@@ -150,6 +150,27 @@ namespace TitansUC.GameServer
                         case "skillgainrate":
                             World.SkillGrowth.GainRate = Math.Max(0, int.Parse(i.InnerText.Trim()));
                             break;
+                        case "occupationenabled":
+                            World.Occupation.Enabled = bool.Parse(i.InnerText.Trim());
+                            break;
+                        case "occupationwarminutes":
+                            World.Occupation.WarSeconds = Math.Max(1, int.Parse(i.InnerText.Trim())) * 60;
+                            break;
+                        case "occupationpeaceminutes":
+                            World.Occupation.PeaceSeconds = Math.Max(0, int.Parse(i.InnerText.Trim())) * 60;
+                            break;
+                        case "occupationcaptureseconds":
+                            World.Occupation.CaptureSeconds = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "occupationmedals":
+                            var medals = i.InnerText.Split(',');
+                            if (medals.Length == 3)
+                            {
+                                World.Occupation.MedalJoin = int.Parse(medals[0].Trim());
+                                World.Occupation.MedalCapture = int.Parse(medals[1].Trim());
+                                World.Occupation.MedalWin = int.Parse(medals[2].Trim());
+                            }
+                            break;
                         case "crimeexilecount":
                             World.Criminal.ExileCount = Math.Max(0, int.Parse(i.InnerText.Trim()));
                             break;

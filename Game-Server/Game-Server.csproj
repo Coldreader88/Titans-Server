@@ -84,6 +84,7 @@
     <Compile Include="World\Mining.cs" />
     <Compile Include="World\SkillGrowth.cs" />
     <Compile Include="World\Criminal.cs" />
+    <Compile Include="World\Occupation.cs" />
     <Compile Include="World\Production.cs" />
     <Compile Include="Network\Packets\Client\Bytes.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_PLACED_ITEM.cs" />
@@ -132,6 +133,7 @@
     <Compile Include="Network\Packets\Client\CM_CHANGE_MANAGEMENT.cs" />
     <Compile Include="Network\Packets\Client\CM_DECREMENT_CRIMINAL_COUNT.cs" />
     <Compile Include="Network\Packets\Client\SM_RESULT_MSG.cs" />
+    <Compile Include="Network\Packets\Client\CM_OCCUPATION.cs" />
     <Compile Include="Network\Packets\Client\CM_SIMPLE_PLAYER_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_CIRCUIT_ITEM.cs" />
     <Compile Include="Network\Link\CmsLink.cs" />
