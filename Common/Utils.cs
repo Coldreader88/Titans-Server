@@ -8,6 +8,44 @@ namespace Common
 {
     public static class Utils
     {
+        /// <summary>
+        /// Splits a GM command line ("items weapon zaku 2") into words at white space; "double quotes" keep
+        /// spaces inside one word ("tp \"Char Aznable\" Amuro").
+        /// </summary>
+        public static List<string> SplitCommand(string line)
+        {
+            var words = new List<string>();
+            var word = new StringBuilder();
+            bool quoted = false, any = false;
+            foreach (char ch in line ?? string.Empty)
+            {
+                if (ch == '"')
+                {
+                    quoted = !quoted;
+                    any = true;
+                }
+                else if (!quoted && char.IsWhiteSpace(ch))
+                {
+                    if (any)
+                    {
+                        words.Add(word.ToString());
+                        word.Clear();
+                        any = false;
+                    }
+                }
+                else
+                {
+                    word.Append(ch);
+                    any = true;
+                }
+            }
+            if (any)
+            {
+                words.Add(word.ToString());
+            }
+            return words;
+        }
+
         public static unsafe Guid ToGUID(this uint id)
         {
             Random random = new Random((int)id);
