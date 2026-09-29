@@ -131,7 +131,7 @@ namespace TitansUC.GameServer
                             // spawn <character name or id> <#spawn arguments, e.g. id 540000 100 or npc>
                             if (args.Length < 3)
                             {
-                                Logger.ShowInfo("Usage: spawn <character name or id> id itemID [amount] | name item name | ideng vehicleID engine | npc [vehicleID]");
+                                Logger.ShowInfo("Usage: spawn <character name or id> id itemID [amount] | name item name | ideng vehicleID engine | npc [friendly] [vehicleID]");
                                 break;
                             }
                             uint spawnID;
