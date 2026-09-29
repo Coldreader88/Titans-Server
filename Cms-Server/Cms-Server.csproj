@@ -66,6 +66,7 @@
     <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_ADD_MEMBER.cs" />
     <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_CREATE.cs" />
     <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_LEAVE.cs" />
+    <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_RELEASE.cs" />
     <Compile Include="Network\Packets\Client\CM_GROUP_CHAT_MEMBERS.cs" />
     <Compile Include="Network\Packets\Client\CM_HEARTBEAT.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGIN_CMS.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Network\Packets\Server\SM_GROUP_CHAT_MEMBER.cs" />
     <Compile Include="Network\Packets\Server\SM_GROUP_CHAT_MEMBERS.cs" />
     <Compile Include="Network\Packets\Server\SM_HEARTBEAT.cs" />
+    <Compile Include="Network\Packets\Server\SM_PING.cs" />
     <Compile Include="Network\Packets\Server\SM_LOGIN_CMS.cs" />
     <Compile Include="Network\Packets\Server\SM_LOGOUT_CMS.cs" />
     <Compile Include="Network\Packets\Server\SM_ONLINE_STATUS.cs" />

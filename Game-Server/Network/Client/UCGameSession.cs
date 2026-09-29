@@ -1070,6 +1070,184 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// Health an MR tool kit restores in one use: VEHICLEREPAIRTEMPLATE value_a, by kit (280167-280170 MS/MA
+        /// Lv.1-4, 280171-280174 tank/fighter Lv.1-4). The official Lv.4 kit restored 1088 and 1050, all that
+        /// was missing both times.
+        /// </summary>
+        private static readonly Dictionary<int, int> RepairKitHealth = new Dictionary<int, int>
+        {
+            { 280167, 200 }, { 280168, 400 }, { 280169, 1000 }, { 280170, 3000 },
+            { 280171, 800 }, { 280172, 2000 }, { 280173, 4000 }, { 280174, 10000 },
+        };
+
+        /// <summary>
+        /// Distance within which an MR tool kit reaches the other player's vehicle.
+        /// </summary>
+        public const int RepairDistance = 3000;
+
+        /// <summary>
+        /// 0x69: repair another player's vehicle with the MR tool kit in this player's vehicle; 0x8069 to both,
+        /// 0x806A to everyone near.
+        /// </summary>
+        public void OnRepairPlayer(CM_REPAIR_PLAYER p)
+        {
+            if (!CheckInGame("Repair player"))
+            {
+                return;
+            }
+
+            ItemNode kit = Inventory.Armament(p.Weapon);
+            if (kit == null || !RepairKitHealth.ContainsKey(kit.StaticID))
+            {
+                kit = Enumerable.Range(0, 8).Select(i => Inventory.Armament(i))
+                    .FirstOrDefault(a => a != null && RepairKitHealth.ContainsKey(a.StaticID));
+            }
+            var target = GameWorld.Instance.Get(p.TargetID);
+            var vehicle = target != null && target.InGame ? target.Inventory.Piloting : null;
+            var c = Coord;
+            var tc = target != null ? target.Coord : null;
+            string refusal =
+                p.CharacterID != CharacterID ? "not their character" :
+                kit == null ? "no MR tool kit in their vehicle" :
+                vehicle == null || vehicle.UniqueID != p.VehicleUniqueID || vehicle.MaxHealth <= 0 ? "the other player is not in that vehicle" :
+                vehicle.Health <= 0 ? "that vehicle is destroyed" :
+                c == null || tc == null || c.ClusterID != tc.ClusterID ||
+                    Math.Abs((long)c.X - tc.X) > RepairDistance || Math.Abs((long)c.Y - tc.Y) > RepairDistance ? "too far away" :
+                null;
+            if (refusal != null)
+            {
+                RefuseGround("repair of character " + p.TargetID, p.VehicleUniqueID, refusal);
+                return;
+            }
+
+            int amount, health;
+            lock (vehicle)
+            {
+                amount = Math.Max(0, Math.Min(RepairKitHealth[kit.StaticID], vehicle.MaxHealth - vehicle.Health));
+                health = vehicle.Health + amount;
+                PlayerInventory.SetHealth(vehicle, health);
+            }
+            if (kit.Stats != null && kit.Stats.Length > 0)
+            {
+                kit.Stats[0] = Math.Max(0, kit.Stats[0] - 1);
+            }
+            byte damage = Combat.DamagePercent(health, vehicle.MaxHealth);
+            uint number = Combat.NextAttackNumber();
+            lock (target.sync)
+            {
+                tc.Damage = damage;
+            }
+            target.RaiseUpdateCounter();
+
+            uint src = CharacterID, tgt = target.CharacterID;
+            int max = vehicle.MaxHealth;
+            this.Network.SendPacket(new SM_REPAIR_PLAYER(false, src, tgt, amount, max, p.SpecialAttackID, number, kit, vehicle, damage));
+            if (target != this)
+            {
+                target.Network.SendPacket(new SM_REPAIR_PLAYER(false, src, tgt, amount, max, p.SpecialAttackID, number, kit, vehicle, damage));
+            }
+            GameWorld.Instance.SendNear(c.ClusterID, c.X, c.Y, BroadcastDistance,
+                () => new SM_REPAIR_PLAYER(true, src, tgt, amount, max, p.SpecialAttackID, number, kit, vehicle, damage));
+            Logger.ShowInfo(string.Format("{0} repaired {1}'s {2} by {3} ({4}/{5}).", Character.Name, target.Character.Name,
+                vehicle.Name, amount, health, max));
+            SaveItems();
+            if (target != this)
+            {
+                target.SaveItems();
+            }
+        }
+
+        /// <summary>
+        /// Damage a chain explosion does: a tenth of the exploding vehicle's health, between 50 and 800. The
+        /// official server's formula is unknown; a Magellan (a ship, not in our templates) did 800.
+        /// </summary>
+        public static int ChainExplosionDamage(int explodedTemplateID)
+        {
+            var t = VehicleTemplates.Get(explodedTemplateID);
+            return t != null && t.Health > 0 ? Math.Max(50, Math.Min(800, t.Health / 10)) : 800;
+        }
+
+        /// <summary>
+        /// 0x12: the player's vehicle was caught in a nearby vehicle's explosion; 0x8012 says how much it took.
+        /// A vehicle destroyed this way is a wreck of its own pilot.
+        /// </summary>
+        public void OnChainExplosion(CM_CHAIN_EXPLOSION p)
+        {
+            if (!CheckInGame("Chain explosion"))
+            {
+                return;
+            }
+            var vehicle = Inventory.Piloting;
+            if (p.CharacterID != CharacterID || vehicle == null || vehicle.UniqueID != p.VehicleUniqueID || vehicle.Health <= 0)
+            {
+                RefuseGround("chain explosion", p.VehicleUniqueID, "not the vehicle they are piloting");
+                return;
+            }
+
+            int damage = ChainExplosionDamage(p.ExplodedTemplateID);
+            int health;
+            lock (vehicle)
+            {
+                health = Math.Max(0, vehicle.Health - damage);
+                PlayerInventory.SetHealth(vehicle, health);
+            }
+            lock (sync)
+            {
+                Coord.Damage = health == 0 ? (byte)100 : Combat.DamagePercent(health, vehicle.MaxHealth);
+            }
+            RaiseUpdateCounter();
+            this.Network.SendPacket(new SM_CHAIN_EXPLOSION(CharacterID, damage, vehicle.UniqueID, vehicle.Format));
+            Logger.ShowInfo(string.Format("{0}'s {1} took {2} from the explosion of a {3} ({4} left).", Character.Name,
+                vehicle.Name, damage, p.ExplodedTemplateID, health));
+            if (health == 0)
+            {
+                LoseVehicle(0xFFFFFFFF);
+            }
+            else
+            {
+                SaveItems();
+            }
+        }
+
+        /// <summary>
+        /// 0x25: give a vehicle standing on the ground to another player, take an unowned one, or give it up
+        /// (new owner FFFFFFFF). Only its owner can give it away; wrecks keep their owner.
+        /// </summary>
+        public void OnChangeMachineOwner(CM_CHANGE_MACHINE_OWNER p)
+        {
+            if (!CheckInGame("Change vehicle owner"))
+            {
+                return;
+            }
+            var g = GameWorld.Instance.GetGround(p.VehicleUniqueID);
+            var c = Coord;
+            bool unowned = g != null && (g.OwnerID == 0xFFFFFFFF || g.OwnerID == 0);
+            bool newOwnerOK = p.NewOwnerID == 0xFFFFFFFF || p.NewOwnerID == CharacterID || GameWorld.Instance.Get(p.NewOwnerID) != null;
+            string refusal =
+                p.CharacterID != CharacterID ? "not their character" :
+                g == null || !g.IsVehicle ? "no vehicle there" :
+                g.IsWreck ? "it is a wreck" :
+                c == null || g.ClusterID != c.ClusterID || Math.Abs((long)g.X - c.X) > OpenDistance ||
+                    Math.Abs((long)g.Y - c.Y) > OpenDistance ? "too far away" :
+                g.OwnerID != CharacterID && !(unowned && p.NewOwnerID == CharacterID) ? "not theirs" :
+                !newOwnerOK ? "the new owner is not online" :
+                null;
+            if (refusal != null)
+            {
+                RefuseGround("owner change to " + p.NewOwnerID, p.VehicleUniqueID, refusal);
+                return;
+            }
+
+            uint former = g.OwnerID;
+            g.ChangeOwner(p.NewOwnerID);
+            GameWorld.Instance.GroundChanged();
+            this.Network.SendPacket(new SM_CHANGE_MACHINE_OWNER());
+            BroadcastGround(SM_UPDATE_ITEM_INFO.OwnerChanged, g);
+            Logger.ShowInfo(string.Format("{0} changed the owner of {1} {2:X8} from {3} to {4}.", Character.Name, g.Node.Name,
+                g.UniqueID, former, p.NewOwnerID == 0xFFFFFFFF ? "nobody" : p.NewOwnerID.ToString()));
+        }
+
+        /// <summary>
         /// 0x40: the player takes off in a shuttle for the other side. As on the Java server (RequestReserveAnotherGameFE,
         /// NotifyReserveAnotherGameFE) the character's zone changes and 0x8040 sends the client to the other side's
         /// game server (TransferHost, Port or Port + 1), where it logs in again with the same session key. The

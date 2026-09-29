@@ -70,6 +70,12 @@
     <Compile Include="Network\Packets\Client\CM_DELETE_ITEM.cs" />
     <Compile Include="Network\Packets\Client\CM_UPDATE_DEPOSIT.cs" />
     <Compile Include="Network\Packets\Client\CM_PAY_REPAIR.cs" />
+    <Compile Include="Network\Packets\Client\CM_CHAIN_EXPLOSION.cs" />
+    <Compile Include="Network\Packets\Client\CM_CHANGE_MACHINE_OWNER.cs" />
+    <Compile Include="Network\Packets\Client\CM_REPAIR_PLAYER.cs" />
+    <Compile Include="Network\Packets\Client\SM_CHAIN_EXPLOSION.cs" />
+    <Compile Include="Network\Packets\Client\SM_CHANGE_MACHINE_OWNER.cs" />
+    <Compile Include="Network\Packets\Client\SM_REPAIR_PLAYER.cs" />
     <Compile Include="Network\Packets\Client\SM_PAY_REPAIR.cs" />
     <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
     <Compile Include="World\ItemTemplates.cs" />

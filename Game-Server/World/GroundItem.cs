@@ -63,6 +63,14 @@ namespace TitansUC.GameServer.World
         public bool IsWreck { get; set; }
 
         /// <summary>
+        /// Gives it to another player (0x25), or to nobody (FFFFFFFF).
+        /// </summary>
+        public void ChangeOwner(uint ownerID)
+        {
+            OwnerID = ownerID;
+        }
+
+        /// <summary>
         /// A vehicle destroyed where it stood: from now on a wreck of whoever destroyed it, lying for its own
         /// ten minutes.
         /// </summary>
