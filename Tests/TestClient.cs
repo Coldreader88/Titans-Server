@@ -1800,6 +1800,51 @@ class Test
         using (var r = new System.IO.StreamReader(f)) return r.ReadToEnd();
     }
 
+    // The launcher asks the Login-Server (42012) for the status: 0x8000 body = 0, status (0 online, 1 offline,
+    // 2 maintenance). It follows the Lobby and Earth heartbeats and the maintenance flag in server_state.
+    static int LoginStatus()
+    {
+        try
+        {
+            var l = new Conn("login", "127.0.0.1", 42012);
+            l.Send(0x0, new byte[0]);
+            var r = l.Recv();
+            l.Close();
+            if (r == null || r.Item1 != 0x8000 || r.Item2.Length < 8) return -1;
+            return r.Item2[4] | r.Item2[5] | r.Item2[6] | r.Item2[7];
+        }
+        catch (Exception) { return -1; }
+    }
+
+    static bool WaitStatus(int want, int seconds = 5)
+    {
+        for (int i = 0; i < seconds * 4; i++)
+        {
+            if (LoginStatus() == want) return true;
+            System.Threading.Thread.Sleep(250);
+        }
+        return false;
+    }
+
+    static void LoginStatusTests()
+    {
+        Console.WriteLine("== Login-Server status");
+        Check(WaitStatus(0), "launcher status ONLINE while the Lobby and game servers run");
+        Sql("UPDATE server_state SET value = 1 WHERE name = 'maintenance'");
+        Check(WaitStatus(2), "launcher status MAINTENANCE while the game is closed");
+        Sql("UPDATE server_state SET value = 0 WHERE name = 'maintenance'");
+        Check(WaitStatus(0), "launcher status ONLINE again after maintenance");
+        // A Lobby that stopped beating: the Lobby beats every 10 s, so an old beat may be renewed first; retry.
+        bool offline = false;
+        for (int i = 0; i < 3 && !offline; i++)
+        {
+            Sql("UPDATE server_state SET value = 0 WHERE name = 'beat_lobby'");
+            offline = WaitStatus(1, 2);
+        }
+        Check(offline, "launcher status OFFLINE when the Lobby stopped beating");
+        Check(WaitStatus(0, 15), "launcher status ONLINE once the Lobby beats again");
+    }
+
     static int Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "spawn") return SpawnTest();
@@ -1982,6 +2027,7 @@ class Test
         g2.Close();
         k.Close();
 
+        LoginStatusTests();
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;
     }

@@ -107,6 +107,7 @@ namespace Login_Server
 
             Logger.ShowInfo("Listening on port:" + LoginClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
+            StatusWatcher.Start();
 
             //处理Console命令
             while (true)
@@ -120,33 +121,34 @@ namespace Login_Server
                     switch (args[0].ToLower())
                     {
                         case "mode":
-
+                            // mode online|offline|maintenance fixes the launcher status; mode auto follows the servers.
                             if (args.Count() > 1)
                             {
                                 switch (args[1].ToLower())
                                 {
                                     case "online":
-                                        {
-                                            LoginClientManager.Instance.Status = Status.ONLINE;
-                                            break;
-                                        }
-
+                                        StatusWatcher.Set(Status.ONLINE);
+                                        break;
                                     case "offline":
-                                        {
-                                            LoginClientManager.Instance.Status = Status.OFFLINE;
-                                            break;
-                                        }
-
+                                        StatusWatcher.Set(Status.OFFLINE);
+                                        break;
                                     case "maintenance":
-                                        {
-                                            LoginClientManager.Instance.Status = Status.MAINTENANCE;
-                                            break;
-                                        }
-
+                                        StatusWatcher.Set(Status.MAINTENANCE);
+                                        break;
+                                    case "auto":
+                                        StatusWatcher.Set(null);
+                                        break;
+                                    default:
+                                        Logger.ShowWarning("mode online|offline|maintenance|auto");
+                                        break;
                                 }
                             }
+                            else
+                            {
+                                Logger.ShowInfo(string.Format("Status {0} ({1}).", LoginClientManager.Instance.Status,
+                                    StatusWatcher.Automatic ? "follows the servers" : "set on the console"));
+                            }
                             break;
-
 
                         case "printthreads":
                             ClientManager.PrintAllThreads();

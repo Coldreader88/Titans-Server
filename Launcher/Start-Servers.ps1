@@ -95,9 +95,9 @@ $gamePort = [int](Text $game.Port 42010)
 $spacePort = $gamePort + 1
 $loginPort = [int](Text $login.Port 42012)
 
-# All three servers share one database.
+# The servers share one database (the Login-Server reads the others' state from it for its status).
 $db = @{}
-foreach ($pair in @(@('LobbyServer.xml', $lobby), @('GameServer.xml', $game), @('CMSServer.xml', $chat))) {
+foreach ($pair in @(@('LobbyServer.xml', $lobby), @('GameServer.xml', $game), @('CMSServer.xml', $chat), @('LoginServer.xml', $login))) {
     $node = if ($pair[1] -ne $null) { $pair[1].Database } else { $null }
     if ($node -eq $null) { continue }
     $db[$pair[0]] = [ordered]@{
@@ -111,12 +111,12 @@ if ($first -ne $null) {
     foreach ($key in $db.Keys) {
         foreach ($field in @('Host', 'Port', 'Name', 'User', 'Password')) {
             if ($db[$key][$field] -ne $first[$field]) {
-                Bad "$key <Database><$field> differs from LobbyServer.xml (all three servers must use the same database)"
+                Bad "$key <Database><$field> differs from LobbyServer.xml (all servers must use the same database)"
                 $same = $false
             }
         }
     }
-    if ($same) { Ok "the three configs use the same database: $($first.User)@$($first.Host):$($first.Port)/$($first.Name)" }
+    if ($same) { Ok "the configs use the same database: $($first.User)@$($first.Host):$($first.Port)/$($first.Name)" }
 }
 
 # The game servers log in to the chat server's game link.

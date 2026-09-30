@@ -35,6 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MySql.Data">
+      <HintPath>..\Dependencies\MySql.Data\MySql.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -48,6 +51,7 @@
     <Compile Include="LoginServer.cs" />
     <Compile Include="Manager\LoginClientManager.cs" />
     <Compile Include="Manager\LoginStatus.cs" />
+    <Compile Include="Manager\StatusWatcher.cs" />
     <Compile Include="Network\Client\UCLoginSession.cs" />
     <Compile Include="Network\Packets\Client\CM_REQUEST_STATUS.cs" />
     <Compile Include="Network\Packets\Client\SM_REQUEST_STATUS.cs" />

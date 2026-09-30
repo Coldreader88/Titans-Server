@@ -58,7 +58,7 @@ player logged in to the Lobby from.
 ## Run
 
 Double-click `Bin\Start-Servers.bat` (every build copies it there). It checks the setup first: the programs are
-built, the three configs use the same database, the database accepts that login and has its tables, the chat
+built, the configs use the same database, the database accepts that login and has its tables, the chat
 passwords and ports match, and no port is already taken. If all is well it starts Lobby-Server, Cms-Server,
 Game-Server (Earth), Game-Server `-instance=space` and Login-Server, each in its own window, waiting for each to
 listen before the next. `Start-Servers.bat -CheckOnly` only checks; `-NoLogin` leaves out the Login-Server.
@@ -70,10 +70,14 @@ Settings worth knowing:
   runs on one PC).
 - `GameServer.xml` `TransferHost`: the same for the flights between Earth and Space.
 - `GameServer.xml` `ChatPassword` must match `CMSServer.xml` `GameLinkPassword`.
+- `LoginServer.xml` `<Database>`: the same database. The launcher's server status follows the other servers
+  through it: MAINTENANCE while the game is closed with `#shutdown`, OFFLINE when the Lobby or Earth Game-Server
+  stopped, otherwise ONLINE.
 - `GameServer.xml` also holds the game rules: wreck chance, skill caps, crime and exile, promotions, town wars, NPC
   aggro range and the autosave interval.
 
 Console commands:
+- Login-Server: `mode online|offline|maintenance` fixes the launcher status, `mode auto` follows the servers again.
 - Lobby-Server: `account <name> <password> [level]`, `ban <account> [days]` (no days: for good), `unban <account>`,
   `unlock` (lifts the wrong-password lockouts).
 - Game-Server: `players` (who is online, with account and address), `kick <character>`, `ban <character> [days]`

@@ -242,6 +242,7 @@ namespace TitansUC.GameServer.Network.Link
         private static void Close()
         {
             GameWorld.Instance.Closed = true;
+            SaveMaintenance(true);
             var players = GameWorld.Instance.Players;
             Logger.ShowWarning(string.Format("Closed for maintenance; logging out {0} players.", players.Count));
             foreach (UCGameSession player in players)
@@ -268,7 +269,23 @@ namespace TitansUC.GameServer.Network.Link
                 }
             }
             GameWorld.Instance.Closed = false;
+            SaveMaintenance(false);
             Logger.ShowInfo("Maintenance ended; logins are open again.");
+        }
+
+        /// <summary>
+        /// Tells the Login-Server (through the database) that the game is closed or open again.
+        /// </summary>
+        public static void SaveMaintenance(bool closed)
+        {
+            try
+            {
+                Common.Database.ServerState.SetMaintenance(closed);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
         }
     }
 }

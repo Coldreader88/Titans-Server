@@ -15,6 +15,8 @@ namespace TitansUC.LobbyServer
 {
     public class LoginServer
     {
+        static System.Threading.Timer heartbeat;
+
         static void Main(string[] args)
         {
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
@@ -128,6 +130,8 @@ namespace TitansUC.LobbyServer
 
             Logger.ShowInfo("Listening on port:" + LobbyClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
+            // The Login-Server shows the game as online while this beats (Common.Database.ServerState).
+            heartbeat = Common.Database.ServerState.StartBeating("lobby");
 
             //处理Console命令
             while (true)

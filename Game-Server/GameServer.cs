@@ -90,6 +90,9 @@ namespace TitansUC.GameServer
             }
 
             StartBackups();
+            // A restart ends any maintenance; the Login-Server shows the game as online while this beats.
+            CmsLink.SaveMaintenance(false);
+            heartbeat = Common.Database.ServerState.StartBeating("game_" + Configuration.Instance.InstanceName.ToLower());
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
 
@@ -254,6 +257,7 @@ namespace TitansUC.GameServer
         }
 
         private static Timer backupTimer;
+        private static Timer heartbeat;
 
         /// <summary>
         /// Starts the backups every BackupHours (the Earth server only, so two servers do not both make them).

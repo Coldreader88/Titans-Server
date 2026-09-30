@@ -55,6 +55,7 @@
     <Compile Include="Database\CharacterDatabase.cs" />
     <Compile Include="Database\AccountBans.cs" />
     <Compile Include="Database\Backup.cs" />
+    <Compile Include="Database\ServerState.cs" />
     <Compile Include="Database\DatabaseConnection.cs" />
     <Compile Include="Database\LoginSessionDatabase.cs" />
     <Compile Include="Characters\CharacterData.cs" />

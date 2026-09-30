@@ -3,7 +3,7 @@
 #
 #   Tests/run-tests.sh [all|full|spawn]
 #
-# full:  Lobby, Earth and Space game servers and the chat server; a scripted client logs in three players and
+# full:  Lobby, Earth and Space game servers, the chat server and the Login-Server; a scripted client logs in three players and
 #        goes through characters, items, shops, crafting, vehicles, combat, NPCs, crimes, towns, chat and more.
 # spawn: GM console commands typed into the game server (spawns, #skill, #town, #tp, NPC fights, quests).
 #
@@ -48,6 +48,7 @@ build Common/Common.csproj library Common.dll -r:SmartEngine.Core.dll -r:SmartEn
 build Lobby-Server/Lobby-Server.csproj exe Lobby-Server.exe -r:SmartEngine.Core.dll -r:SmartEngine.Network.dll -r:Common.dll -r:MySql.Data.dll
 build Game-Server/Game-Server.csproj exe Game-Server.exe -r:SmartEngine.Core.dll -r:SmartEngine.Network.dll -r:Common.dll -r:MySql.Data.dll
 build Cms-Server/Cms-Server.csproj exe Cms-Server.exe -r:SmartEngine.Core.dll -r:SmartEngine.Network.dll -r:Common.dll -r:MySql.Data.dll
+build Login-Server/LoginServer.csproj exe Login-Server.exe -r:SmartEngine.Core.dll -r:SmartEngine.Network.dll -r:Common.dll -r:MySql.Data.dll
 mcs -nologo -nowarn:0168,0219 -out:"$BIN/TestClient.exe" -r:"$BIN/Common.dll" -r:"$BIN/SmartEngine.Network.dll" \
   -r:"$BIN/SmartEngine.Core.dll" Tests/TestClient.cs || { echo "BUILD FAILED: TestClient.exe"; exit 1; }
 
@@ -71,6 +72,7 @@ patch(sys.argv[1] + '/GameServer.xml', {'OccupationPeaceMinutes': '0', 'Occupati
                                          'CrimeExileCount': '6', 'WreckChance': '100',
                                          'UpgradeChance': '100'})
 patch(sys.argv[1] + '/LobbyServer.xml', {'AutoCreateAccounts': 'true'})
+patch(sys.argv[1] + '/LoginServer.xml', {'Seconds': '1'})
 EOF
 
 # Three test NPCs next to Char's spot: a target with 300 health, a shooter that fires back, and a vendor.
@@ -138,6 +140,7 @@ run_full() {
   start cms.log Cms-Server.exe
   start game.log Game-Server.exe
   start space.log Game-Server.exe -instance=space
+  start login.log Login-Server.exe
   sleep 6
   (cd "$BIN" && GAMELOG=$LOGS/game.log timeout 300 mono TestClient.exe > "$LOGS/full.out" 2>&1)
   local rc=$?
