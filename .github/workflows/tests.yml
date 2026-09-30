@@ -1,0 +1,39 @@
+name: Tests
+
+# Builds every server with mono and runs the scripted client tests (Tests/run-tests.sh) against MariaDB.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: titans
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mono and the MariaDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mono-complete mariadb-client
+      - name: Run the tests
+        env:
+          DBHOST: 127.0.0.1
+          WORK: ${{ runner.temp }}/titans-tests
+        run: bash Tests/run-tests.sh all
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: ${{ runner.temp }}/titans-tests/logs

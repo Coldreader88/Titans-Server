@@ -29,6 +29,13 @@ namespace SmartEngine.Core
         static Thread thread;
         static AutoResetEvent waiter = new AutoResetEvent(false);
         public static bool Ready = false;
+
+        /// <summary>
+        /// TITANS_CONSOLE_LOG=1 prints every message to the console as "[Level] text" instead of NLog (the scripted
+        /// tests read the servers' output; NLog does not run under mono).
+        /// </summary>
+        static readonly bool console = Environment.GetEnvironmentVariable("TITANS_CONSOLE_LOG") == "1";
+
         public static void Init()
         {
             if (thread == null)
@@ -46,6 +53,11 @@ namespace SmartEngine.Core
                 LogData data;
                 while (queue.TryDequeue(out data))
                 {
+                    if (console)
+                    {
+                        Console.WriteLine("[" + data.LogLevel + "] " + data.Text);
+                        continue;
+                    }
                     if (data.Logger == null)
                     {
                         // Logged before the logger was set up: print it rather than crash the log thread.
