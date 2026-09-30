@@ -611,7 +611,7 @@ namespace TitansUC.GameServer.Network.Client
             string refusal = !p.Valid ? "bad request"
                 : p.CharacterID != CharacterID ? "not their character"
                 : quest == null ? "no such quest"
-                : quest.Refusal(Character);
+                : quest.Refusal(Character) ?? QuestGiverRefusal(quest.ID);
             ItemNode reward = null, rewardContainer = null;
             List<QuestUse> used = null;
             if (refusal == null)
@@ -642,6 +642,32 @@ namespace TitansUC.GameServer.Network.Client
             {
                 AddRankPoints(quest.Bonus, "quest " + quest.ID);
             }
+        }
+
+        /// <summary>
+        /// Why the player is too far from every NPC who gives the quest (<see cref="QuestGivers"/>), or null.
+        /// </summary>
+        private string QuestGiverRefusal(int questID)
+        {
+            int distance = Configuration.Instance.QuestNpcDistance;
+            if (distance <= 0)
+            {
+                return null;
+            }
+            int x, y;
+            lock (sync)
+            {
+                x = Coord.X;
+                y = Coord.Y;
+            }
+            QuestGivers.Giver nearest;
+            bool known;
+            if (QuestGivers.IsNear(questID, x, y, distance, out nearest, out known))
+            {
+                return null;
+            }
+            return string.Format("no NPC who gives it within {0} (nearest: {1} in {2}, {3:0} away)", distance, nearest.Name, nearest.Place,
+                Math.Sqrt(Math.Pow((double)nearest.X - x, 2) + Math.Pow((double)nearest.Y - y, 2)));
         }
 
         /// <summary>
@@ -2275,6 +2301,11 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            if (p.SubOp == CM_EQUIP_ITEM.Clothes && p.Entries.Count > 0)
+            {
+                DressUp(p);
+                return;
+            }
             if (p.SubOp != CM_EQUIP_ITEM.Armaments || p.Entries.Count == 0)
             {
                 this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
@@ -2296,6 +2327,58 @@ namespace TitansUC.GameServer.Network.Client
             this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
             RaiseUpdateCounter();
             SaveItems();
+        }
+
+        /// <summary>
+        /// Code of the 0x801B that refuses a change of clothes (the client only accepts 2; the official code for
+        /// a refusal is unknown).
+        /// </summary>
+        private const ushort DressUpRefused = 0x0C;
+
+        /// <summary>
+        /// 0x1B section 1: puts on and takes off clothes, saves them in the garments table and lets the players
+        /// around see the new looks (the looks sum changes with the clothes).
+        /// </summary>
+        private void DressUp(CM_EQUIP_ITEM p)
+        {
+            string refusal = "not their character";
+            int[] worn = null;
+            if (p.CharacterID == CharacterID)
+            {
+                var changes = p.Entries.Select(e => new DressChange { Action = e.Action, Slot = e.Slot, ItemUID = e.ItemUniqueID }).ToList();
+                worn = Inventory.DressUp(changes, out refusal);
+            }
+            if (worn == null)
+            {
+                Logger.ShowWarning(string.Format("{0}: change of clothes refused: {1}.", Character.Name, refusal));
+                this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body, DressUpRefused));
+                return;
+            }
+
+            lock (sync)
+            {
+                for (int i = 0; i < worn.Length; i++)
+                {
+                    var type = (ApparelType)i;
+                    var before = Character.GetApparel(type);
+                    if (before.ItemID != worn[i])
+                    {
+                        // Colours are not kept on items yet, so newly worn clothes have style 0.
+                        Character.SetApparel(type, worn[i] > 0 ? new Apparel(worn[i], 0) : Apparel.None);
+                    }
+                }
+            }
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
+            RaiseUpdateCounter();
+            SaveItems();
+            try
+            {
+                CharacterDatabase.Instance.SaveGarments(Character);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
         }
 
         /// <summary>

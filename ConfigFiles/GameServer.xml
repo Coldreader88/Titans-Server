@@ -50,6 +50,10 @@
        0 = they only fire back when attacked, like on the official server. -->
   <NpcAggroRange>1500</NpcAggroRange>
 
+  <!-- A quest hand-in needs one of the NPCs who give the quest (DB/Npcs/quest_npcs.csv) this close
+       (position units; our rule). 0 = hand in from anywhere. -->
+  <QuestNpcDistance>3000</QuestNpcDistance>
+
   <!-- Where the client reconnects after a shuttle flight: the other side's server (Earth: Port, Space:
        Port + 1) at this address as the client sees it (like GameServerIP in LobbyServer.xml). -->
   <TransferHost>127.0.0.1</TransferHost>

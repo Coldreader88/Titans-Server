@@ -168,6 +168,25 @@ namespace Common.Database
         }
 
         /// <summary>
+        /// Saves the clothes the character wears (the garments table; a change of clothes in game).
+        /// </summary>
+        public void SaveGarments(Character character)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand(
+                "UPDATE garments SET hat = @hat, glasses = @glasses, coat = @coat, top = @top, bottom = @bottom, " +
+                "gloves = @gloves, dress = @dress, shoes = @shoes WHERE char_id = @id", connection))
+            {
+                foreach (ApparelType type in Enum.GetValues(typeof(ApparelType)))
+                {
+                    cmd.Parameters.AddWithValue("@" + type.ToString().ToLowerInvariant(), character.GetApparel(type).ToString());
+                }
+                cmd.Parameters.AddWithValue("@id", character.ID);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
         /// Saves the character's money.
         /// </summary>
         public void SaveMoney(Character character)

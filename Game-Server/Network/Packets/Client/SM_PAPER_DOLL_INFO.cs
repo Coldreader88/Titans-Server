@@ -16,7 +16,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     ///            Open_Other_Player_Stat_Window.pcap had previous offense 3)
     /// int32 BE -1, int32 BE -1, 3 x FF (no vehicle)
     /// 0x82 medal points (Richmond, Newman), character id
-    /// uint16 BE   9
+    /// uint16 BE   looks sum (<see cref="CharacterLooks.SumCheck"/>)
     /// byte       gender
     /// looks (see <see cref="CharacterLooks"/>)
     /// </code>
@@ -50,7 +50,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             }
             this.PutUIntBE(character.ClientID);
 
-            this.PutUShortBE(0x0009);
+            this.PutUShortBE(CharacterLooks.SumCheck(character));
             this.PutByte((byte)character.Gender);
             CharacterLooks.Write(this, character);
         }

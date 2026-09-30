@@ -21,6 +21,27 @@ namespace Common.Characters
             ApparelType.SHOES, ApparelType.GLOVES, ApparelType.HAT, ApparelType.GLASSES,
         };
 
+        /// <summary>
+        /// The 0x800A _sum_check for these clothes. The client keeps each player's last one and skips looks
+        /// whose sum has not changed, so it has to change whenever the clothes do. The official server's own
+        /// sum is unknown (the capture had 9); ours is a hash of the worn items and their colours, never 0.
+        /// </summary>
+        public static ushort SumCheck(Character c)
+        {
+            unchecked
+            {
+                int h = 9;
+                foreach (var type in Order)
+                {
+                    var apparel = c.GetApparel(type);
+                    h = h * 31 + apparel.ItemID;
+                    h = h * 31 + apparel.Style;
+                }
+                ushort sum = (ushort)(h ^ (h >> 16));
+                return sum != 0 ? sum : (ushort)9;
+            }
+        }
+
         public static void Write<T>(UCPacket<T> p, Character c)
         {
             p.PutSize(20);

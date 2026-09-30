@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Common.Characters;
 using SmartEngine.Core;
@@ -30,8 +31,9 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The clothing slots of weared after the vehicle slot, in order. The official capture has the
-        /// combat uniform (dress) in slot 1, gloves in slot 6 and the cap (hat) in slot 7; glasses have
-        /// no slot.
+        /// combat uniform (dress) in slot 1, gloves in slot 6 and the cap (hat) in slot 7, and no slot 8. The
+        /// client's dress-up (0x1B section 1) uses slots 1-8, slot n for the clothes of looks slot n - 1
+        /// (<see cref="ApparelType"/>), so glasses go in slot 8, which is only there while glasses are worn.
         /// </summary>
         public static readonly ApparelType[] WearedSlots =
         {
@@ -112,6 +114,11 @@ namespace TitansUC.GameServer.World
                 {
                     weared.Add(ItemNode.EmptySlot(0));
                 }
+            }
+            var glasses = character.GetApparel(ApparelType.GLASSES);
+            if (glasses.ItemID > 0)
+            {
+                Register(weared.Add(NewItem(glasses.ItemID, 1, "glasses")));
             }
 
             // The official swap pack held a trade pack container, which the client asks for.
@@ -626,6 +633,137 @@ namespace TitansUC.GameServer.World
                 }
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Changes clothes (0x1B section 1, the client's RequestDressUp), all or nothing. Each entry is a weared
+        /// slot 1-8: action 1 puts the clothes item into the empty slot, 2 takes off what is in the slot, 3
+        /// swaps it for the item. Clothes come from the player's own item containers and must be of the slot's
+        /// looks slot (<see cref="CharacterData.GetLookSlot"/>); what is taken off goes into the backpack, as the
+        /// client moves it there itself when the reply comes. Null with <paramref name="refusal"/> set when it
+        /// cannot; otherwise the clothes now worn, by <see cref="ApparelType"/> (-1 for nothing).
+        /// </summary>
+        public int[] DressUp(IList<DressChange> changes, out string refusal)
+        {
+            lock (sync)
+            {
+                refusal = null;
+                var weared = Find(PlayerContainers.Weared);
+                var backpack = Find(PlayerContainers.Backpack);
+                var slots = new HashSet<int>();
+                var items = new HashSet<ItemNode>();
+                foreach (var change in changes)
+                {
+                    refusal = CheckDressChange(weared, change, slots, items);
+                    if (refusal != null)
+                    {
+                        return null;
+                    }
+                }
+
+                while (weared.Children.Count <= ClothesSlots)
+                {
+                    if (!changes.Any(c => c.Slot >= weared.Children.Count))
+                    {
+                        break;
+                    }
+                    weared.Add(ItemNode.EmptySlot(0));
+                }
+                foreach (var change in changes)
+                {
+                    if (change.Action != DressChange.Wear)
+                    {
+                        var old = weared.SetSlot(change.Slot, ItemNode.EmptySlot(0));
+                        backpack.Add(old);
+                        Touch(old);
+                    }
+                    if (change.Action != DressChange.TakeOff)
+                    {
+                        var item = GetLocked(change.ItemUID);
+                        item.Parent.Remove(item);
+                        weared.SetSlot(change.Slot, item);
+                        Touch(item);
+                    }
+                }
+                // Slot 8 (glasses) is only kept while it holds something, as the official weared had 8 slots.
+                if (weared.Children.Count > ClothesSlots && weared.Children[ClothesSlots].IsEmptySlot)
+                {
+                    weared.Children.RemoveAt(ClothesSlots);
+                }
+                return WornClothes(weared);
+            }
+        }
+
+        /// <summary>
+        /// The last clothes slot of weared (glasses).
+        /// </summary>
+        public const int ClothesSlots = 8;
+
+        private string CheckDressChange(ItemNode weared, DressChange change, HashSet<int> slots, HashSet<ItemNode> items)
+        {
+            if (change.Slot < 1 || change.Slot > ClothesSlots || !slots.Add(change.Slot))
+            {
+                return "bad slot " + change.Slot;
+            }
+            var worn = change.Slot < weared.Children.Count ? weared.Children[change.Slot] : null;
+            bool empty = worn == null || worn.IsEmptySlot;
+            switch (change.Action)
+            {
+                case DressChange.Wear:
+                    if (!empty)
+                    {
+                        return "slot " + change.Slot + " is not empty";
+                    }
+                    break;
+                case DressChange.TakeOff:
+                case DressChange.Swap:
+                    if (empty)
+                    {
+                        return "nothing worn in slot " + change.Slot;
+                    }
+                    break;
+                default:
+                    return "unknown action " + change.Action;
+            }
+            if (change.Action == DressChange.TakeOff)
+            {
+                return null;
+            }
+
+            var item = GetLocked(change.ItemUID);
+            if (item == null || item.Parent == null || !CanHoldItems(item.Parent) || item.Parent.Parent != null ||
+                item.Format != ItemNode.Singleton || !items.Add(item))
+            {
+                return string.Format("item {0:X8} is not in the player's containers", change.ItemUID);
+            }
+            if (item.Amount != 1)
+            {
+                return string.Format("item {0:X8} is a stack of {1}", change.ItemUID, item.Amount);
+            }
+            int lookSlot = CharacterData.GetLookSlot(item.StaticID);
+            if (lookSlot < 0)
+            {
+                return item.StaticID + " is not clothes";
+            }
+            if (lookSlot != change.Slot - 1)
+            {
+                return string.Format("{0} is worn in slot {1}, not {2}", item.StaticID, lookSlot + 1, change.Slot);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The clothes item in each clothes slot of weared, by <see cref="ApparelType"/> (-1 for nothing).
+        /// </summary>
+        private static int[] WornClothes(ItemNode weared)
+        {
+            var worn = new int[ClothesSlots];
+            for (int i = 0; i < worn.Length; i++)
+            {
+                int slot = i + 1;
+                worn[i] = slot < weared.Children.Count && !weared.Children[slot].IsEmptySlot ? weared.Children[slot].StaticID : -1;
+            }
+            return worn;
         }
 
         /// <summary>
@@ -1549,5 +1687,19 @@ namespace TitansUC.GameServer.World
 
         /// <summary>The destination stack (Merged, AddedToStack) or the new item (Split).</summary>
         public ItemNode Target { get; set; }
+    }
+
+    /// <summary>
+    /// One entry of a dress-up request (0x1B section 1): the weared slot (1-8), what to do and the clothes item.
+    /// </summary>
+    public class DressChange
+    {
+        public const int Wear = 1;
+        public const int TakeOff = 2;
+        public const int Swap = 3;
+
+        public int Action { get; set; }
+        public int Slot { get; set; }
+        public uint ItemUID { get; set; }
     }
 }

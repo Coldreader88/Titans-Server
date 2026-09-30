@@ -10,7 +10,7 @@ namespace TitansUC.GameServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500;
+        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, questNpcDistance = 3000;
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
@@ -93,6 +93,12 @@ namespace TitansUC.GameServer
         /// fire back when attacked, as the official captures show.
         /// </summary>
         public int NpcAggroRange { get { return npcAggroRange; } }
+
+        /// <summary>
+        /// A quest hand-in needs one of the quest's NPCs this close (position units; our rule, the official
+        /// distance is unknown); 0 = not checked.
+        /// </summary>
+        public int QuestNpcDistance { get { return questNpcDistance; } }
 
         /// <summary>
         /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
@@ -200,6 +206,9 @@ namespace TitansUC.GameServer
                             break;
                         case "npcaggrorange":
                             npcAggroRange = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "questnpcdistance":
+                            questNpcDistance = int.Parse(i.InnerText.Trim());
                             break;
                         case "chathost":
                             chatHost = i.InnerText.Trim();

@@ -180,13 +180,36 @@ namespace TitansUC.CmsServer.Network.Client
         }
 
         /// <summary>
-        /// 0x13: send the player's chat card to them and their team, then the welcome message.
+        /// 0x13: send the player's chat card to them and their team, then the welcome message. The client sends
+        /// it again after a promotion with its new rank; the game server has saved that rank before telling the
+        /// client, so the rank is read again from the database (a client cannot give itself a rank).
         /// </summary>
         public void OnChatInfo(CM_CHAT_INFO p)
         {
             if (!CheckLoggedIn("Chat info"))
             {
                 return;
+            }
+
+            if (p.CharacterID == CharacterID)
+            {
+                try
+                {
+                    var saved = CmsDatabase.Instance.LoadMember(CharacterID);
+                    if (saved != null)
+                    {
+                        Member.Rank = saved.Rank;
+                        Member.Gender = saved.Gender;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowError(ex);
+                }
+                if (p.Rank != 0 && p.Rank != Member.Rank)
+                {
+                    Logger.ShowWarning(string.Format("{0}: chat card rank {1} is not their saved rank {2}.", Member.Name, p.Rank, Member.Rank));
+                }
             }
 
             var card = Member.Copy();

@@ -1,0 +1,649 @@
+# The town NPCs who give each quest and where they stand, from the client's DATA files: LOGINSCHEDULELIST.DAT
+# (an NPC schedule's quest id), each <place>_NPC.DAT (the NPC's schedule ids) and <place>_NPC.LST (the NPC's position).
+# A quest hand-in (0x3E) needs one of its NPCs within GameServer.xml QuestNpcDistance. The in-game hour of each
+# schedule is not checked. Quests not listed here have no known NPC and are not checked.
+quest_id,place,npc,x,y,z
+1,ayersrock,Avery,62906024,-55366885,68300
+1,tasmania,Iwwaters,69802752,-62883708,20729
+2,kosciusko,Kynastone,71184057,-60679871,238987
+2,tasmania,Tyle,69800792,-62883328,19223
+3,brisbane,Sadler,73445746,-56287672,1701
+3,darwin,Haldane,62638163,-49078752,900
+3,melbourne,Hacker,69402497,-61196857,47401
+3,melbourne,Roderick,69402323,-61196447,47040
+3,melbourne,Sarotta,69400019,-61200554,47400
+4,adelaide,Macconnachie,66389113,-59785803,800
+4,adelaide,Roderic,66387656,-59787371,800
+4,brisbane,Maddison,73444591,-56288753,1701
+4,darwin,Dunstan,62636375,-49081792,900
+5,canberra,Katz,71566052,-60105375,60801
+5,canberra,Liz,71569282,-60107177,60800
+5,canberra,Rodney,71566425,-60106854,60800
+5,perth,Kearney,55474704,-58347179,890
+5,perth,Newell,55474008,-58345768,900
+5,southerncross,Henry,57287290,-58196923,48675
+5,southerncross,Nellwyn,57287327,-58206458,43676
+6,perth,Lane,55471428,-58345394,901
+6,southerncross,Otway,57286763,-58197470,48675
+6,southerncross,Vivien,57287422,-58208024,43675
+6,sydney,Zeal,72534761,-59315067,7700
+7,adelaide,Glenna,66387996,-59790445,791
+7,ayersrock,Syrett,62909892,-55358724,68236
+8,canberra,Ile,71566826,-60105055,60801
+8,southerncross,Louise,57287473,-58197339,48675
+8,sydney,Quinn,72535930,-59317604,7700
+9,adelaide,Jackson,66387044,-59787245,800
+9,adelaide,Vallance,66389518,-59785947,800
+9,darwin,Jaggar,62636188,-49080553,900
+10,canberra,Jacoby,71563633,-60107870,60851
+10,kosciusko,Myer,71183952,-60680040,239016
+10,perth,Selwyn,55469085,-58347556,900
+10,southerncross,Winifred,57286657,-58197940,48675
+11,adelaide,Kaplan,66385254,-59787843,800
+11,brisbane,Kay,73445751,-56290246,1701
+11,melbourne,Kaiser,69405635,-61196705,47400
+12,adelaide,Gallacher,66388454,-59787514,800
+12,darwin,Acreman,62638403,-49082195,900
+12,melbourne,Nosveli,69401530,-61197834,47401
+12,sydney,Urien,72529970,-59316078,7701
+13,brisbane,Maisie,73446560,-56286277,1701
+14,adelaide,Fuller,66388510,-59790445,790
+14,brisbane,Glyn,73446930,-56286680,1701
+14,canberra,Koch,71568701,-60096934,60800
+14,sydney,Kim,72537379,-59314062,7700
+14,sydney,Oak,72533979,-59313460,7690
+15,brisbane,Natalie,73446830,-56290094,1701
+15,canberra,Athel,71569593,-60096435,60800
+16,adelaide,Perez,66388553,-59790409,800
+16,darwin,Gardner,62638041,-49078517,900
+16,melbourne,Otway,69400744,-61195548,47400
+16,southerncross,Lee,57289440,-58209206,43675
+16,sydney,Lacy,72534260,-59315370,7700
+17,darwin,Varette,62637633,-49078665,900
+17,melbourne,Verbette,69402919,-61197635,47401
+18,brisbane,Garrard,73446634,-56291047,1701
+18,canberra,Yeslin,71568970,-60096615,60800
+18,darwin,Bailey,62639167,-49082654,900
+18,southerncross,Marco,57287392,-58208219,43675
+18,sydney,Mab,72536572,-59313653,7700
+19,melbourne,Winona,69402113,-61198852,47400
+20,canberra,Eros,71569763,-60097467,60800
+20,melbourne,Ide,69401058,-61197556,47401
+20,southerncross,Nicholas,57291190,-58210013,43675
+21,brisbane,Queenie,73445241,-56290073,1701
+21,melbourne,Ysolde,69403014,-61194354,47400
+22,darwin,Martin,62638604,-49081702,890
+22,melbourne,Jacke,69402232,-61197576,47401
+23,brisbane,Rachel,73445869,-56289600,1701
+23,perth,Leoni,55469415,-58347740,900
+23,sydney,Jack,72536576,-59310244,7701
+24,darwin,Campbell,62639462,-49083237,900
+24,darwin,Zachary,62638365,-49081851,900
+24,perth,Upton,55473175,-58351123,900
+25,brisbane,Paulette,73446924,-56289142,1701
+25,darwin,Orlona,62633090,-49083380,900
+25,perth,Inc,55474242,-58345063,900
+26,darwin,Lou,62638253,-49081642,900
+26,perth,Walter,55468635,-58346413,900
+27,perth,Danvers,55473180,-58345808,900
+27,sydney,Daisy,72533874,-59312654,7700
+28,darwin,Dalton,62636456,-49080644,900
+28,perth,Zelos,55471547,-58346144,900
+29,darwin,Wendy,62638512,-49078908,900
+33,darwin,Velma,62635042,-49081939,900
+33,sydney,Bach,72535046,-59315551,7690
+34,brisbane,Prescott,73446795,-56289961,1701
+36,darwin,Irving,62637205,-49081251,900
+37,adelaide,Wade,66388140,-59789203,800
+37,brisbane,Waggett,73446147,-56289049,1701
+37,canberra,Hertha,71570634,-60106803,60801
+37,darwin,Wager,62641156,-49083240,900
+37,melbourne,Wackett,69401101,-61198995,47400
+37,perth,Harrison,55474830,-58347880,900
+37,southerncross,Hertha,57284857,-58198563,48676
+37,sydney,Harrison,72532841,-59313659,7700
+38,adelaide,Nairns,66390271,-59789452,800
+38,canberra,Mackay,71566989,-60106925,60800
+38,darwin,Augustus,62632863,-49083277,900
+38,melbourne,Nairn,69404736,-61200273,47500
+38,southerncross,Royal,57287370,-58205806,43676
+39,adelaide,Oakey,66389797,-59790006,800
+39,brisbane,Oates,73448420,-56291168,1701
+39,canberra,Royd,71570266,-60106478,60800
+39,darwin,Lambert,62636244,-49081456,900
+39,darwin,Ximena,62637412,-49079813,900
+39,melbourne,Oake,69401999,-61199989,47400
+39,southerncross,Paul,57287306,-58205767,43676
+39,sydney,Nagel,72531603,-59315952,7701
+42,adelaide,East,66389411,-59789054,800
+42,brisbane,Eaton,73448607,-56290349,1701
+42,canberra,Camero,71570372,-60096769,60800
+42,darwin,Applethwaite,62638411,-49081553,900
+42,darwin,Eastwood,62634758,-49083165,900
+42,melbourne,Earnshaw,69401039,-61199145,47400
+42,perth,Edge,55473227,-58345548,900
+42,southerncross,Veral,57288746,-58207587,43675
+42,sydney,Earl,72534149,-59311612,7700
+42,sydney,Iddon,72534575,-59313185,7700
+43,adelaide,Fair,66387590,-59788799,800
+43,brisbane,Fairfax,73447427,-56290996,1701
+43,darwin,Fairchild,62643042,-49082230,900
+43,darwin,Pattie,62634147,-49081868,900
+43,melbourne,Fade,69399798,-61198366,47401
+43,melbourne,Vail,69401857,-61195632,47400
+43,perth,Falconer,55473005,-58344604,900
+43,sydney,Faber,72534162,-59312177,7700
+54,perth,Garrick,55474330,-58346656,900
+54,southerncross,Isadore,57288010,-58205853,43676
+54,sydney,Grant,72537666,-59310885,7701
+55,canberra,Les,71570243,-60096361,60800
+56,sydney,Nina,72536917,-59316764,7700
+57,adelaide,Alvina,66388630,-59790759,800
+57,melbourne,Gale,69401167,-61201401,47400
+58,canberra,Ermina,71567516,-60107659,60800
+58,perth,Vic,55472019,-58349946,901
+59,brisbane,Hale,73445101,-56288539,1701
+59,darwin,Kean,62633275,-49082535,900
+61,darwin,Nydia,62633551,-49081327,900
+61,perth,Hall,55474338,-58345832,900
+62,canberra,Garcia,71568670,-60106151,60800
+62,perth,Winnie,55474544,-58346908,900
+62,southerncross,Roberta,57287132,-58205978,43676
+63,canberra,Vivietta,71566233,-60107437,60800
+63,southerncross,Alvita,57287143,-58206127,43676
+64,adelaide,Enrica,66385388,-59786859,800
+64,darwin,Renata,62633596,-49082471,900
+64,melbourne,Ursynetta,69400065,-61196178,47401
+65,darwin,Sandra,62632858,-49082114,900
+66,canberra,Queen,71567148,-60106590,60800
+66,southerncross,Alys,57287181,-58205679,43676
+67,adelaide,Zachariah,66390164,-59788155,800
+67,darwin,Tertia,62633241,-49081830,900
+67,southerncross,Manoc,57287302,-58206082,43676
+68,canberra,Taits,71567621,-60107680,60800
+68,southerncross,Neil,57286572,-58197183,48675
+68,southerncross,Violetta,57286661,-58198548,48675
+69,brisbane,Lavinia,73446777,-56290035,1701
+69,darwin,Ursula,62633599,-49081111,900
+69,melbourne,Leonard,69400949,-61198877,47400
+70,canberra,Faire,71567898,-60107082,60800
+70,canberra,Naper,71566447,-60105924,60801
+70,southerncross,Stuart,57287305,-58207235,43676
+70,southerncross,Sylvia,57287223,-58206151,43676
+71,brisbane,Roger,73446950,-56290121,1701
+71,melbourne,Rhea,69402743,-61200697,47400
+72,adelaide,Filipa,66388584,-59790602,800
+72,darwin,Lancelot,62638218,-49079313,900
+75,brisbane,Lamborn,73445109,-56289159,1701
+79,perth,Kyna,55469430,-58347159,900
+79,sydney,Otto,72536023,-59315899,7700
+80,adelaide,Leona,66387645,-59789973,800
+80,darwin,Jarvis,62633888,-49082352,900
+80,melbourne,Taft,69402210,-61196110,47051
+81,brisbane,Laird,73445119,-56290184,1701
+81,darwin,Iles,62638245,-49079537,900
+81,melbourne,Tess,69398872,-61198179,47400
+82,sydney,Travers,72533878,-59312807,7690
+83,canberra,Leon,71566258,-60105137,60801
+84,perth,Bernie,55474929,-58347155,890
+85,southerncross,Seymour,57286787,-58208190,43675
+87,melbourne,Kirby,69403222,-61196305,47391
+88,darwin,Wilmer,62638551,-49081747,890
+89,brisbane,Chester,73447135,-56290040,1692
+90,olivine,Luke,57366952,-58078201,48269
+90,upala,Luke,73334160,-56370823,27918
+91,olivine,Joyce,57366911,-58078409,48304
+91,upala,Joyce,73334179,-56370687,28184
+92,olivine,MerrelI,57391335,-58094141,48796
+92,upala,Merrell,73334260,-56370763,28130
+93,granatum,Rue,66489860,-59682658,11366
+93,olivine,Linette,57391388,-58094065,48753
+93,thunderegg,Rue,71476643,-60027385,63038
+93,upala,Linette,73315160,-56350272,19839
+94,granatum,Renfred,66489916,-59682494,11831
+94,olivine,Ross,57391395,-58094015,48718
+94,thunderegg,Renfred,71476735,-60027574,63083
+94,upala,Ross,73315347,-56350306,19915
+95,granatum,Silvia,66489840,-59682572,11673
+95,olivine,Martha,57366939,-58078326,48287
+95,thunderegg,Silvia,71476511,-60027530,63530
+95,upala,Martha,73334311,-56370755,28197
+96,olivine,Steve,57391499,-58094116,48814
+96,upala,Steve,73315162,-56350311,19848
+97,olivine,Noverta,57366806,-58078271,48339
+97,upala,Noverta,73315241,-56350370,19891
+98,brisbane,Avery,73446768,-56290154,1701
+98,southerncross,Avery,57287884,-58204858,43676
+99,brisbane,Cyril,73446760,-56290159,1701
+99,southerncross,Cyril,57287890,-58204871,43676
+100,brisbane,Murdoch,73446762,-56290168,1701
+100,southerncross,Murdoch,57287884,-58204876,43676
+101,adelaide,Ryan,66388421,-59789582,800
+101,brisbane,Ryan,73446797,-56290823,1701
+101,canberra,Ryan,71569070,-60107467,60800
+101,southerncross,Ryan,57288052,-58206568,43675
+102,adelaide,Curran,66388425,-59789571,800
+102,brisbane,Curran,73446789,-56290821,1701
+102,canberra,Curran,71569081,-60107466,60800
+102,southerncross,Curran,57288053,-58206557,43675
+103,adelaide,Ethelbert,66388434,-59789568,800
+103,brisbane,Ethelbert,73446781,-56290828,1701
+103,canberra,Ethelbert,71569081,-60107474,60800
+103,southerncross,Ethelbert,57288056,-58206542,43675
+104,brisbane,Felix,73446783,-56290834,1701
+104,southerncross,Felix,57288066,-58206540,43675
+105,brisbane,Henry,73446805,-56290833,1701
+105,southerncross,Henry,57288068,-58206555,43675
+106,perth,Lydia,55475056,-58346754,900
+106,sydney,Lydia,72534386,-59314908,7700
+107,canberra,Claribel,71570185,-60106980,60801
+107,southerncross,Claribel,57289010,-58204223,43676
+108,canberra,Melvyn,71568656,-60108365,60801
+108,southerncross,Melvyn,57289013,-58205882,43676
+109,perth,Arthur,55471819,-58346137,900
+109,sydney,Arthur,72534957,-59315591,7690
+110,adelaide,Jewel,66389347,-59788740,800
+110,darwin,Jewel,62637899,-49078345,900
+111,adelaide,Leighton,66388952,-59790347,800
+111,brisbane,Clair,73445260,-56290406,1701
+111,darwin,Leighton,62638717,-49078460,900
+111,melbourne,Clair,69402086,-61195784,47400
+112,brisbane,Lang,73446598,-56290049,1700
+112,melbourne,Lang,69402349,-61196019,47041
+114,perth,Tina,55475050,-58347323,900
+114,southerncross,Corinne,57285699,-58198325,48676
+114,sydney,Silva,72531350,-59315284,7701
+115,perth,Rodney,55474957,-58347217,900
+115,southerncross,Lottie,57285817,-58197432,48676
+116,adelaide,Ita,66388668,-59788744,800
+116,brisbane,Kenton,73446915,-56290065,1701
+116,melbourne,Goldstein,69402375,-61196478,47040
+117,adelaide,Jenny,66387499,-59786207,800
+117,melbourne,Havelock,69402368,-61196409,47040
+118,adelaide,Frobisher,66388676,-59787724,800
+118,sydney,Hardcastle,72533762,-59316361,7700
+119,canberra,Rayment,71568316,-60108079,60801
+119,melbourne,Beach,69400943,-61195793,47400
+120,darwin,Kit,62638142,-49081451,900
+120,perth,Gustav,55472626,-58344884,900
+121,brisbane,Ashcroft,73444869,-56287056,1700
+121,southerncross,Lilias,57287500,-58205086,43676
+122,melbourne,Fletcher,69401966,-61196817,47400
+122,sydney,Ipield,72533772,-59315261,7690
+123,adelaide,Herrick,66387853,-59786100,800
+123,canberra,Savile,71569135,-60107590,60801
+124,sydney,Jensen,72534637,-59315156,7690
+125,adelaide,Grant,66388470,-59786778,800
+126,canberra,Thistlethwaite,71566555,-60105680,60801
+127,melbourne,Clifton,69401956,-61195533,47400
+128,darwin,Leonidas,62637218,-49081463,900
+128,perth,Herb,55472109,-58344745,900
+129,southerncross,Marjory,57287136,-58206306,43676
+130,brisbane,Bibby,73445265,-56286616,1700
+131,canberra,Alvita,71565443,-60107545,60800
+131,perth,Marlena,55474817,-58346934,900
+131,southerncross,Lynette,57287511,-58197893,48675
+131,sydney,Lillybell,72534959,-59315156,7690
+132,canberra,Joslyn,71566390,-60106650,60800
+132,perth,Neil,55473830,-58346648,900
+132,southerncross,Aubert,57287111,-58197092,48675
+132,sydney,Godfrey,72530430,-59317255,7700
+133,canberra,Cora,71565800,-60105386,60800
+133,perth,Nora,55474986,-58346973,900
+133,southerncross,Amala,57284474,-58198340,48676
+133,sydney,Marlena,72537374,-59312163,7700
+134,canberra,Lewis,71566788,-60104458,60801
+134,perth,Osbert,55473253,-58346827,900
+134,southerncross,Hardern,57286497,-58206732,43676
+134,sydney,Harry,72536174,-59316700,7700
+135,canberra,Evelyn,71568222,-60105910,60900
+135,perth,Phoebe,55474990,-58347280,900
+135,southerncross,Amanda,57288390,-58204008,43776
+135,sydney,Nora,72534935,-59313923,7700
+136,canberra,Mato,71567787,-60106172,60801
+136,perth,Payton,55474405,-58348743,901
+136,southerncross,Dillon,57287920,-58197411,48675
+136,sydney,Jeremy,72534762,-59315463,7530
+137,canberra,Prospero,71567056,-60105675,60801
+137,perth,Ray,55472936,-58345790,900
+137,southerncross,Wilbur,57287883,-58198149,48675
+137,sydney,Kemper,72534747,-59315504,7530
+138,canberra,Lottie,71567916,-60105512,60800
+138,perth,Ruby,55475038,-58347039,900
+138,southerncross,Lotus,57285174,-58198151,48676
+138,sydney,Phoebe,72534621,-59315461,7530
+139,canberra,Robert,71563603,-60108743,60801
+139,perth,Theodore,55471623,-58345646,901
+139,southerncross,Roy,57287438,-58196775,48675
+139,sydney,Lawton,72534848,-59315296,7530
+140,perth,Silva,55475148,-58347039,900
+140,southerncross,Amabel,57287131,-58196905,48675
+140,sydney,Ruby,72534821,-59315423,7530
+141,adelaide,Hadfield,66389208,-59787656,800
+141,brisbane,Archer,73444445,-56286641,1701
+141,darwin,Harold,62637647,-49078238,900
+141,melbourne,Aird,69401399,-61198443,47400
+142,adelaide,Iialua,66387160,-59787374,800
+142,brisbane,Bryan,73445342,-56287737,1701
+142,darwin,Jeffrey,62638252,-49081585,900
+142,melbourne,Bannerman,69404060,-61198569,47500
+143,adelaide,Laidlaw,66388937,-59786232,800
+143,brisbane,Colman,73447556,-56289568,1701
+143,darwin,Kelsey,62636664,-49080642,900
+143,melbourne,Castro,69399193,-61198363,47400
+144,adelaide,Packilan,66389240,-59787778,800
+144,brisbane,Eugene,73449141,-56289330,1702
+144,darwin,Laurie,62642195,-49081471,901
+144,melbourne,Day,69402641,-61196628,47401
+145,adelaide,Tait,66389342,-59788216,800
+145,brisbane,Ludlow,73444565,-56290446,1702
+145,darwin,Manoc,62638210,-49081693,900
+145,melbourne,Evan,69399177,-61196122,47400
+146,adelaide,Wymark,66388460,-59786698,800
+146,brisbane,Melvyn,73448225,-56289664,1702
+146,darwin,Osbert,62638422,-49081793,900
+146,melbourne,Felton,69404768,-61195836,47400
+147,adelaide,Bobby,66385511,-59788537,800
+147,brisbane,Ronald,73447288,-56288958,1701
+147,darwin,Payton,62638251,-49081864,900
+147,melbourne,Gentry,69402473,-61196355,47040
+148,adelaide,Christie,66387690,-59786194,800
+148,brisbane,Stefan,73449128,-56289447,1702
+148,melbourne,Hardcastle,69403719,-61196510,47401
+149,adelaide,Drusilla,66386231,-59786502,800
+149,brisbane,Meredith,73449445,-56289215,1702
+149,melbourne,Ipield,69402289,-61196433,46980
+150,adelaide,Floris,66387003,-59789960,800
+150,melbourne,Jensen,69402323,-61196316,47040
+151,sydney,Hutton,72538362,-59310414,7700
+152,sydney,Allard,72538344,-59310451,7700
+153,sydney,Kerslake,72538325,-59310459,7700
+154,sydney,Sax,72538325,-59310410,7700
+155,sydney,Duffy,72533931,-59313612,7690
+156,sydney,Allenby,72537933,-59310550,7701
+157,sydneysuburban,Allenby,72278858,-59517613,15795
+158,sydney,Kilner,72538402,-59310475,7700
+159,canberra,Monypenny,71571254,-60096767,60800
+160,canberra,Saxon,71571325,-60096754,60800
+161,canberra,Baxter,71571293,-60096737,60800
+162,canberra,Lee,71571271,-60096701,60800
+163,canberra,Thorn,71567357,-60097711,60800
+164,canberra,Flores,71570855,-60096806,60800
+165,canberrasuburban,Oscroft,71483191,-59896358,60696
+166,canberra,Bayliss,71571185,-60096746,60800
+167,perth,Pond,55472084,-58347208,900
+168,perth,Lesley,55472044,-58347181,900
+169,perth,Thorpe,55472051,-58347221,900
+170,perth,Clarke,55472013,-58347235,900
+171,perth,Marshall,55471979,-58347038,900
+172,perth,Golightly,55472777,-58346343,900
+173,perthsuburban,Golightly,55834627,-58545177,28366
+174,perth,Patterson,55471950,-58347175,900
+175,southerncross,Rutherford,57287266,-58209200,43675
+176,southerncross,Clemance,57287322,-58209202,43675
+177,southerncross,Martinez,57287372,-58209190,43675
+178,southerncross,Walshe,57287383,-58209167,43675
+179,southerncross,Drinkwater,57287458,-58208949,43675
+180,southerncross,Walpole,57287461,-58209478,43675
+181,southerncrosssuburban,Walpole,57090118,-58322909,44224
+182,southerncross,Hawker,57287274,-58209294,43675
+183,melbourne,Shoesmith,69397865,-61199278,47400
+184,melbourne,Reads,69397891,-61199229,47400
+185,melbourne,Dunlop,69397856,-61199212,47400
+186,melbourne,Nightingale,69397831,-61199205,47400
+187,melbourne,Flint,69403263,-61196762,47400
+188,melbourne,Allbright,69398001,-61199298,47400
+189,melbournesuburban,Asa,69287800,-60882720,25037
+190,melbourne,Kibble,69397784,-61199162,47400
+191,adelaide,Huson,66388659,-59789031,801
+192,adelaide,Saxe,66388650,-59789052,801
+193,adelaide,Flower,66388654,-59789071,800
+194,adelaide,Osmond,66388619,-59789104,800
+195,adelaide,Goldstein,66388809,-59788966,855
+196,adelaide,Bay,66388399,-59789040,800
+197,adelaidesuburban,Bay,66507650,-60065428,16938
+198,adelaide,Lennox,66388556,-59789102,800
+199,brisbane,Montague,73449760,-56286813,1702
+200,brisbane,Thorns,73449764,-56286868,1702
+201,brisbane,Goniez,73449720,-56286892,1702
+202,brisbane,Paul,73449772,-56286899,1702
+203,brisbane,Havelock,73449099,-56287784,1702
+204,brisbane,Clayton,73449743,-56287090,1702
+205,brisbanesuburban,Clayton,73248837,-56228387,25127
+206,brisbane,Martin,73449793,-56286886,1702
+207,darwin,Pomeroy,62638225,-49080810,890
+208,darwin,Walsh,62638223,-49080844,890
+209,darwin,Hawthorn,62638242,-49080869,890
+210,darwin,Reader,62638279,-49080845,890
+211,darwin,Loder,62638252,-49080315,900
+212,darwin,Phillipson,62638553,-49080816,900
+213,darwinsuburban,Phillipson,62761425,-48840224,1275
+214,darwin,Roffey,62638269,-49080781,890
+215,melbourne,Redmund,69402488,-61195670,47411
+216,sydney,Holden,72533571,-59314683,7690
+217,adelaide,Lisa,66390039,-59787775,800
+217,canberra,Lodema,71566474,-60104929,60801
+218,brisbane,Sebold,73445150,-56288196,1700
+218,perth,John,55473020,-58345473,908
+219,darwin,Marty,62641953,-49082893,900
+219,southerncross,Noverta,57288019,-58207125,43675
+220,darwinspaceport,Thurston,62634569,-49055467,-499
+220,perthspaceport,Percival,55458291,-58364344,0
+221,zssaeo_3,Nydia,3389879,-2234080,936527
+222,effss_0157,Sophronia,-2821482,2828287,-852421
+223,tasmania,Willoughby,70036799,-63257554,88238
+224,ayersrock,Wyndham,62954848,-55256061,55578
+230,adelaidesuburban,Holthouse,66467126,-59747376,4199
+230,brisbanesuburban,Petifer,73407740,-56347987,13023
+230,canberrasuburban,Piper,71644061,-60177458,62291
+230,darwinsuburban,Pendergast,62660750,-49026618,-300
+230,melbournesuburban,Hernandez,69362653,-61120300,56361
+230,perthsuburban,Tulip,55569905,-58382312,6817
+230,southerncrosssuburban,Silverwood,57231918,-58243473,46095
+230,sydneysuburban,Vacher,72615277,-59337217,4551
+231,adelaidesuburban,Field,66327717,-59847889,-802
+231,brisbanesuburban,Kearton,73348208,-56168889,27996
+231,canberrasuburban,Lilienpeld,71702159,-60036822,76045
+231,darwinsuburban,Shipman,62557951,-49100476,-427
+231,melbournesuburban,Bayliss,69300952,-61241333,35600
+231,perthsuburban,Nielsen,55589366,-58442404,5936
+231,southerncrosssuburban,Rodwell,57290453,-58121105,46861
+231,sydneysuburban,Bevan,72615904,-59458505,-1756
+232,canberrasuburban,Travers,71663412,-59960589,42855
+232,perthsuburban,Rous,55511051,-58225518,6401
+232,southerncrosssuburban,Veal,57150653,-58141943,42878
+232,sydneysuburban,Eaton,72687799,-59265097,-1333
+233,canberrasuburban,Sieveking,71406131,-60036515,64702
+233,perthsuburban,Hellier,55631767,-58206717,23736
+233,southerncrosssuburban,Bishop,57210990,-58343843,39614
+233,sydneysuburban,Tuck,72496797,-59155089,15817
+234,canberrasuburban,Perry,71284904,-60213336,92409
+234,perthsuburban,Bateman,55752026,-58244078,26816
+234,southerncrosssuburban,Evan,57451007,-58241831,42655
+234,sydneysuburban,Lewis,72256983,-59318703,28215
+235,canberrasuburban,Vanner,71282972,-59955834,32844
+235,perthsuburban,Row,55732940,-58006902,19543
+235,southerncrosssuburban,Whistler,57029434,-58362513,42000
+235,sydneysuburban,Ross,72615767,-59036116,17062
+236,canberrasuburban,Bidgood,71925235,-59955780,53221
+236,perthsuburban,Line,55832765,-58362974,20873
+236,southerncrosssuburban,Norcott,57372191,-57902475,59181
+236,sydneysuburban,Goods,72194038,-59175449,52797
+237,canberrasuburban,Elms,71364197,-59738914,47660
+237,perthsuburban,Trelawney,55832503,-58088290,25670
+237,southerncrosssuburban,Sheridan,57173157,-57841647,53477
+237,sydneysuburban,Bartlett,72295388,-58955213,60513
+238,adelaidesuburban,Whitehead,66466842,-59906977,-3531
+238,brisbanesuburban,Slade,73526480,-56167211,-2968
+238,darwinsuburban,Kynaston,62518007,-48981235,-1718
+238,melbournesuburban,Ruff,69524645,-61259020,15390
+239,adelaidesuburban,Peckover,66247878,-59727519,-4033
+239,brisbanesuburban,Trigge,73587188,-56249144,-479
+239,darwinsuburban,Beech,62780672,-48961478,-691
+239,melbournesuburban,Lisle,69551160,-61120943,31881
+240,adelaidesuburban,Shillitoe,66567904,-59548045,28489
+240,brisbanesuburban,Vaughanvaughn,73226356,-56287696,14993
+240,darwinsuburban,Shoesmith,62678810,-49320578,814
+240,melbournesuburban,Katz,69383540,-60940807,22038
+241,adelaidesuburban,Hesse,66107174,-59726344,15382
+241,brisbanesuburban,Hoover,73186294,-56227095,17280
+241,darwinsuburban,Preston,62841872,-49361042,7826
+241,melbournesuburban,Sirett,69170969,-61410957,16117
+242,adelaidesuburban,Beamish,66066736,-59906666,7661
+242,brisbanesuburban,Fischer,73146187,-56126488,28079
+242,darwinsuburban,Keen,62719744,-49401487,9180
+242,melbournesuburban,Rolt,69508228,-61504315,-1148
+243,adelaidesuburban,Rundell,66208444,-59427263,8681
+243,brisbanesuburban,Hadfield,73067272,-56588356,59027
+243,darwinsuburban,Logan,62902472,-49459452,17396
+243,melbournesuburban,Vail,69061809,-61058782,27859
+247,helenes,Nita,-1426,-2420,2514
+248,ayersrock,Ruth,62904507,-55364126,68300
+249,brisbane,Ulette,73444405,-56287794,1700
+249,southerncross,Sadie,57289370,-58204958,43676
+250,darwin,Leopold,62641853,-49083227,900
+250,perth,Johnnie,55474097,-58346785,900
+251,canberra,Konrad,71568162,-60097346,60800
+251,melbourne,Marston,69403370,-61196295,47391
+252,adelaide,Valenia,66388791,-59787623,800
+252,sydney,Tallula,72534212,-59315234,7690
+253,darwin,Vivietta,62638521,-49078218,900
+253,perth,Ariadne,55474645,-58349840,901
+254,brisbane,Aurora,73445405,-56287652,1700
+254,southerncross,Audrey,57288293,-58205359,43676
+255,effss_0157,Augusta,-2821544,2828084,-852666
+255,zssaeo_3,Athel,3396068,-2240120,925464
+260,sydney,Raymond,72538422,-59310432,7700
+261,canberra,Osborn,71571165,-60096605,60800
+262,southerncross,Schuyler,57287405,-58209207,43675
+263,perth,Percival,55471982,-58347212,900
+264,melbourne,Theodoric,69397812,-61199174,47400
+265,adelaide,Paly,66388612,-59789127,800
+266,brisbane,Quincy,73449791,-56286841,1702
+267,darwin,Ralph,62638309,-49080846,890
+280,newman,Alexis,56930246,-54465070,60977
+280,newman,Septimus,56930246,-54465070,60977
+280,richmond,Brady,68931713,-52867074,52608
+280,richmond,Conrad,68931713,-52867074,52608
+281,newman,Josephine,56930212,-54465024,60910
+281,newman,Natalie,56930212,-54465024,60910
+281,richmond,Martha,68931497,-52867116,52551
+281,richmond,Zelda,68931497,-52867116,52551
+282,newman,Hiram,56930194,-54464953,60900
+282,newman,Martin,56930194,-54464953,60900
+282,richmond,Clyde,68931583,-52867189,52439
+282,richmond,Evelyn,68931583,-52867189,52439
+283,newman,Linda,56930243,-54464923,61046
+283,newman,Palmeda,56930243,-54464923,61046
+283,richmond,Alarice,68931657,-52867274,52325
+283,richmond,Tourmaline,68931657,-52867274,52325
+284,newman,Duncan,56930182,-54464878,60936
+284,newman,Townsend,56930182,-54464878,60936
+284,richmond,Eros,68931784,-52867373,52291
+284,richmond,Luther,68931784,-52867373,52291
+285,newman,Prudence,56930150,-54464742,61013
+285,newman,Saline,56930150,-54464742,61013
+285,richmond,Audrey,68931740,-52867372,52209
+285,richmond,Kim,68931740,-52867372,52209
+286,newman,Kim,56930421,-54465059,61240
+286,newman,Ritchie,56930421,-54465059,61240
+286,richmond,Louis,68931586,-52867415,52408
+286,richmond,Merwin,68931586,-52867415,52408
+287,adelaide,Meredyth,66388621,-59790484,801
+287,canberra,Colin,71566792,-60104276,60801
+330,adelaide,[Premium Coupon] EX Giant heat hawk,66390764,-59786292,791
+330,brisbane,[Premium Coupon] EX Giant heat hawk,73447587,-56285655,1691
+330,canberra,[Premium Coupon] EX Giant heat hawk,71572909,-60098024,60800
+330,darwin,[Premium Coupon] EX Giant heat hawk,62637680,-49079817,891
+330,melbourne,[Premium Coupon] EX Giant heat hawk,69404980,-61194805,47390
+330,perth,[Premium Coupon] EX Giant heat hawk,55469785,-58348669,891
+330,southerncross,[Premium Coupon] EX Giant heat hawk,57289989,-58213619,43675
+330,sydney,[Premium Coupon] EX Giant heat hawk,72536583,-59308677,7701
+331,canberra,[Premium Coupon] EF MS/MA emergency tool kit Lv.4,71572910,-60098034,60800
+331,perth,[Premium Coupon] EF MS/MA emergency tool kit Lv.4,55469776,-58348661,891
+331,southerncross,[Premium Coupon] EF MS/MA emergency tool kit Lv.4,57289997,-58213615,43675
+331,sydney,[Premium Coupon] EF MS/MA emergency tool kit Lv.4,72536575,-59308677,7701
+332,adelaide,[Premium Coupon] ZEON MS/MA emergency tool kit Lv.4,66390787,-59786283,791
+332,brisbane,[Premium Coupon] ZEON MS/MA emergency tool kit Lv.4,73447579,-56285657,1691
+332,darwin,[Premium Coupon] ZEON MS/MA emergency tool kit Lv.4,62637664,-49079812,891
+332,melbourne,[Premium Coupon] ZEON MS/MA emergency tool kit Lv.4,69404972,-61194806,47390
+333,adelaide,[Premium Coupon] MS/MA TR engine typeC lv.4,66390771,-59786282,791
+333,brisbane,[Premium Coupon] MS/MA TR engine typeC lv.4,73447567,-56285643,1691
+333,canberra,[Premium Coupon] MS/MA TR engine typeC lv.4,71572887,-60098066,60800
+333,darwin,[Premium Coupon] MS/MA TR engine typeC lv.4,62637663,-49079830,891
+333,melbourne,[Premium Coupon] MS/MA TR engine typeC lv.4,69404963,-61194799,47390
+333,perth,[Premium Coupon] MS/MA TR engine typeC lv.4,55469753,-58348670,891
+333,southerncross,[Premium Coupon] MS/MA TR engine typeC lv.4,57290007,-58213628,43675
+333,sydney,[Premium Coupon] MS/MA TR engine typeC lv.4,72536557,-59308684,7701
+334,adelaide,[Premium Coupon] MS/MA TJ engine typeC lv.4,66390770,-59786267,791
+334,brisbane,[Premium Coupon] MS/MA TJ engine typeC lv.4,73447560,-56285646,1691
+334,canberra,[Premium Coupon] MS/MA TJ engine typeC lv.4,71572887,-60098054,60800
+334,darwin,[Premium Coupon] MS/MA TJ engine typeC lv.4,62637655,-49079833,891
+334,melbourne,[Premium Coupon] MS/MA TJ engine typeC lv.4,69404955,-61194800,47390
+334,perth,[Premium Coupon] MS/MA TJ engine typeC lv.4,55469752,-58348686,891
+334,southerncross,[Premium Coupon] MS/MA TJ engine typeC lv.4,57290013,-58213623,43675
+334,sydney,[Premium Coupon] MS/MA TJ engine typeC lv.4,72536549,-59308682,7701
+335,adelaide,[Premium Coupon] MS/MA HJ engine typeC lv.4,66390771,-59786275,791
+335,brisbane,[Premium Coupon] MS/MA HJ engine typeC lv.4,73447553,-56285651,1691
+335,canberra,[Premium Coupon] MS/MA HJ engine typeC lv.4,71572886,-60098038,60800
+335,darwin,[Premium Coupon] MS/MA HJ engine typeC lv.4,62637648,-49079836,891
+335,melbourne,[Premium Coupon] MS/MA HJ engine typeC lv.4,69404947,-61194801,47390
+335,perth,[Premium Coupon] MS/MA HJ engine typeC lv.4,55469752,-58348678,891
+335,southerncross,[Premium Coupon] MS/MA HJ engine typeC lv.4,57290019,-58213618,43675
+335,sydney,[Premium Coupon] MS/MA HJ engine typeC lv.4,72536540,-59308688,7701
+336,adelaide,[Premium Coupon] MS/MA HB engine typeC lv.4,66390770,-59786259,791
+336,brisbane,[Premium Coupon] MS/MA HB engine typeC lv.4,73447546,-56285655,1691
+336,canberra,[Premium Coupon] MS/MA HB engine typeC lv.4,71572877,-60098034,60800
+336,darwin,[Premium Coupon] MS/MA HB engine typeC lv.4,62637640,-49079839,891
+336,melbourne,[Premium Coupon] MS/MA HB engine typeC lv.4,69404939,-61194802,47390
+336,perth,[Premium Coupon] MS/MA HB engine typeC lv.4,55469743,-58348693,891
+336,southerncross,[Premium Coupon] MS/MA HB engine typeC lv.4,57290025,-58213613,43675
+336,sydney,[Premium Coupon] MS/MA HB engine typeC lv.4,72536534,-59308679,7701
+337,adelaide,[Premium Coupon] ruby ring,66390804,-59786297,791
+337,brisbane,[Premium Coupon] ruby ring,73447599,-56285634,1691
+337,canberra,[Premium Coupon] ruby ring,71572886,-60098022,60800
+337,darwin,[Premium Coupon] ruby ring,62637629,-49079809,891
+337,melbourne,[Premium Coupon] ruby ring,69404953,-61194784,47390
+337,perth,[Premium Coupon] ruby ring,55469758,-58348710,891
+337,southerncross,[Premium Coupon] ruby ring,57290042,-58213618,43675
+337,sydney,[Premium Coupon] ruby ring,72536541,-59308656,7701
+338,adelaide,[Premium Coupon] sapphire ring,66390803,-59786289,791
+338,brisbane,[Premium Coupon] sapphire ring,73447607,-56285635,1691
+338,canberra,[Premium Coupon] sapphire ring,71572891,-60098014,60800
+338,darwin,[Premium Coupon] sapphire ring,62637621,-49079812,891
+338,melbourne,[Premium Coupon] sapphire ring,69404961,-61194783,47390
+338,perth,[Premium Coupon] sapphire ring,55469759,-58348718,891
+338,southerncross,[Premium Coupon] sapphire ring,57290048,-58213613,43675
+338,sydney,[Premium Coupon] sapphire ring,72536533,-59308654,7701
+339,adelaide,[Premium Coupon] emerald ring,66390805,-59786305,791
+339,brisbane,[Premium Coupon] emerald ring,73447615,-56285637,1691
+339,canberra,[Premium Coupon] emerald ring,71572889,-60098006,60800
+339,darwin,[Premium Coupon] emerald ring,62637614,-49079815,891
+339,melbourne,[Premium Coupon] emerald ring,69404969,-61194782,47390
+339,perth,[Premium Coupon] emerald ring,55469762,-58348726,891
+339,southerncross,[Premium Coupon] emerald ring,57290054,-58213607,43675
+339,sydney,[Premium Coupon] emerald ring,72536536,-59308641,7701
+340,adelaide,[Premium Coupon] T-shirt Claudia 01,66390822,-59786311,791
+340,brisbane,[Premium Coupon] T-shirt Claudia 01,73447621,-56285614,1691
+340,canberra,[Premium Coupon] T-shirt Claudia 01,71572886,-60097990,60800
+340,darwin,[Premium Coupon] T-shirt Claudia 01,62637627,-49079784,891
+340,melbourne,[Premium Coupon] T-shirt Claudia 01,69404976,-61194766,47390
+340,perth,[Premium Coupon] T-shirt Claudia 01,55469816,-58348720,891
+340,southerncross,[Premium Coupon] T-shirt Claudia 01,57290042,-58213596,43675
+340,sydney,[Premium Coupon] T-shirt Claudia 01,72536528,-59308638,7701
+341,adelaide,[Premium Coupon] T-shirt Claudia 02,66390823,-59786319,791
+341,brisbane,[Premium Coupon] T-shirt Claudia 02,73447629,-56285615,1691
+341,canberra,[Premium Coupon] T-shirt Claudia 02,71572885,-60097982,60800
+341,darwin,[Premium Coupon] T-shirt Claudia 02,62637634,-49079781,891
+341,melbourne,[Premium Coupon] T-shirt Claudia 02,69404984,-61194765,47390
+341,perth,[Premium Coupon] T-shirt Claudia 02,55469818,-58348712,891
+341,southerncross,[Premium Coupon] T-shirt Claudia 02,57290048,-58213590,43675
+341,sydney,[Premium Coupon] T-shirt Claudia 02,72536521,-59308635,7701
+342,adelaide,[Premium Coupon] protective sunglasses,66390824,-59786327,791
+342,brisbane,[Premium Coupon] protective sunglasses,73447636,-56285616,1691
+342,canberra,[Premium Coupon] protective sunglasses,71572884,-60097974,60800
+342,darwin,[Premium Coupon] protective sunglasses,62637642,-49079778,891
+342,melbourne,[Premium Coupon] protective sunglasses,69404991,-61194764,47390
+342,perth,[Premium Coupon] protective sunglasses,55469828,-58348706,891
+342,southerncross,[Premium Coupon] protective sunglasses,57290052,-58213584,43675
+342,sydney,[Premium Coupon] protective sunglasses,72536513,-59308636,7701

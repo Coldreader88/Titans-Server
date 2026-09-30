@@ -87,6 +87,7 @@
     <Compile Include="World\SkillGrowth.cs" />
     <Compile Include="World\Criminal.cs" />
     <Compile Include="World\Occupation.cs" />
+    <Compile Include="World\QuestGivers.cs" />
     <Compile Include="World\Quests.cs" />
     <Compile Include="World\Ranks.cs" />
     <Compile Include="World\Production.cs" />

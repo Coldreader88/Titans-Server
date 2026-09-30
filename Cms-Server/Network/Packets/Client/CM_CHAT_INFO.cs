@@ -5,7 +5,7 @@ using TitansUC.CmsServer.Network.Client;
 namespace TitansUC.CmsServer.Network.Packets.Client
 {
     /// <summary>
-    /// 0x13: the player's chat card, sent after logging in.
+    /// 0x13: the player's chat card, sent after logging in and again when the player's rank changes.
     ///
     /// <code>
     /// uint32 BE   character id
@@ -33,6 +33,15 @@ namespace TitansUC.CmsServer.Network.Packets.Client
 
         public int TeamID { get; private set; }
 
+        public string Name { get; private set; }
+
+        public byte Gender { get; private set; }
+
+        /// <summary>
+        /// The rank the client shows; 0 when the packet ended early.
+        /// </summary>
+        public byte Rank { get; private set; }
+
         public override void OnProcess(Session<CMSOpcode> client)
         {
             Read();
@@ -44,6 +53,17 @@ namespace TitansUC.CmsServer.Network.Packets.Client
         {
             CharacterID = this.GetUIntBE();
             TeamID = this.GetIntBE();
+            if (this.Remaining < 7)
+            {
+                return;
+            }
+            this.GetUIntBE();
+            Name = this.GetUCString();
+            if (this.Remaining >= 2)
+            {
+                Gender = this.GetByte();
+                Rank = this.GetByte();
+            }
         }
     }
 }

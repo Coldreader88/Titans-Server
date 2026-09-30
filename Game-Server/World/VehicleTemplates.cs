@@ -15,7 +15,7 @@ namespace TitansUC.GameServer.World
     /// <code>
     /// uint32 BE (skipped), UC size = number of templates, then per template:
     /// uint32 BE id, uint32 BE 0, 3 x UC size + UTF-16LE (comment, model code, name),
-    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 4 bytes, UC size modifications
+    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 4 bytes, UC size required skills
     /// (7 bytes each), 1 byte, UC size lists (UC size int32s each), 12 bytes (speed, hover speed, -1),
     /// uint32 BE health, then 30 bytes: uint32 wreckage id, 1 byte, 3 x uint32, byte cargo slots, uint32
     /// improvement id, uint32 mining ability, uint32 equipment group. Full layout: client-data-csv
@@ -114,10 +114,19 @@ namespace TitansUC.GameServer.World
                     t.EngineID = DefaultEngine;
                 }
                 p += 4;
-                // Modifications: UC size, 7 bytes each (int16, byte, int32). Most vehicles have one; GUNTANK,
-                // GOUF, GIGAN, ZAKUTANK and a few others have two.
+                // Required skills: UC size, 7 bytes each (byte skill table, int16 skill index, int32 level x10).
+                // Most vehicles have one; GUNTANK, GOUF, GIGAN, ZAKUTANK and a few others have two, cars none.
                 int mods = ReadSize(d, ref p);
-                p += mods * 7 + 1;
+                for (int k = 0; k < mods; k++, p += 7)
+                {
+                    t.RequiredSkills.Add(new RequiredSkill
+                    {
+                        Table = d[p],
+                        Index = (short)((d[p + 1] << 8) | d[p + 2]),
+                        Level = (d[p + 3] << 24) | (d[p + 4] << 16) | (d[p + 5] << 8) | d[p + 6],
+                    });
+                }
+                p += 1;
                 // Two resistance lists of int32.
                 int lists = ReadSize(d, ref p);
                 for (int k = 0; k < lists; k++)
@@ -176,7 +185,18 @@ namespace TitansUC.GameServer.World
 
     public class VehicleTemplate
     {
+        public VehicleTemplate()
+        {
+            RequiredSkills = new List<RequiredSkill>();
+        }
+
         public int ID { get; set; }
+
+        /// <summary>
+        /// The skills the client wants for driving it at full speed (it checks the first two): the GM Mobile Suit,
+        /// the Ball Mobile Armor, tanks, the hover truck and planes Fighter, the Gundam Mobile Suit 30.0.
+        /// </summary>
+        public List<RequiredSkill> RequiredSkills { get; private set; }
         public string Model { get; set; }
         public string Name { get; set; }
         public int Price { get; set; }
@@ -282,6 +302,22 @@ namespace TitansUC.GameServer.World
                     return names;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// A skill a vehicle requires: the client's skill table (0 combat) and index (<see cref="SkillTables"/>) and
+    /// the level x10.
+    /// </summary>
+    public class RequiredSkill
+    {
+        public int Table { get; set; }
+        public int Index { get; set; }
+        public int Level { get; set; }
+
+        public Skill? Skill
+        {
+            get { return SkillTables.Get(Table, Index); }
         }
     }
 }
