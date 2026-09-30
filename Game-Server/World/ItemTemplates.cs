@@ -278,7 +278,9 @@ namespace TitansUC.GameServer.World
                 q += 4;
                 int price = ReadInt(d, ref q);
                 p = q;
-                return new ItemTemplate { ID = id, Kind = kind, Name = name.Trim(), Price = price };
+                // The price is an int64 BE; the sell-back price (another int64) follows it.
+                int sellPrice = q + 8 <= d.Length ? (d[q + 4] << 24) | (d[q + 5] << 16) | (d[q + 6] << 8) | d[q + 7] : 0;
+                return new ItemTemplate { ID = id, Kind = kind, Name = name.Trim(), Price = price, SellPrice = sellPrice };
             }
             catch (IndexOutOfRangeException)
             {
@@ -360,6 +362,12 @@ namespace TitansUC.GameServer.World
         /// The shop price of one; <see cref="ItemTemplates.NotForSale"/> for items the shops do not sell.
         /// </summary>
         public int Price { get; set; }
+
+        /// <summary>
+        /// What a shop pays for one (the int64 after the price). The official shops paid exactly this (RGM-79
+        /// 145800 in Sold_RGM-79.pcap, alumina 215 in Alumina_(121).pcap).
+        /// </summary>
+        public int SellPrice { get; set; }
 
         public bool IsVehicle { get; set; }
 

@@ -1301,8 +1301,9 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x21: buy from a shop. The price comes from the item templates; the shop lists are the client's, so
-        /// anything the templates sell can be bought. Nothing is sent back when it is refused.
+        /// 0x21: buy from a shop. Shops sell only their goods lists for the player's faction, at the template price
+        /// times the shop's rates (see <see cref="Shops"/>). The shuttles and cars of services 3 and 4 come from no
+        /// shop and cost the template price. Nothing is sent back when it is refused.
         /// </summary>
         public void OnBuyItem(CM_BUY_ITEM p)
         {
@@ -1318,8 +1319,28 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            long total = (long)template.Price * p.Amount;
-            if (total > int.MaxValue)
+            long unitPrice = template.Price;
+            if (p.Service == CM_BUY_ITEM.ServiceShuttle || p.Service == CM_BUY_ITEM.ServiceCar)
+            {
+                if (!template.IsVehicle)
+                {
+                    RefuseShop("buy", p.StaticID, "service " + p.Service + " is for vehicles");
+                    return;
+                }
+            }
+            else
+            {
+                var shop = Shops.Get(p.Shop);
+                if (shop == null || !shop.Sells(Character.Faction, template.ID))
+                {
+                    RefuseShop("buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction);
+                    return;
+                }
+                unitPrice = shop.BuyPrice(Character.Faction, Character.Rank, template.Price);
+            }
+
+            long total = unitPrice * p.Amount;
+            if (total > int.MaxValue || p.Amount <= 0)
             {
                 RefuseShop("buy", p.StaticID, "amount " + p.Amount);
                 return;
@@ -1343,8 +1364,8 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x22: sell to a shop, for half the shop price (the official prices varied between about half and
-        /// all of it).
+        /// 0x22: sell to a shop that buys that kind of item back, for the template's sell price times the shop's
+        /// rate (exactly the template's sell price at 100%, as every official sale in the captures).
         /// </summary>
         public void OnSellItem(CM_SELL_ITEM p)
         {
@@ -1356,14 +1377,25 @@ namespace TitansUC.GameServer.Network.Client
             var template = ItemTemplates.Get(p.StaticID);
             var item = Inventory.Get(p.ItemUniqueID);
             if (p.CharacterID != CharacterID || template == null || item == null || item.StaticID != p.StaticID ||
-                template.Price <= 0 || template.Price >= ItemTemplates.NotForSale)
+                template.SellPrice <= 0)
             {
                 RefuseShop("sell", p.StaticID, template == null ? "unknown item" : "no price");
                 return;
             }
+            var shop = Shops.Get(p.Shop);
+            if (shop == null || !shop.BuysBack(Character.Faction, template.ID))
+            {
+                RefuseShop("sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction);
+                return;
+            }
 
-            int unitPrice = template.Price / 2;
+            int unitPrice = (int)Math.Min(int.MaxValue, shop.SellPrice(Character.Faction, template.SellPrice));
             int amount = template.IsVehicle ? 1 : p.Amount;
+            if ((long)unitPrice * amount > int.MaxValue)
+            {
+                RefuseShop("sell", p.StaticID, "amount " + amount);
+                return;
+            }
             var soldAll = Inventory.Sell(p.ItemUniqueID, p.ContainerUniqueID, amount, unitPrice);
             if (soldAll == null)
             {

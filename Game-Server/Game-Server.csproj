@@ -84,6 +84,7 @@
     <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
     <Compile Include="World\ItemTemplates.cs" />
     <Compile Include="World\Mining.cs" />
+    <Compile Include="World\Shops.cs" />
     <Compile Include="World\SkillGrowth.cs" />
     <Compile Include="World\Criminal.cs" />
     <Compile Include="World\Occupation.cs" />
