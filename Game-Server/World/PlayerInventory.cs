@@ -108,7 +108,7 @@ namespace TitansUC.GameServer.World
                 var apparel = character.GetApparel(type);
                 if (apparel.ItemID > 0)
                 {
-                    Register(weared.Add(NewItem(apparel.ItemID, 1, type.ToString().ToLowerInvariant())));
+                    Register(weared.Add(Worn(apparel, type.ToString().ToLowerInvariant())));
                 }
                 else
                 {
@@ -118,7 +118,7 @@ namespace TitansUC.GameServer.World
             var glasses = character.GetApparel(ApparelType.GLASSES);
             if (glasses.ItemID > 0)
             {
-                Register(weared.Add(NewItem(glasses.ItemID, 1, "glasses")));
+                Register(weared.Add(Worn(glasses, "glasses")));
             }
 
             // The official swap pack held a trade pack container, which the client asks for.
@@ -166,6 +166,19 @@ namespace TitansUC.GameServer.World
                     Register(container.Add(ApplyState(NewItem(item.ItemID, item.Amount > 0 ? item.Amount : 1, item.Name), item.Children)));
                 }
             }
+        }
+
+        /// <summary>
+        /// The node of a worn garment; its colour is the garment's style.
+        /// </summary>
+        private static ItemNode Worn(Apparel apparel, string name)
+        {
+            var item = NewItem(apparel.ItemID, 1, name);
+            if (apparel.Style >= 0 && apparel.Style < 256)
+            {
+                item.Colour = apparel.Style;
+            }
+            return item;
         }
 
         /// <summary>
@@ -275,7 +288,7 @@ namespace TitansUC.GameServer.World
                 }
 
                 bool movingAll = amount >= item.Amount;
-                var stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                var stack = dest.Children.Find(c => Joins(c, item));
                 var result = new MoveResult { Item = item };
 
                 if (stack != null)
@@ -641,9 +654,9 @@ namespace TitansUC.GameServer.World
         /// swaps it for the item. Clothes come from the player's own item containers and must be of the slot's
         /// looks slot (<see cref="CharacterData.GetLookSlot"/>); what is taken off goes into the backpack, as the
         /// client moves it there itself when the reply comes. Null with <paramref name="refusal"/> set when it
-        /// cannot; otherwise the clothes now worn, by <see cref="ApparelType"/> (-1 for nothing).
+        /// cannot; otherwise the clothes now worn with their colours, by <see cref="ApparelType"/>.
         /// </summary>
-        public int[] DressUp(IList<DressChange> changes, out string refusal)
+        public Apparel[] DressUp(IList<DressChange> changes, out string refusal)
         {
             lock (sync)
             {
@@ -753,15 +766,16 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The clothes item in each clothes slot of weared, by <see cref="ApparelType"/> (-1 for nothing).
+        /// The clothes in each clothes slot of weared with their colours, by <see cref="ApparelType"/>.
         /// </summary>
-        private static int[] WornClothes(ItemNode weared)
+        private static Apparel[] WornClothes(ItemNode weared)
         {
-            var worn = new int[ClothesSlots];
+            var worn = new Apparel[ClothesSlots];
             for (int i = 0; i < worn.Length; i++)
             {
                 int slot = i + 1;
-                worn[i] = slot < weared.Children.Count && !weared.Children[slot].IsEmptySlot ? weared.Children[slot].StaticID : -1;
+                var item = slot < weared.Children.Count ? weared.Children[slot] : null;
+                worn[i] = item != null && !item.IsEmptySlot ? new Apparel(item.StaticID, Math.Max(0, item.Colour)) : Apparel.None;
             }
             return worn;
         }
@@ -988,7 +1002,7 @@ namespace TitansUC.GameServer.World
                     item.Amount -= amount;
                     Touch(item);
                 }
-                var dropped = NewItem(item.StaticID, amount, item.Name);
+                var dropped = CopyState(item, NewItem(item.StaticID, amount, item.Name));
                 dropped.Created = item.Created;
                 return dropped;
             }
@@ -1068,7 +1082,7 @@ namespace TitansUC.GameServer.World
                 ItemNode stack = null;
                 if (dest != null && CanHoldItems(dest))
                 {
-                    stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                    stack = dest.Children.Find(c => Joins(c, item));
                 }
                 if (stack == null && item.StaticID == PlayerContainers.Money && Money != null)
                 {
@@ -1260,7 +1274,7 @@ namespace TitansUC.GameServer.World
         /// there, others come one by one (at most <paramref name="amount"/>); a vehicle is built with
         /// <paramref name="engineID"/> (-1: its template's). Returns the (last) node.
         /// </summary>
-        public ItemNode Produce(ItemNode container, int templateID, int amount, int engineID = -1)
+        public ItemNode Produce(ItemNode container, int templateID, int amount, int engineID = -1, int colour = -1)
         {
             lock (sync)
             {
@@ -1272,6 +1286,16 @@ namespace TitansUC.GameServer.World
                     return vehicle;
                 }
                 string name = template != null ? template.Name : null;
+                if (IsClothes(templateID))
+                {
+                    ItemNode piece = null;
+                    for (int i = 0; i < amount; i++)
+                    {
+                        piece = Register(container.Add(NewItem(templateID, 1, name)));
+                        piece.Colour = Math.Max(0, colour);
+                    }
+                    return piece;
+                }
                 if (template == null || template.Stacks)
                 {
                     var stack = container.Children.Find(c => c.StaticID == templateID && c.Format == ItemNode.Singleton);
@@ -1511,7 +1535,36 @@ namespace TitansUC.GameServer.World
                     : new[] { template.Durability, template.Durability, 0, 0, 0, 0, 1000 };
                 item.Loaded = template.IsWeapon ? template.Magazine : 0;
             }
+            if (IsClothes(templateID))
+            {
+                item.Colour = 0;
+            }
             return item;
+        }
+
+        /// <summary>
+        /// Whether the item is clothes that can be worn (it has a looks slot). Clothes never stack: each piece is
+        /// an item of its own with its own colour (CLOTHESTEMPLATE marks only the yarns stackable).
+        /// </summary>
+        public static bool IsClothes(int templateID)
+        {
+            return CharacterData.GetLookSlot(templateID) >= 0;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="item"/> may join <paramref name="stack"/>: the same item, and not clothes.
+        /// </summary>
+        private static bool Joins(ItemNode stack, ItemNode item)
+        {
+            return stack != item && stack.StaticID == item.StaticID && stack.Format == ItemNode.Singleton && !IsClothes(item.StaticID);
+        }
+
+        /// <summary>
+        /// A copy of an item's state (durability, rounds, colour) on another node of the same item.
+        /// </summary>
+        public static ItemNode CopyState(ItemNode from, ItemNode to)
+        {
+            return ApplyState(to, StateOf(from));
         }
 
         /// <summary>
@@ -1520,6 +1573,10 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public static string StateOf(ItemNode item)
         {
+            if (item.Colour > 0 && IsClothes(item.StaticID))
+            {
+                return "~c" + item.Colour;
+            }
             if (!item.IsEquipment || item.Stats.Length < 2)
             {
                 return string.Empty;
@@ -1542,6 +1599,18 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public static ItemNode ApplyState(ItemNode item, string state)
         {
+            if (!string.IsNullOrEmpty(state) && IsClothes(item.StaticID))
+            {
+                int colour;
+                foreach (var token in state.Split(new[] { '~' }, System.StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (token.Length > 1 && token[0] == 'c' && int.TryParse(token.Substring(1), out colour) && colour >= 0 && colour < 256)
+                    {
+                        item.Colour = colour;
+                    }
+                }
+                return item;
+            }
             if (string.IsNullOrEmpty(state) || !item.IsEquipment || item.Stats.Length < 2)
             {
                 return item;

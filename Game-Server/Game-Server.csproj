@@ -110,6 +110,7 @@
     <Compile Include="Network\Packets\Client\CM_USE_ITEM_WITH_TARGET.cs" />
     <Compile Include="Network\Packets\Client\CM_USE_ITEM_BUFF.cs" />
     <Compile Include="Network\Packets\Client\SM_USE_ITEM_BUFF.cs" />
+    <Compile Include="World\ClothesColours.cs" />
     <Compile Include="World\Combat.cs" />
     <Compile Include="World\Npc.cs" />
     <Compile Include="World\GmCommands.cs" />

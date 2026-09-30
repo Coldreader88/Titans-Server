@@ -1031,6 +1031,13 @@ namespace TitansUC.GameServer.Network.Client
                 }
             }
 
+            int colour;
+            string colourRefusal = CheckColour(p, use, out colour);
+            if (colourRefusal != null)
+            {
+                return colourRefusal;
+            }
+
             var states = new List<uint>();
             var used = new Dictionary<int, int>();
             for (int i = 0; i < p.Inputs.Count; i++)
@@ -1066,7 +1073,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     productID = recipe.ExID;
                 }
-                Inventory.Produce(factory, productID, made, engine);
+                Inventory.Produce(factory, productID, made, engine, colour);
                 output.Add(new KeyValuePair<int, int>(productID, made));
                 GainSkill(recipe.Skills);
             }
@@ -1090,6 +1097,48 @@ namespace TitansUC.GameServer.Network.Client
             this.Network.SendPacket(new SM_PRODUCT_ITEM(p, success ? SM_PRODUCT_ITEM.Done : SM_PRODUCT_ITEM.Failed,
                 (uint)GameWorld.UnixTime(), states, output));
             SaveItems();
+            return null;
+        }
+
+        /// <summary>
+        /// The colour clothes are made in: the slot picked in the dye window when a dye is used, which that dye
+        /// must offer, the clothes must come in and the player's Clothing Manufacturing must allow; colour 0
+        /// without a dye. Returns why the colour cannot be, or null.
+        /// </summary>
+        private string CheckColour(CM_PRODUCT_ITEM p, int[] use, out int colour)
+        {
+            colour = -1;
+            if (!PlayerInventory.IsClothes(p.ProductID))
+            {
+                return null;
+            }
+            ClothesColours.Dye dye = null;
+            for (int i = 0; i < p.Inputs.Count; i++)
+            {
+                if (use[i] > 0 && ClothesColours.IsDye(p.Inputs[i].TemplateID))
+                {
+                    dye = ClothesColours.GetDye(p.Inputs[i].TemplateID);
+                }
+            }
+            int picked = p.ColourIndex < 0 || p.ColourIndex == 0xFF ? 0 : p.ColourIndex;
+            if (dye == null)
+            {
+                colour = 0;
+                return picked == 0 ? null : "colour " + picked + " without a dye";
+            }
+            if (!dye.Offers(picked))
+            {
+                return string.Format("colour {0} is not one of the {1} dye (colours {2}-{3})", picked, dye.ID, dye.First, dye.End - 1);
+            }
+            if (!ClothesColours.Has(p.ProductID, picked))
+            {
+                return string.Format("{0} does not come in colour {1}", p.ProductID, picked);
+            }
+            if (Character.GetSkill(Skill.CLOTHING_MANUFACTURING) < dye.Skill)
+            {
+                return string.Format("the {0} dye needs Clothing Manufacturing {1:0.0}", dye.ID, dye.Skill / 10.0);
+            }
+            colour = picked;
             return null;
         }
 
@@ -1772,7 +1821,7 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            var r = target.TakeHit(weapon, p.Distance);
+            var r = target.TakeHit(weapon, p.Distance, Character);
             if (r == null)
             {
                 return;
@@ -1825,7 +1874,7 @@ namespace TitansUC.GameServer.Network.Client
                     Character.Name, ground.CityID));
                 return;
             }
-            var r = Combat.Attack(weapon, ground.Node, null, 0);
+            var r = Combat.Attack(weapon, ground.Node, null, 0, Character);
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
@@ -1887,7 +1936,7 @@ namespace TitansUC.GameServer.Network.Client
                 Logger.ShowWarning(string.Format("{0}: attack on an NPC refused: no weapon or no such NPC.", Character.Name));
                 return;
             }
-            var r = NpcManager.Instance.Attack(npc, weapon, distance);
+            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character);
             if (r == null)
             {
                 return;
@@ -1946,7 +1995,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     var npc = NpcManager.Instance.Get(t.TargetID);
                     var hit = npc != null && npc.Zone == Coord.ClusterID && !npcHits.Any(h => h.Key == npc)
-                        ? NpcManager.Instance.Attack(npc, weapon, t.Distance) : null;
+                        ? NpcManager.Instance.Attack(npc, weapon, t.Distance, Character) : null;
                     if (hit != null)
                     {
                         hit.Friendly = npc.Faction == (byte)Character.Faction;
@@ -1960,7 +2009,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     continue;
                 }
-                var r = target.TakeHit(weapon, t.Distance);
+                var r = target.TakeHit(weapon, t.Distance, Character);
                 if (r != null)
                 {
                     MarkRelation(target, r);
@@ -2015,10 +2064,11 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// Applies an attack on this player's piloted vehicle; null when they are on foot (or have no vehicle
-        /// any more). Sets the damage and attack number of the position record, as the official server did.
+        /// Applies an attack by <paramref name="attacker"/> (null for an NPC) on this player's piloted vehicle; null
+        /// when they are on foot (or have no vehicle any more). Sets the damage and attack number of the position
+        /// record, as the official server did.
         /// </summary>
-        public HitResult TakeHit(ItemNode weapon, int distance)
+        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null)
         {
             var vehicle = Inventory.Piloting;
             if (vehicle == null || vehicle.Health <= 0)
@@ -2027,7 +2077,8 @@ namespace TitansUC.GameServer.Network.Client
             }
             var shield = Inventory.Armament(Combat.ShieldSlot);
             var shieldTemplate = shield != null ? ItemTemplates.Get(shield.StaticID) : null;
-            var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance);
+            var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance,
+                attacker, Character);
             if (r.Result != Combat.ResultMiss)
             {
                 lock (sync)
@@ -2342,7 +2393,7 @@ namespace TitansUC.GameServer.Network.Client
         private void DressUp(CM_EQUIP_ITEM p)
         {
             string refusal = "not their character";
-            int[] worn = null;
+            Apparel[] worn = null;
             if (p.CharacterID == CharacterID)
             {
                 var changes = p.Entries.Select(e => new DressChange { Action = e.Action, Slot = e.Slot, ItemUID = e.ItemUniqueID }).ToList();
@@ -2359,13 +2410,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 for (int i = 0; i < worn.Length; i++)
                 {
-                    var type = (ApparelType)i;
-                    var before = Character.GetApparel(type);
-                    if (before.ItemID != worn[i])
-                    {
-                        // Colours are not kept on items yet, so newly worn clothes have style 0.
-                        Character.SetApparel(type, worn[i] > 0 ? new Apparel(worn[i], 0) : Apparel.None);
-                    }
+                    Character.SetApparel((ApparelType)i, worn[i]);
                 }
             }
             this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));

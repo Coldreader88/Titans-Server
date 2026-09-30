@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
@@ -22,7 +22,9 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// UC size     ingredients, 40 bytes each: uint32 BE state (7; the reply's 8 used up, 9 some of the stack
     ///             left), template, unique id, format, container unique id, container format, container static
     ///             id, 2 ints, amount
-    /// 10 bytes    byte 0 or 0xFF, byte 1 with the vehicle an upgrade is for, uint32 BE its unique id, format
+    /// byte        colour index (the client's UC_RequestProductItem _color_index): the colour slot picked in the dye
+    ///             window for clothes (see ClothesColours), 0 otherwise, 0xFF when taking a vehicle apart or upgrading
+    /// byte        improve level (1 for an upgrade), then uint32 BE unique id and format of the vehicle upgraded
     /// </code>
     /// The reply 0x8028 is the request with the result, the start time and the ingredient states filled in,
     /// then what came out: UC size, 12 bytes each (uint32 BE template, amount, 0), and a byte 0.
@@ -62,6 +64,11 @@ namespace TitansUC.GameServer.Network.Packets.Client
         /// Where the ingredient list's count byte is; the ingredients follow it.
         /// </summary>
         public int ListOffset { get; private set; }
+
+        /// <summary>
+        /// The colour slot picked for clothes; -1 when the packet ends before it.
+        /// </summary>
+        public int ColourIndex { get; private set; }
         public List<Input> Inputs { get; private set; }
 
         public class Input
@@ -118,6 +125,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
                     Amount = (int)Bytes.U32(Body, o + 36),
                 });
             }
+            int tail = ListOffset + 1 + count * IngredientSize;
+            ColourIndex = tail < Body.Length ? Body[tail] : -1;
             session.OnProductItem(this);
         }
     }
