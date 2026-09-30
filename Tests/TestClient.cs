@@ -1472,9 +1472,11 @@ class Test
             for (int i = 0; i < count; i++) { var rr = new R(list.Item2) { Pos = lr.Pos + 53 * i }; int x = rr.I32(); rr.Pos += 14; uint id = rr.U32(); if (id == 1090000000) return x; }
             return int.MinValue;
         };
-        // The script teleports the GM to the NPC (#tp) about 4 seconds after ready2: move away only after that.
-        var settled = ready2.AddSeconds(6) - DateTime.Now;
-        if (settled > TimeSpan.Zero) System.Threading.Thread.Sleep(settled);
+        // The script teleports the GM to the NPC (#tp) a few seconds after ready2: move away only after that
+        // (the game log says so), or the teleport would put the GM back next to the NPC.
+        var tpUntil = ready2.AddSeconds(30);
+        while (DateTime.Now < tpUntil && !GameLog().Contains("Gmtest was teleported to")) System.Threading.Thread.Sleep(200);
+        System.Threading.Thread.Sleep(500);
         g.Send(0x00, Coord(me, 7000, 2000, 30)); RecvOp(g, 0x8000);
         int x1 = npcX();
         Check(x1 != int.MinValue, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
