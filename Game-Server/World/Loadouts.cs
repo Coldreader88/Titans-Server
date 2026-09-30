@@ -9,14 +9,11 @@ namespace TitansUC.GameServer.World
     /// armament slot gets something the client lets that vehicle carry there (<see cref="VehicleEquipment"/>):
     /// a gun in the first slot that takes one, a shield in the first that takes shields, a melee weapon in the
     /// next free one that takes one, and a gun of the slot's own kind (head vulcan, shoulder cannon) in the
-    /// rest. Guns come with 5 magazines of the ammunition their template names, and the vehicle gets an MS/MA
-    /// typeA lv.3 engine (rocket in Space, jet on Earth).
+    /// rest. Guns come with 5 magazines of the ammunition their template names; the engine is
+    /// <see cref="VehicleEngines.ForLoadout"/>.
     /// </summary>
     public static class Loadouts
     {
-        public const int RocketEngineTypeALv3 = 290003;
-        public const int JetEngineTypeALv3 = 290033;
-
         private static readonly Random random = new Random();
 
         private static readonly string[] Excluded = { "tank/fighter", "bb ", "tool kit", "drill", "throwing device", "flag" };
@@ -28,11 +25,6 @@ namespace TitansUC.GameServer.World
         public static bool Applies(ItemTemplate vehicle)
         {
             return vehicle != null && (vehicle.Category == "ms" || vehicle.Category == "ma" || vehicle.Category == "eventms");
-        }
-
-        public static int Engine(ushort zone)
-        {
-            return zone == 2 ? RocketEngineTypeALv3 : JetEngineTypeALv3;
         }
 
         /// <summary>

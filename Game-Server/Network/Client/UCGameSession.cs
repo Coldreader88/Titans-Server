@@ -2158,10 +2158,17 @@ namespace TitansUC.GameServer.Network.Client
             else if (type == "ideng" && args.Length > 2 && int.TryParse(args[1], out n))
             {
                 item = ItemTemplates.Get(n);
-                engine = EngineTemplates.Find(string.Join(" ", args.Skip(2)));
+                engine = VehicleEngines.Find(n, string.Join(" ", args.Skip(2)));
                 if (engine == 0)
                 {
                     return "No engine \"" + args[2] + "\" (an id like 290033 or a name like jet engine typeA lv.3).";
+                }
+                if (item != null && item.IsVehicle && !VehicleEngines.Fits(item.ID, engine))
+                {
+                    // The client builds a vehicle only with an engine of the kinds its recipe accepts.
+                    return string.Format("{0} cannot have the {1}: it takes a {2} engine (for example the {3}).", item.Name,
+                        EngineTemplates.Name(engine) ?? engine.ToString(), VehicleEngines.Describe(item.ID),
+                        EngineTemplates.Name(VehicleEngines.ForLoadout(item.ID, c.ClusterID)) ?? "its own");
                 }
             }
             else
@@ -2177,8 +2184,8 @@ namespace TitansUC.GameServer.Network.Client
             string loadout = null;
             if (item.IsVehicle && engine < 0 && Loadouts.Applies(item))
             {
-                // No engine named: a random loadout and a lv.3 engine, ready to fight.
-                engine = Loadouts.Engine(c.ClusterID);
+                // No engine named: a random loadout and a lv.3 engine it can have, ready to fight.
+                engine = VehicleEngines.ForLoadout(item.ID, c.ClusterID);
                 node = Inventory.CreateVehicle(item.ID, engine, Loadouts.Random(item, out loadout));
             }
             else if (item.IsVehicle)

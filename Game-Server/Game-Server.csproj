@@ -57,6 +57,7 @@
     <Compile Include="World\PlayerInventory.cs" />
     <Compile Include="World\VehicleTemplates.cs" />
     <Compile Include="World\VehicleEquipment.cs" />
+    <Compile Include="World\VehicleEngines.cs" />
     <Compile Include="Network\Packets\Client\CM_CLIENT_MSG.cs" />
     <Compile Include="Network\Packets\Client\CM_ITEM_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_MOVE_ITEM.cs" />

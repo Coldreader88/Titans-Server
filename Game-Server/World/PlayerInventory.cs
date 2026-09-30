@@ -1233,12 +1233,14 @@ namespace TitansUC.GameServer.World
         {
             var template = VehicleTemplates.Get(item.ItemID);
             int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
-            int engine = item.Amount > 0 ? item.Amount : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
+            // An engine the vehicle cannot have (saved before VehicleEngines was checked) gives way to its own.
+            int saved = item.Amount > 0 && VehicleEngines.Fits(item.ItemID, item.Amount) ? item.Amount : -1;
+            int engine = saved > 0 ? saved : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
 
             var vehicle = new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
             {
                 Name = !string.IsNullOrEmpty(item.Name) ? item.Name : (template != null ? template.Name : null),
-                EngineID = item.Amount > 0 ? item.Amount : -1,
+                EngineID = saved,
             };
             vehicle.Created = UnixNow();
             vehicle.Health = health;
