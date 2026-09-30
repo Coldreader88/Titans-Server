@@ -76,10 +76,12 @@ CREATE TABLE IF NOT EXISTS `container` (
 -- scores: the player info's ten counters, comma separated (Common.Characters.ScoreSlot: NPC kills and deaths,
 -- criminal count, previous offense, player kills and deaths). management: one digit per skill_idx (0 raise,
 -- 1 lower, 2 lock). medals: points of the Medal of Richmond and the Medal of Newman, comma separated.
+-- rank_points: promotion points towards the next rank (Game-Server World/Ranks.cs).
 CREATE TABLE IF NOT EXISTS `character_state` (
   `char_id` int(10) unsigned NOT NULL,
   `scores` varchar(255) NOT NULL default '',
   `management` varchar(64) NOT NULL default '',
   `medals` varchar(64) NOT NULL default '',
+  `rank_points` int(11) NOT NULL default 0,
   PRIMARY KEY (`char_id`)
 );

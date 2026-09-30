@@ -171,6 +171,18 @@ namespace TitansUC.GameServer
                                 World.Occupation.MedalWin = int.Parse(medals[2].Trim());
                             }
                             break;
+                        case "rankpoints":
+                            if (!World.Ranks.TryParseThresholds(i.InnerText))
+                            {
+                                Logger.ShowWarning("RankPoints needs 15 rising numbers; using the defaults.");
+                            }
+                            break;
+                        case "rankpointsplayerkill":
+                            World.Ranks.PlayerKillPoints = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "rankpointsnpckill":
+                            World.Ranks.NpcKillPoints = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
                         case "crimeexilecount":
                             World.Criminal.ExileCount = Math.Max(0, int.Parse(i.InnerText.Trim()));
                             break;

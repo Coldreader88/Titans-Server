@@ -27,6 +27,13 @@
   <CrimeExileEarth></CrimeExileEarth>
   <CrimeExileSpace></CrimeExileSpace>
 
+  <!-- Promotions (our rule; the client keeps only the rank): players earn promotion points from the town
+       combat quests (their bonus, 5 to 100) and for each enemy player machine and enemy NPC they destroy.
+       RankPoints: total points for ranks 1 (Seaman Apprentice) to 15 (Admiral). -->
+  <RankPoints>10, 25, 50, 100, 175, 275, 400, 550, 750, 1000, 1300, 1650, 2050, 2500, 3000</RankPoints>
+  <RankPointsPlayerKill>2</RankPointsPlayerKill>
+  <RankPointsNpcKill>1</RankPointsNpcKill>
+
   <!-- Battle towns Richmond and Newman (Earth server only): peace for OccupationPeaceMinutes, then the town is open
        to attack until the other faction hits one of its laser communication towers, which starts a war of
        OccupationWarMinutes. Taking all five ICFs wins the town; otherwise the owner keeps it.

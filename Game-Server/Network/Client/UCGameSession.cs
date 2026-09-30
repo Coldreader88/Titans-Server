@@ -595,6 +595,103 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// 0x3E: a quest hand-in. The client checks nothing itself, so here: the quest exists, the player may take
+        /// it (skills and rank, the client's offer rule) and the listed items cover what it asks for. Then the
+        /// items are taken, the money and the reward item given, and the bonus becomes promotion points. Always
+        /// answered (0x803E), or the client blocks further hand-ins. Our own rule: which NPC the player talks to
+        /// is not checked (the client alone knows who offers what).
+        /// </summary>
+        public void OnCompleteQuest(CM_COMPLETE_QUEST p)
+        {
+            if (!CheckInGame("Quest hand-in"))
+            {
+                return;
+            }
+            var quest = Quests.Get(p.QuestID);
+            string refusal = !p.Valid ? "bad request"
+                : p.CharacterID != CharacterID ? "not their character"
+                : quest == null ? "no such quest"
+                : quest.Refusal(Character);
+            ItemNode reward = null, rewardContainer = null;
+            List<QuestUse> used = null;
+            if (refusal == null)
+            {
+                var item = quest.Item;
+                if (item.HasValue)
+                {
+                    var template = ItemTemplates.Get(item.Value.Key);
+                    reward = PlayerInventory.NewItem(item.Value.Key, Math.Max(1, item.Value.Value),
+                        template != null ? template.Name : null);
+                }
+                used = Inventory.HandIn(p.Items, quest.Required, quest.Money, reward, out rewardContainer, out refusal);
+            }
+            if (refusal != null)
+            {
+                Logger.ShowWarning(string.Format("{0}: hand-in of quest {1} refused: {2}.", Character.Name, p.QuestID, refusal));
+                this.Network.SendPacket(new SM_COMPLETE_QUEST(CharacterID, p.QuestID, SM_COMPLETE_QUEST.Error));
+                return;
+            }
+
+            Logger.ShowInfo(string.Format("{0} completed quest {1} ({2}): {3} money{4}{5}.", Character.Name, quest.ID, quest.Name, quest.Money,
+                reward != null ? string.Format(", {0} x {1}", reward.StaticID, reward.Amount) : "",
+                quest.Bonus > 0 ? ", " + quest.Bonus + " promotion points" : ""));
+            this.Network.SendPacket(new SM_COMPLETE_QUEST(CharacterID, quest.ID, SM_COMPLETE_QUEST.Done, quest.Money,
+                rewardContainer, reward, used));
+            SaveItems();
+            if (quest.Bonus > 0)
+            {
+                AddRankPoints(quest.Bonus, "quest " + quest.ID);
+            }
+        }
+
+        /// <summary>
+        /// Adds promotion points and promotes the player when they reach a new rank (<see cref="Ranks"/>): saved,
+        /// and 0x8034's rank change tells the client ("promoted to ...").
+        /// </summary>
+        public void AddRankPoints(int points, string why)
+        {
+            if (!InGame || points <= 0)
+            {
+                return;
+            }
+            int before, after;
+            lock (Character)
+            {
+                Character.RankPoints += points;
+                before = Character.Rank;
+                after = Math.Max(before, Ranks.ForPoints(Character.RankPoints));
+                Character.Rank = after;
+            }
+            SaveState();
+            if (after != before)
+            {
+                Logger.ShowInfo(string.Format("{0} was promoted from rank {1} to {2} ({3} points, {4}).", Character.Name, before, after,
+                    Character.RankPoints, why));
+                this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, new List<KeyValuePair<Skill, int>>(), false, after - before));
+            }
+        }
+
+        /// <summary>
+        /// A GM's #rank: sets the rank (and the points to where that rank starts). The client shows a promotion
+        /// or a demotion.
+        /// </summary>
+        public void SetRank(int rank)
+        {
+            int before;
+            lock (Character)
+            {
+                before = Character.Rank;
+                Character.Rank = rank;
+                Character.RankPoints = Ranks.PointsFor(rank);
+            }
+            SaveState();
+            if (rank != before)
+            {
+                this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, new List<KeyValuePair<Skill, int>>(), false, rank - before));
+            }
+        }
+
+        /// <summary>
         /// Adds medal points, saves them and tells the client (0x8034's medal list).
         /// </summary>
         public void AddMedal(int medal, int points)
@@ -1790,6 +1887,10 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 AddScore(r.Friendly ? ScoreSlot.FriendlyNpcKills : ScoreSlot.EnemyNpcKills);
+                if (!r.Friendly)
+                {
+                    AddRankPoints(Ranks.NpcKillPoints, "an enemy NPC destroyed");
+                }
             }
         }
 
@@ -1924,6 +2025,10 @@ namespace TitansUC.GameServer.Network.Client
                 if (target != this)
                 {
                     AddScore(r.Friendly ? ScoreSlot.FriendlyPlayerKills : ScoreSlot.EnemyPlayerKills);
+                    if (!r.Friendly)
+                    {
+                        AddRankPoints(Ranks.PlayerKillPoints, "an enemy destroyed");
+                    }
                     target.AddScore(r.Friendly ? ScoreSlot.DeathsByFriendlyPlayer : ScoreSlot.DeathsByEnemyPlayer);
                 }
             }

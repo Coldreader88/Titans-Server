@@ -151,6 +151,13 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "rank", Usage = "#rank [0-15] | #rank points n", Level = AccessLevel.GM,
+                Description = "Shows your rank and promotion points, sets your rank, or adds points (promoting you as play would).",
+                Examples = new[] { "#rank", "#rank 8 (Lieutenant)", "#rank 0", "#rank points 50" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "rank", a)),
+            });
+            Add(new Command
+            {
                 Name = "town", Usage = "#town [richmond|newman] [peace [minutes] | open | war [minutes] | end [ef|zeon] | owner ef|zeon | icf 1-5 ef|zeon | reset]",
                 Level = AccessLevel.GM,
                 Description = "Shows the battle towns, or sets one's state: ceasefire, open to attack, at war, the war's end and winner, the owner, one ICF, or back to the start.",

@@ -250,6 +250,17 @@ namespace TitansUC.GameServer.World
                 return d[Position++];
             }
 
+            /// <summary>
+            /// A UC string: size in characters, then UTF-16LE.
+            /// </summary>
+            public string String()
+            {
+                int n = Size();
+                var s = System.Text.Encoding.Unicode.GetString(d, Position, n * 2);
+                Position += n * 2;
+                return s;
+            }
+
             public int Size()
             {
                 int value = 0, shift = 0;

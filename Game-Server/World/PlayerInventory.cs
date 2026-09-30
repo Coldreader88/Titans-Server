@@ -402,6 +402,105 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// A quest hand-in (0x3E), all or nothing: checks that the offered items (their unique ids) cover every
+        /// required template and amount, takes those amounts, adds the money and puts the reward item in the
+        /// backpack. Null with <paramref name="refusal"/> set when it cannot; otherwise the items used: each
+        /// with the amount taken and whether it is gone.
+        /// </summary>
+        public List<QuestUse> HandIn(IEnumerable<uint> offered, IList<KeyValuePair<int, int>> required, int money, ItemNode reward,
+            out ItemNode rewardContainer, out string refusal)
+        {
+            rewardContainer = null;
+            lock (sync)
+            {
+                var items = new List<ItemNode>();
+                foreach (var uid in offered)
+                {
+                    var item = GetLocked(uid);
+                    if (item != null && !items.Contains(item) && item.Parent != null && CanHoldItems(item.Parent) && !IsVehicle(item))
+                    {
+                        items.Add(item);
+                    }
+                }
+
+                var needs = new Dictionary<int, int>();
+                foreach (var r in required)
+                {
+                    int n;
+                    needs.TryGetValue(r.Key, out n);
+                    needs[r.Key] = n + Math.Max(1, r.Value);
+                }
+                foreach (var need in needs)
+                {
+                    int have = 0;
+                    foreach (var item in items)
+                    {
+                        if (item.StaticID == need.Key)
+                        {
+                            have += Math.Max(1, item.Amount);
+                        }
+                    }
+                    if (have < need.Value)
+                    {
+                        refusal = string.Format("{0} of {1} handed in, {2} needed", have, need.Key, need.Value);
+                        return null;
+                    }
+                }
+
+                if (reward != null)
+                {
+                    rewardContainer = Find(PlayerContainers.Backpack);
+                    if (rewardContainer == null || !CanHoldItems(rewardContainer))
+                    {
+                        refusal = "no backpack for the reward";
+                        return null;
+                    }
+                }
+
+                var used = new List<QuestUse>();
+                foreach (var need in needs)
+                {
+                    int left = need.Value;
+                    foreach (var item in items)
+                    {
+                        if (left == 0 || item.StaticID != need.Key)
+                        {
+                            continue;
+                        }
+                        int amount = Math.Max(1, item.Amount);
+                        int take = Math.Min(left, amount);
+                        left -= take;
+                        if (take < amount)
+                        {
+                            item.Amount -= take;
+                            Touch(item);
+                            used.Add(new QuestUse(item, take, false));
+                        }
+                        else
+                        {
+                            item.Parent.Remove(item);
+                            UnregisterTree(item);
+                            used.Add(new QuestUse(item, take, true));
+                        }
+                    }
+                }
+
+                if (money != 0 && Money != null)
+                {
+                    Money.Amount += money;
+                }
+                if (reward != null)
+                {
+                    Touch(reward);
+                    rewardContainer.Add(reward);
+                    RegisterTree(reward);
+                }
+                refusal = null;
+                return used;
+            }
+        }
+
+        /// <summary>
         /// Throws an item away (0x15): the piloted vehicle (the player is then on foot) or an item in one of the
         /// containers. Returns what was deleted, or null.
         /// </summary>
