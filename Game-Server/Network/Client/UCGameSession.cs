@@ -2130,7 +2130,7 @@ namespace TitansUC.GameServer.Network.Client
                 int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
                 suit = suit ?? ItemTemplates.Get(template);
                 string weapons = "its default guns";
-                int[] armaments = suit != null && Loadouts.Applies(suit) ? Loadouts.RandomArmaments(suit, out weapons) : null;
+                int[] armaments = suit != null && VehicleEquipment.SlotCount(suit.ID) > 0 ? Loadouts.RandomArmaments(suit, out weapons) : null;
                 var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments,
                     friendly ? "Friendly" : "Spawned");
                 Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}.", Character.Name, friendly ? "friendly" : "hostile",

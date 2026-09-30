@@ -1,4 +1,4 @@
--- Character tables used by the Lobby-Server (character list and creation).
+﻿-- Character tables used by the Lobby-Server (character list and creation).
 -- Same layout as the Java server's sql/characters.sql, appearance.sql, garments.sql,
 -- char_skills.sql and container.sql (Java.zip), so an existing Java database can be reused.
 -- container.child is used by the Java code but missing from its container.sql, so it is added here.
@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS `skills` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- item_amount is the stack size, or for a vehicle its engine id (-1 = the template's engine).
+-- child: a vehicle's cargo and armaments ("itemID-amount", "@slot-itemID", "!health"); a weapon or shield that
+-- is worn or not fully loaded adds "~d<durability>~l<rounds>" (on its own for a single item's row).
+-- container_id 110005 is the trade pack in the swap pack; 500001 the bank credit; 500002 the vehicle being piloted.
 CREATE TABLE IF NOT EXISTS `container` (
   `char_id` int(10) NOT NULL default '0',
   `container_id` int(10) NOT NULL default '0',

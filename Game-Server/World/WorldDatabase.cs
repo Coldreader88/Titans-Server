@@ -88,7 +88,8 @@ namespace TitansUC.GameServer.World
                         };
                         bool vehicle = reader.GetInt32(4) != 0;
                         var node = vehicle ? PlayerInventory.BuildVehicle(row)
-                            : PlayerInventory.NewItem(row.ItemID, row.Amount > 0 ? row.Amount : 1, string.IsNullOrEmpty(row.Name) ? null : row.Name);
+                            : PlayerInventory.ApplyState(PlayerInventory.NewItem(row.ItemID, row.Amount > 0 ? row.Amount : 1,
+                                string.IsNullOrEmpty(row.Name) ? null : row.Name), row.Children);
                         bool wreck = reader.GetInt32(5) != 0;
                         if (wreck)
                         {

@@ -139,7 +139,7 @@ namespace TitansUC.GameServer.World
                     continue;
                 }
 
-                var container = Find(item.ContainerID);
+                var container = item.ContainerID == PlayerContainers.TradePack ? TradePack : Find(item.ContainerID);
                 if (container == null || item.ItemID <= 0 || item.ContainerID == PlayerContainers.Weared)
                 {
                     Logger.ShowWarning(string.Format("{0}: skipping item {1} ({2}) in unknown container {3}.",
@@ -156,8 +156,20 @@ namespace TitansUC.GameServer.World
                 }
                 else
                 {
-                    Register(container.Add(NewItem(item.ItemID, item.Amount > 0 ? item.Amount : 1, item.Name)));
+                    Register(container.Add(ApplyState(NewItem(item.ItemID, item.Amount > 0 ? item.Amount : 1, item.Name), item.Children)));
                 }
+            }
+        }
+
+        /// <summary>
+        /// The trade pack inside the swap pack, or null.
+        /// </summary>
+        public ItemNode TradePack
+        {
+            get
+            {
+                var swapPack = Find(PlayerContainers.SwapPack);
+                return swapPack != null ? swapPack.Children.Find(c => c.StaticID == PlayerContainers.TradePack) : null;
             }
         }
 
@@ -556,7 +568,8 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// Equips a weapon or shield from the piloted vehicle's inventory into armament slot
-        /// <paramref name="slot"/> (0x1B); what was there goes back to the inventory.
+        /// <paramref name="slot"/> (0x1B); what was there goes back to the inventory. Refused when the vehicle
+        /// cannot carry that kind of item in that slot (<see cref="VehicleEquipment"/>).
         /// </summary>
         public bool Equip(uint itemUID, int slot)
         {
@@ -570,7 +583,8 @@ namespace TitansUC.GameServer.World
                 }
                 var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
                 var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
-                if (inventory == null || armaments == null || item.Parent != inventory)
+                if (inventory == null || armaments == null || item.Parent != inventory ||
+                    !VehicleEquipment.CanEquip(vehicle.StaticID, slot, item.StaticID))
                 {
                     return false;
                 }
@@ -953,8 +967,10 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The rows to write back to the container table: every item in the top-level containers except
-        /// weared (clothes are in the garments table). The piloted vehicle has its own row
-        /// (<see cref="PilotingRow"/>); vehicles left on the ground are saved with the world (WorldDatabase).
+        /// weared (clothes are in the garments table), and what is in the trade pack (container_id 110005).
+        /// A worn weapon or shield keeps its durability and loaded rounds in the child column
+        /// (<see cref="StateOf"/>). The piloted vehicle has its own row (<see cref="PilotingRow"/>); vehicles left
+        /// on the ground are saved with the world (WorldDatabase).
         /// </summary>
         public List<CharacterItem> ToRows()
         {
@@ -971,6 +987,11 @@ namespace TitansUC.GameServer.World
                     {
                         if (item.StaticID == PlayerContainers.TradePack && container.StaticID == PlayerContainers.SwapPack)
                         {
+                            // The trade pack itself is made at login; what is in it has rows of its own.
+                            foreach (var packed in item.Children)
+                            {
+                                rows.Add(ToRow(PlayerContainers.TradePack, packed));
+                            }
                             continue;
                         }
                         rows.Add(ToRow(container.StaticID, item));
@@ -1001,7 +1022,7 @@ namespace TitansUC.GameServer.World
                 ItemID = item.StaticID,
                 Name = item.Name,
                 Amount = vehicle ? item.EngineID : item.Amount,
-                Children = vehicle ? VehicleChildren(item) : null,
+                Children = vehicle ? VehicleChildren(item) : StateOf(item),
             };
         }
 
@@ -1014,20 +1035,24 @@ namespace TitansUC.GameServer.World
                 ItemID = item.StaticID,
                 Name = item.Name,
                 Amount = vehicle ? item.EngineID : item.Amount,
-                Children = vehicle ? VehicleChildren(item) : null,
+                Children = vehicle ? VehicleChildren(item) : StateOf(item),
             };
         }
 
         /// <summary>
         /// Containers items can be moved in and out of with section 7: the player's own top-level list
         /// containers other than weared and the hangar (those have their own sections), and vehicle
-        /// inventories (saved in container.child). The trade pack is not saved yet, so moves into it are refused.
+        /// inventories (saved in container.child), and the trade pack in the swap pack.
         /// </summary>
         private static bool CanHoldItems(ItemNode container)
         {
             if (container.Format != ItemNode.Multi)
             {
                 return false;
+            }
+            if (container.StaticID == PlayerContainers.TradePack)
+            {
+                return container.Parent != null && container.Parent.StaticID == PlayerContainers.SwapPack && container.Parent.Parent == null;
             }
             if (container.StaticID == VehicleInventory)
             {
@@ -1224,11 +1249,15 @@ namespace TitansUC.GameServer.World
             var inventory = vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 });
 
             // Java's container.child format: "itemID-amount" separated by spaces; equipped armaments are
-            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle.
+            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle, and a worn or partly loaded
+            // weapon or shield has its state after the entry ("@0-280000~d450~l30", see StateOf).
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
-            foreach (var entry in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+            foreach (var whole in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
             {
                 int first, second;
+                int tilde = whole.IndexOf('~');
+                string entry = tilde >= 0 ? whole.Substring(0, tilde) : whole;
+                string state = tilde >= 0 ? whole.Substring(tilde) : null;
                 if (entry.StartsWith("!"))
                 {
                     if (int.TryParse(entry.Substring(1), out first) && first >= 0 && first < health)
@@ -1245,12 +1274,21 @@ namespace TitansUC.GameServer.World
                 }
                 if (armament && first >= 0 && first < MaxArmamentSlots && second > 0)
                 {
-                    PadSlots(armaments, first);
-                    armaments.SetSlot(first, NewItem(second, 1, null));
+                    var weapon = ApplyState(NewItem(second, 1, null), state);
+                    if (VehicleEquipment.CanEquip(item.ItemID, first, second))
+                    {
+                        PadSlots(armaments, first);
+                        armaments.SetSlot(first, weapon);
+                    }
+                    else
+                    {
+                        // Saved before the slot rules were checked: it goes in the cargo rather than being lost.
+                        inventory.Add(weapon);
+                    }
                 }
                 else if (!armament && first > 0)
                 {
-                    inventory.Add(NewItem(first, second > 0 ? second : 1, null));
+                    inventory.Add(ApplyState(NewItem(first, second > 0 ? second : 1, null), state));
                 }
             }
             vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine);
@@ -1266,7 +1304,7 @@ namespace TitansUC.GameServer.World
             var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
             if (inventory != null)
             {
-                entries.AddRange(inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount));
+                entries.AddRange(inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount + StateOf(c)));
             }
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
             if (armaments != null)
@@ -1275,7 +1313,7 @@ namespace TitansUC.GameServer.World
                 {
                     if (!armaments.Children[i].IsEmptySlot)
                     {
-                        entries.Add("@" + i + "-" + armaments.Children[i].StaticID);
+                        entries.Add("@" + i + "-" + armaments.Children[i].StaticID + StateOf(armaments.Children[i]));
                     }
                 }
             }
@@ -1332,6 +1370,57 @@ namespace TitansUC.GameServer.World
                     ? new[] { template.Durability, template.Durability, template.Power, template.Rate, template.Range, 0, 1000 }
                     : new[] { template.Durability, template.Durability, 0, 0, 0, 0, 1000 };
                 item.Loaded = template.IsWeapon ? template.Magazine : 0;
+            }
+            return item;
+        }
+
+        /// <summary>
+        /// What a saved item needs beyond its template and amount: "~d" + durability for a worn weapon or shield,
+        /// "~l" + rounds for a weapon whose magazine is not as bought. Empty for everything else.
+        /// </summary>
+        public static string StateOf(ItemNode item)
+        {
+            if (!item.IsEquipment || item.Stats.Length < 2)
+            {
+                return string.Empty;
+            }
+            var state = string.Empty;
+            if (item.Stats[0] != item.Stats[1])
+            {
+                state += "~d" + item.Stats[0];
+            }
+            var template = ItemTemplates.Get(item.StaticID);
+            if (item.Loaded != (template != null && template.IsWeapon ? template.Magazine : 0))
+            {
+                state += "~l" + item.Loaded;
+            }
+            return state;
+        }
+
+        /// <summary>
+        /// Puts back what <see cref="StateOf"/> saved; anything else in <paramref name="state"/> is ignored.
+        /// </summary>
+        public static ItemNode ApplyState(ItemNode item, string state)
+        {
+            if (string.IsNullOrEmpty(state) || !item.IsEquipment || item.Stats.Length < 2)
+            {
+                return item;
+            }
+            foreach (var token in state.Split(new[] { '~' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                int value;
+                if (token.Length < 2 || !int.TryParse(token.Substring(1), out value) || value < 0)
+                {
+                    continue;
+                }
+                if (token[0] == 'd')
+                {
+                    item.Stats[0] = Math.Min(value, item.Stats[1]);
+                }
+                else if (token[0] == 'l')
+                {
+                    item.Loaded = value;
+                }
             }
             return item;
         }

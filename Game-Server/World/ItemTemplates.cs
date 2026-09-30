@@ -219,6 +219,7 @@ namespace TitansUC.GameServer.World
             p = afterPrice + 41; t.Range = ReadInt(d, ref p);
             p = afterPrice + 49; t.Power = ReadInt(d, ref p);
             p = afterPrice + 57; t.Rate = ReadInt(d, ref p);
+            p = afterPrice + 73; t.AmmoID = ReadInt(d, ref p);
             p = afterPrice + 85; t.Magazine = ReadInt(d, ref p);
         }
 
@@ -350,6 +351,12 @@ namespace TitansUC.GameServer.World
         public int Power { get; set; }
         public int Rate { get; set; }
         public int Magazine { get; set; }
+
+        /// <summary>
+        /// The ammunition (54xxxx) a weapon fires, from WEAPONTEMPLATE.DAT (73 bytes after the price); 0 or -1
+        /// for none (melee weapons).
+        /// </summary>
+        public int AmmoID { get; set; }
 
         /// <summary>
         /// The combat skill that operates this weapon (shooting, sniping, CQB, hand to hand; defence for a shield),

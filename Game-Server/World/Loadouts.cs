@@ -1,15 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// A random loadout for an MS or MA a GM spawns without naming an engine: a ranged weapon with ammo, a
-    /// melee weapon, a shield that fits the model, and an MS/MA typeA lv.3 engine (rocket in Space, jet on
-    /// Earth). Weapons and shields named for a model ("Shield(RX-78)", "ZAKU bazooka(MS-06)") are only
-    /// given to that model; the rest (MS head vulcan, Heat hawk, Hyper bazooka) go on anything. The client
-    /// data has no weapon-to-ammo table, so ammo is picked from the weapon's name.
+    /// A random loadout for an MS or MA a GM spawns without naming an engine, or for a spawned NPC: every
+    /// armament slot gets something the client lets that vehicle carry there (<see cref="VehicleEquipment"/>):
+    /// a gun in the first slot that takes one, a shield in the first that takes shields, a melee weapon in the
+    /// next free one that takes one, and a gun of the slot's own kind (head vulcan, shoulder cannon) in the
+    /// rest. Guns come with 5 magazines of the ammunition their template names, and the vehicle gets an MS/MA
+    /// typeA lv.3 engine (rocket in Space, jet on Earth).
     /// </summary>
     public static class Loadouts
     {
@@ -18,7 +19,7 @@ namespace TitansUC.GameServer.World
 
         private static readonly Random random = new Random();
 
-        private static readonly string[] Excluded = { "tank/fighter", "bb ", "tool kit", "drill", "magella", "ball cannon", "throwing device" };
+        private static readonly string[] Excluded = { "tank/fighter", "bb ", "tool kit", "drill", "throwing device", "flag" };
         private static readonly string[] Melee = { "saber", "hawk", "sword", "claw", "punch", "grapple", "heat rod", "naginata", "hammer" };
 
         /// <summary>
@@ -36,49 +37,56 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The vehicle's container.child value (see PlayerInventory.NewVehicle): "@slot-weapon" for the
-        /// armaments (0 ranged, 1 shield, 2 melee) and "item-amount" for the ammo in its inventory.
-        /// <paramref name="summary"/> names what it got, for the GM.
+        /// armaments and "item-amount" for the ammo in its inventory. <paramref name="summary"/> names what it
+        /// got, for the GM.
         /// </summary>
         public static string Random(ItemTemplate vehicle, out string summary)
         {
-            ItemTemplate gun, shield, blade;
-            Pick(vehicle, out gun, out shield, out blade);
+            var slots = Pick(vehicle);
             var entries = new List<string>();
             var names = new List<string>();
-            if (gun != null)
+            var ammo = new Dictionary<int, int>();
+            for (int i = 0; i < slots.Length; i++)
             {
-                int ammo = AmmoFor(gun.Name);
-                int amount = Math.Max(gun.Magazine, 20) * 5;
-                entries.Add("@0-" + gun.ID);
-                entries.Add(ammo + "-" + amount);
-                var ammoTemplate = ItemTemplates.Get(ammo);
-                names.Add(gun.Name + " with " + amount + " " + (ammoTemplate != null ? ammoTemplate.Name : ammo.ToString()));
+                var t = slots[i];
+                if (t == null)
+                {
+                    continue;
+                }
+                entries.Add("@" + i + "-" + t.ID);
+                names.Add(t.Name);
+                if (t.IsWeapon && t.AmmoID > 0 && t.Magazine > 0)
+                {
+                    int amount;
+                    ammo.TryGetValue(t.AmmoID, out amount);
+                    ammo[t.AmmoID] = amount + Math.Max(t.Magazine, 20) * 5;
+                }
             }
-            if (shield != null)
+            foreach (var a in ammo)
             {
-                entries.Add("@1-" + shield.ID);
-                names.Add(shield.Name);
-            }
-            if (blade != null)
-            {
-                entries.Add("@2-" + blade.ID);
-                names.Add(blade.Name);
+                entries.Add(a.Key + "-" + a.Value);
+                var ammoTemplate = ItemTemplates.Get(a.Key);
+                names.Add(a.Value + " " + (ammoTemplate != null ? ammoTemplate.Name : a.Key.ToString()));
             }
             summary = names.Count > 0 ? string.Join(", ", names) : "no weapons";
             return string.Join(" ", entries);
         }
 
         /// <summary>
-        /// A random loadout for an NPC: its 4 armament slots (0 gun, 1 shield, 2 melee weapon, 3 empty; -1 for
-        /// an empty slot), as <see cref="Random(ItemTemplate, out string)"/> picks them.
+        /// A random loadout for an NPC: the template in each of its armament slots (at least 4; -1 for an empty
+        /// slot), as <see cref="Random(ItemTemplate, out string)"/> picks them.
         /// </summary>
         public static int[] RandomArmaments(ItemTemplate vehicle, out string summary)
         {
-            ItemTemplate gun, shield, blade;
-            Pick(vehicle, out gun, out shield, out blade);
-            var names = new[] { gun, shield, blade }.Where(t => t != null).Select(t => t.Name).ToList();
+            var slots = Pick(vehicle);
+            var names = slots.Where(t => t != null).Select(t => t.Name).ToList();
             summary = names.Count > 0 ? string.Join(", ", names) : "no weapons";
-            return new[] { gun != null ? gun.ID : -1, shield != null ? shield.ID : -1, blade != null ? blade.ID : -1, -1 };
+            var result = slots.Select(t => t != null ? t.ID : -1).ToList();
+            while (result.Count < 4)
+            {
+                result.Add(-1);
+            }
+            return result.ToArray();
         }
 
         /// <summary>
@@ -87,36 +95,64 @@ namespace TitansUC.GameServer.World
         public static ItemTemplate RandomMobileSuit()
         {
             var suits = ItemTemplates.InCategory("ms").Where(t => t.IsVehicle && VehicleTemplates.Get(t.ID) != null &&
-                !Excluded.Any(x => t.Name.ToLowerInvariant().Contains(x))).ToList();
+                VehicleEquipment.SlotCount(t.ID) > 0 && !Excluded.Any(x => t.Name.ToLowerInvariant().Contains(x))).ToList();
             lock (random)
             {
                 return Pick(suits);
             }
         }
 
-        private static void Pick(ItemTemplate vehicle, out ItemTemplate gun, out ItemTemplate shield, out ItemTemplate blade)
+        /// <summary>
+        /// What goes in each armament slot of the vehicle (null = nothing).
+        /// </summary>
+        private static ItemTemplate[] Pick(ItemTemplate vehicle)
         {
-            var template = VehicleTemplates.Get(vehicle.ID);
-            string model = Normalize(template != null ? template.Model : vehicle.Name);
-            bool armor = vehicle.Category == "ma";
-
-            var weapons = ItemTemplates.InCategory("weapon").Where(w => w.ForSale && Fits(w.Name, model, armor)).ToList();
-            var ranged = weapons.Where(w => !IsMelee(w.Name) && AmmoFor(w.Name) > 0).ToList();
-            var melee = weapons.Where(w => IsMelee(w.Name)).ToList();
-            var shields = armor ? new List<ItemTemplate>()
-                : ItemTemplates.InCategory("shield").Where(s => s.ForSale && Code(s.Name) != null && Fits(s.Name, model, false)).ToList();
+            int count = VehicleEquipment.SlotCount(vehicle.ID);
+            var slots = new ItemTemplate[count];
+            var candidates = ItemTemplates.InCategory("weapon").Concat(ItemTemplates.InCategory("shield"))
+                .Where(t => t.ForSale && Usable(t)).ToList();
+            Func<int, Func<ItemTemplate, bool>, List<ItemTemplate>> fitting = (slot, what) =>
+                candidates.Where(t => what(t) && VehicleEquipment.Fits(vehicle.ID, slot, t.Kind)).ToList();
+            Func<ItemTemplate, bool> gun = t => t.IsWeapon && IsGun(t);
+            Func<ItemTemplate, bool> shield = t => t.IsShield;
+            Func<ItemTemplate, bool> blade = t => t.IsWeapon && !IsGun(t);
 
             lock (random)
             {
-                gun = Pick(ranged);
-                shield = Pick(shields);
-                blade = Pick(melee);
+                foreach (var role in new[] { gun, shield, blade })
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (slots[i] == null)
+                        {
+                            var list = fitting(i, role);
+                            if (list.Count > 0)
+                            {
+                                slots[i] = Pick(list);
+                                break;
+                            }
+                        }
+                    }
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    if (slots[i] == null)
+                    {
+                        slots[i] = Pick(fitting(i, gun));
+                    }
+                }
             }
+            return slots;
         }
 
         private static ItemTemplate Pick(List<ItemTemplate> list)
         {
             return list.Count > 0 ? list[random.Next(list.Count)] : null;
+        }
+
+        private static bool IsGun(ItemTemplate t)
+        {
+            return t.Magazine > 0 && t.AmmoID > 0;
         }
 
         public static bool IsMelee(string name)
@@ -125,71 +161,14 @@ namespace TitansUC.GameServer.World
             return Melee.Any(m => n.Contains(m));
         }
 
-        private static bool Fits(string name, string model, bool armor)
-        {
-            var n = name.ToLowerInvariant();
-            // "MA ..." weapons only go on mobile armors; "SP ..." are special editions.
-            if (Excluded.Any(x => n.Contains(x)) || n.StartsWith("sp ") || (n.StartsWith("ma ") && !armor))
-            {
-                return false;
-            }
-            var code = Code(name);
-            return code == null || model.Contains(code);
-        }
-
         /// <summary>
-        /// The model a weapon or shield is made for, from the end of its name: "Shield(RGM-79G)" is "rgm-79g".
+        /// Weapons and shields a spawned loadout may use: not the tank/fighter and battleship ones (no MS takes
+        /// them anyway), tool kits, drills, throwing devices, flags or special editions.
         /// </summary>
-        private static string Code(string name)
+        private static bool Usable(ItemTemplate t)
         {
-            int open = name.LastIndexOf('('), close = name.LastIndexOf(')');
-            return open >= 0 && close > open + 1 ? Normalize(name.Substring(open + 1, close - open - 1)) : null;
-        }
-
-        private static string Normalize(string s)
-        {
-            return (s ?? "").ToLowerInvariant().Replace("(", "").Replace(")", "").Replace(" ", "");
-        }
-
-        /// <summary>
-        /// The ammunition (54xxxx) a weapon fires, from its name; 0 for none known.
-        /// </summary>
-        public static int AmmoFor(string name)
-        {
-            var n = name.ToLowerInvariant();
-            if (n.Contains("beam") || n.Contains("mega particle"))
-            {
-                return 540002;
-            }
-            if (n.Contains("vulcan"))
-            {
-                return 540001;
-            }
-            if (n.Contains("rocket launcher"))
-            {
-                return 540011;
-            }
-            if (n.Contains("bazooka"))
-            {
-                return 540009;
-            }
-            if (n.Contains("boomerang"))
-            {
-                return 540010;
-            }
-            if (n.Contains("missile") || n.Contains("torpedo"))
-            {
-                return 540007;
-            }
-            if (n.Contains("cannon") || n.Contains("launcher"))
-            {
-                return 540004;
-            }
-            if (n.Contains("machine gun") || n.Contains("rifle") || n.Contains("zmp") || n.Contains("mmp") || n.Contains("gmg") || n.Contains("br.g"))
-            {
-                return 540000;
-            }
-            return 0;
+            var n = t.Name.ToLowerInvariant();
+            return t.Kind > 0 && !Excluded.Any(x => n.Contains(x)) && !n.StartsWith("sp ");
         }
     }
 }

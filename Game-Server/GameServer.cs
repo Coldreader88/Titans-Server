@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 using Common.Database;
 using Common.Network;
 using Common.Network.Packets;
@@ -22,6 +24,7 @@ namespace TitansUC.GameServer
         static void Main(string[] args)
         {
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
+            WatchConsoleClose();
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
             // The logger starts in InitServer; anything logged before it (reading the configuration does)
@@ -196,12 +199,71 @@ namespace TitansUC.GameServer
         private static void ShuttingDown(object sender, ConsoleCancelEventArgs args)
         {
             Logger.ShowInfo("Closing.....");
+            SaveEverything();
+            GameClientManager.Instance.Stop();
+        }
+
+        private static int savedAtExit;
+
+        /// <summary>
+        /// Writes every player and the ground, once, however the server is going down.
+        /// </summary>
+        private static void SaveEverything()
+        {
+            if (Interlocked.Exchange(ref savedAtExit, 1) == 1)
+            {
+                return;
+            }
             foreach (UCGameSession player in GameWorld.Instance.Players)
             {
-                player.Save();
+                try
+                {
+                    player.Save();
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowError(ex);
+                }
             }
-            WorldDatabase.SaveGround(Configuration.Instance.Zone);
-            GameClientManager.Instance.Stop();
+            try
+            {
+                WorldDatabase.SaveGround(Configuration.Instance.Zone);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+        }
+
+        private delegate bool ConsoleCtrlHandler(int type);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
+
+        private static ConsoleCtrlHandler consoleHandler;
+
+        /// <summary>
+        /// Closing the console window, logging off or shutting Windows down does not raise CancelKeyPress; Windows
+        /// tells the console handler instead (close 2, logoff 5, shutdown 6), and the server saves before it goes.
+        /// </summary>
+        private static void WatchConsoleClose()
+        {
+            try
+            {
+                consoleHandler = type =>
+                {
+                    if (type == 2 || type == 5 || type == 6)
+                    {
+                        SaveEverything();
+                    }
+                    return false;
+                };
+                SetConsoleCtrlHandler(consoleHandler, true);
+            }
+            catch (Exception)
+            {
+                // Not on Windows: Ctrl+C is all there is.
+            }
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -212,6 +274,7 @@ namespace TitansUC.GameServer
             Logger.ShowError("Error Message:" + ex.Message);
             Logger.ShowError("Call Stack:" + ex.StackTrace);
 
+            SaveEverything();
             GameClientManager.Instance.Stop();
         }
     }
