@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -214,7 +214,7 @@ namespace TitansUC.GameServer.World
             var coord = player.Coord;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             lock (city)
             {
@@ -228,11 +228,11 @@ namespace TitansUC.GameServer.World
                 }
                 if ((ushort)player.Character.Faction == city.Owner)
                 {
-                    return "their faction holds the town";
+                    return "your faction holds the town";
                 }
                 if (coord == null || !city.Contains(coord, OuterHalf))
                 {
-                    return "not in the town";
+                    return "you are not in the town";
                 }
                 city.Status = StatusWar;
                 city.Time = GameWorld.UnixTime() + WarSeconds;
@@ -254,7 +254,7 @@ namespace TitansUC.GameServer.World
             var coord = player.Coord;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             bool joined;
             lock (city)
@@ -265,7 +265,7 @@ namespace TitansUC.GameServer.World
                 }
                 if (coord == null || !city.Contains(coord, OuterHalf))
                 {
-                    return "not in the town";
+                    return "you are not in the town";
                 }
                 if (!city.Participants.ContainsKey(player.CharacterID))
                 {
@@ -314,7 +314,7 @@ namespace TitansUC.GameServer.World
             var faction = (ushort)player.Character.Faction;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             bool won;
             lock (city)
@@ -331,27 +331,27 @@ namespace TitansUC.GameServer.World
                 }
                 if (!city.Participants.TryGetValue(player.CharacterID, out since))
                 {
-                    return "not registered for the war";
+                    return "you are not registered for the war";
                 }
                 if ((now - since).TotalSeconds < CaptureSeconds * 0.9)
                 {
-                    return "registered only " + (int)(now - since).TotalSeconds + " s ago";
+                    return "you registered only " + (int)(now - since).TotalSeconds + " seconds ago";
                 }
                 if (city.LastCapture.TryGetValue(player.CharacterID, out last) && (now - last).TotalSeconds < CaptureSeconds * 0.9)
                 {
-                    return "captured another ICF " + (int)(now - last).TotalSeconds + " s ago";
+                    return "you captured another ICF " + (int)(now - last).TotalSeconds + " seconds ago";
                 }
                 if (coord == null || !city.Contains(coord, InnerHalf))
                 {
-                    return "not by the ICFs";
+                    return "you are not by the ICFs";
                 }
                 if (player.Character.IsCriminal)
                 {
-                    return "a criminal";
+                    return "criminals cannot take part";
                 }
                 if (city.Icf[flag] == faction)
                 {
-                    return "their faction holds it already";
+                    return "your faction holds it already";
                 }
                 city.Icf[flag] = faction;
                 city.LastCapture[player.CharacterID] = now;

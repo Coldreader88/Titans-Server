@@ -214,8 +214,8 @@ namespace TitansUC.GameServer.World
                 cmd.Parameters.AddWithValue("@id", characterID);
                 cmd.Parameters.AddWithValue("@cluster", cluster);
                 cmd.Parameters.AddWithValue("@uid", shuttleUniqueID);
-                cmd.Parameters.AddWithValue("@a", transport.A);
-                cmd.Parameters.AddWithValue("@b", transport.B);
+                cmd.Parameters.AddWithValue("@a", transport.Launch);
+                cmd.Parameters.AddWithValue("@b", transport.Town);
                 cmd.Parameters.AddWithValue("@x", transport.X);
                 cmd.Parameters.AddWithValue("@y", transport.Y);
                 cmd.Parameters.AddWithValue("@z", transport.Z);
@@ -255,7 +255,7 @@ namespace TitansUC.GameServer.World
                         {
                             transport = new Transport
                             {
-                                A = reader.GetInt32(0), B = reader.GetInt32(1),
+                                Launch = reader.GetInt32(0), Town = reader.GetInt32(1),
                                 X = reader.GetInt32(2), Y = reader.GetInt32(3), Z = reader.GetInt32(4),
                             };
                         }

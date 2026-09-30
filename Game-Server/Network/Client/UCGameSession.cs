@@ -592,6 +592,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 Logger.ShowWarning(string.Format("{0}: battle town request 0x{1:X2} for town {2} (ICF {3}) refused: {4}.", Character.Name,
                     (int)p.Request, p.CityID, p.Flag, refusal));
+                Tell("Refused: " + refusal + ".");
             }
         }
 
@@ -629,6 +630,10 @@ namespace TitansUC.GameServer.Network.Client
             if (refusal != null)
             {
                 Logger.ShowWarning(string.Format("{0}: hand-in of quest {1} refused: {2}.", Character.Name, p.QuestID, refusal));
+                if (quest != null && p.CharacterID == CharacterID)
+                {
+                    Tell("You cannot complete " + quest.Name + ": " + refusal + ".");
+                }
                 this.Network.SendPacket(new SM_COMPLETE_QUEST(CharacterID, p.QuestID, SM_COMPLETE_QUEST.Error));
                 return;
             }
@@ -667,7 +672,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return null;
             }
-            return string.Format("no NPC who gives it within {0} (nearest: {1} in {2}, {3:0} away)", distance, nearest.Name, nearest.Place,
+            return string.Format("you are not near anyone who gives it (nearest: {1} in {2}, {3:0} away, it must be within {0})", distance, nearest.Name, nearest.Place,
                 Math.Sqrt(Math.Pow((double)nearest.X - x, 2) + Math.Pow((double)nearest.Y - y, 2)));
         }
 
@@ -978,9 +983,28 @@ namespace TitansUC.GameServer.Network.Client
             {
                 // Nothing was used: the ingredients keep state 7.
                 Logger.ShowWarning(string.Format("{0} cannot make {1} (action {2}): {3}.", Character.Name, p.ProductID, p.Action, refusal));
+                if (p.CharacterID == CharacterID)
+                {
+                    var made = ItemTemplates.Get(p.ProductID);
+                    string verb = p.Action == CM_PRODUCT_ITEM.ActionUpgrade ? "upgrade" : p.Action == CM_PRODUCT_ITEM.ActionDismantle ? "take apart" : "make";
+                    Tell(string.Format("You cannot {0} {1}: {2}.", verb, made != null && made.Name != null ? made.Name : "that", refusal));
+                }
                 this.Network.SendPacket(new SM_PRODUCT_ITEM(p, SM_PRODUCT_ITEM.Failed, (uint)GameWorld.UnixTime(),
                     new List<uint>(), new List<KeyValuePair<int, int>>()));
             }
+        }
+
+        /// <summary>
+        /// An ingredient's name for the player: the item, or the kind of item any of which will do.
+        /// </summary>
+        private static string IngredientName(Ingredient input)
+        {
+            if (input.TemplateID != -1)
+            {
+                var t = ItemTemplates.Get(input.TemplateID);
+                return t != null && t.Name != null ? t.Name : input.TemplateID.ToString();
+            }
+            return input.Range == 29 ? "engine" : "items of kind " + input.Range;
         }
 
         /// <summary>
@@ -1028,7 +1052,7 @@ namespace TitansUC.GameServer.Network.Client
                 }
                 if (needed > 0)
                 {
-                    return string.Format("{0} more of ingredient {1} needed", needed, input.TemplateID != -1 ? input.TemplateID.ToString() : "range " + input.Range);
+                    return string.Format("{0} more {1} needed", needed, IngredientName(input));
                 }
             }
 
@@ -1410,7 +1434,8 @@ namespace TitansUC.GameServer.Network.Client
                 var shop = Shops.Get(p.Shop);
                 if (shop == null || !shop.Sells(Character.Faction, template.ID))
                 {
-                    RefuseShop("buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction);
+                    RefuseShop("buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction,
+                        "This shop does not sell " + template.Name + " to you.");
                     return;
                 }
                 unitPrice = shop.BuyPrice(Character.Faction, Character.Rank, template.Price);
@@ -1426,13 +1451,27 @@ namespace TitansUC.GameServer.Network.Client
             var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total);
             if (result == null)
             {
-                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money");
+                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money",
+                    string.Format("You cannot buy {0}: it costs {1}, or there is no room for it there.", template.Name, total));
                 return;
             }
             if (result.Item == Inventory.Piloting)
             {
                 SetVehicle(result.Item);
                 lastTransport = p.Transport;
+                if (lastTransport != null && p.Service == CM_BUY_ITEM.ServiceShuttle && reservedCluster != 0)
+                {
+                    // The client takes the destination from its LAUNCH/REENTRY lists; keep it to the faction's route.
+                    ShuttleRoutes.Port from, to;
+                    ShuttleRoutes.Route(Character.Faction, (Common.Characters.Zone)reservedCluster, out from, out to);
+                    if (lastTransport.Town != to.Town || lastTransport.Launch != (reservedCluster == 2 ? 1 : 0))
+                    {
+                        Logger.ShowWarning(string.Format("{0}: shuttle bought for town {1} (launch {2}); their route goes to {3} ({4}).",
+                            Character.Name, lastTransport.Town, lastTransport.Launch, to.Name, to.Town));
+                    }
+                    lastTransport.Town = to.Town;
+                    lastTransport.Launch = reservedCluster == 2 ? 1 : 0;
+                }
             }
 
             Logger.ShowInfo(string.Format("{0} bought {1} x {2} for {3}.", Character.Name, template.Name, p.Amount, total));
@@ -1462,7 +1501,8 @@ namespace TitansUC.GameServer.Network.Client
             var shop = Shops.Get(p.Shop);
             if (shop == null || !shop.BuysBack(Character.Faction, template.ID))
             {
-                RefuseShop("sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction);
+                RefuseShop("sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction,
+                    "This shop does not buy " + template.Name + ".");
                 return;
             }
 
@@ -1526,7 +1566,8 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || (!toBank && p.Direction != CM_UPDATE_DEPOSIT.FromBank) ||
                 !Inventory.TransferMoney(toBank, p.Amount))
             {
-                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money");
+                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money",
+                    toBank ? "You do not have that much money with you." : "You do not have that much money in the bank.");
                 return;
             }
 
@@ -1557,7 +1598,7 @@ namespace TitansUC.GameServer.Network.Client
             int price = (int)((long)shopPrice * (vehicle.MaxHealth - vehicle.Health) / vehicle.MaxHealth / 10);
             if (!Inventory.Repair(p.VehicleUniqueID, price))
             {
-                RefuseShop("repair", vehicle.StaticID, "not enough money");
+                RefuseShop("repair", vehicle.StaticID, "not enough money", string.Format("The repair costs {0}, and you do not have that much.", price));
                 return;
             }
 
@@ -1833,6 +1874,23 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || (p.Cluster != 1 && p.Cluster != 2) || p.Cluster == (ushort)Character.Zone)
             {
                 Logger.ShowWarning(string.Format("{0}: flight to cluster {1} refused (in cluster {2}).", Character.Name, p.Cluster, Character.Zone));
+                Tell("That flight is not possible from here.");
+                return;
+            }
+            ShuttleRoutes.Port from, to;
+            ShuttleRoutes.Route(Character.Faction, (Common.Characters.Zone)p.Cluster, out from, out to);
+            int shuttleDistance = Configuration.Instance.ShuttleDistance;
+            int x, y;
+            lock (sync)
+            {
+                x = Coord.X;
+                y = Coord.Y;
+            }
+            if (shuttleDistance > 0 && ShuttleRoutes.Distance(from, x, y) > shuttleDistance)
+            {
+                Logger.ShowWarning(string.Format("{0}: flight to cluster {1} refused: {2:0} from {3}.", Character.Name, p.Cluster,
+                    ShuttleRoutes.Distance(from, x, y), from.Name));
+                Tell(string.Format("Shuttles to {0} leave from {1}.", p.Cluster == 2 ? "Space" : "Earth", from.Name));
                 return;
             }
 
@@ -1864,13 +1922,22 @@ namespace TitansUC.GameServer.Network.Client
             try
             {
                 WorldDatabase.SaveFlight(CharacterID, reservedCluster, Inventory.Piloting != null ? Inventory.Piloting.UniqueID : 0,
-                    lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 });
+                    lastTransport ?? new Common.Characters.Transport { Launch = -1, Town = -1 });
             }
             catch (Exception ex)
             {
                 Logger.ShowError(ex);
             }
             Character.Zone = (Common.Characters.Zone)reservedCluster;
+            // Saved at the destination spaceport, so a player who drops during the flight still lands there.
+            ShuttleRoutes.Port from, to;
+            ShuttleRoutes.Route(Character.Faction, Character.Zone, out from, out to);
+            lock (sync)
+            {
+                Coord.X = to.X;
+                Coord.Y = to.Y;
+                Coord.Z = to.Z;
+            }
             if (Configuration.Instance.CheckSessionKey)
             {
                 LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
@@ -2511,6 +2578,7 @@ namespace TitansUC.GameServer.Network.Client
             if (worn == null)
             {
                 Logger.ShowWarning(string.Format("{0}: change of clothes refused: {1}.", Character.Name, refusal));
+                Tell("You cannot change clothes: " + refusal + ".");
                 this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body, DressUpRefused));
                 return;
             }
@@ -2577,9 +2645,26 @@ namespace TitansUC.GameServer.Network.Client
             }
         }
 
-        private void RefuseShop(string what, int id, string reason)
+        private void RefuseShop(string what, int id, string reason, string tell = null)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2} refused: {3}.", Character.Name, what, id, reason));
+            if (tell != null)
+            {
+                Tell(tell);
+            }
+        }
+
+        /// <summary>
+        /// Tells the player why something was refused, as a system line in their chat window. The client has
+        /// no text of its own for most refusal codes: its handlers only log "Error [ code ]" (uc.exe strings
+        /// "UCC_Eternal::Notify... Error [ %d ]"), so without this a refusal looks like nothing happened.
+        /// </summary>
+        public void Tell(string message)
+        {
+            if (CharacterID != 0 && !string.IsNullOrEmpty(message))
+            {
+                TitansUC.GameServer.Network.Link.CmsLink.SystemMessage(CharacterID, message);
+            }
         }
 
         /// <summary>

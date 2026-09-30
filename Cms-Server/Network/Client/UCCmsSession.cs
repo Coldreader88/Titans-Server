@@ -302,6 +302,17 @@ namespace TitansUC.CmsServer.Network.Client
                 return;
             }
 
+            if (!Common.CharacterFilter.IsChatText(message))
+            {
+                // The real client never sends these (CHARAFILTER_CHAT.LST); drop them so others' clients do not have to show them.
+                Logger.ShowWarning(string.Format("{0} sent chat characters the client does not allow; removing them.", Name));
+                message = Common.CharacterFilter.CleanChat(message);
+                if (message.Length == 0)
+                {
+                    return;
+                }
+            }
+
             Logger.ShowTrace(string.Format("[chat {0}] {1}: {2}", type, Name, message));
 
             uint sender = CharacterID;
@@ -461,6 +472,10 @@ namespace TitansUC.CmsServer.Network.Client
                 if (name.Length == 0 || name.Length > 40)
                 {
                     problem = "the name is empty or too long";
+                }
+                else if (!Common.CharacterFilter.IsChatText(name))
+                {
+                    problem = "the name has characters the client does not allow";
                 }
                 else if (Member.TeamID != -1 && CmsDatabase.Instance.LoadTeam(Member.TeamID) != null)
                 {

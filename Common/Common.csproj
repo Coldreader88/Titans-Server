@@ -76,6 +76,7 @@
     <Compile Include="Network\Packets\Packet\UCHeader.cs" />
     <Compile Include="Network\Packets\Packet\UCPacket.cs" />
     <Compile Include="Server\ServerInfo.cs" />
+    <Compile Include="CharacterFilter.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="Worlds\World.cs" />
   </ItemGroup>

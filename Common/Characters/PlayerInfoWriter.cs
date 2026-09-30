@@ -167,12 +167,13 @@ namespace Common.Characters
                 p.PutShortBE((short)c.Direction);
             }
 
-            // Transport: after a shuttle flight between Earth and Space, what the client sent when it bought the
-            // shuttle (two ints, then where it took off); otherwise -1, -1, -1, 0, 0, 0.
+            // Transport: after a shuttle flight between Earth and Space, the destination town and launch flag the
+            // client sent when it bought the shuttle (in that order here, the other way round in 0x21), then where
+            // it took off; otherwise -1, -1, -1, 0, 0, 0.
             if (transport != null)
             {
-                p.PutIntBE(transport.A);
-                p.PutIntBE(transport.B);
+                p.PutIntBE(transport.Town);
+                p.PutIntBE(transport.Launch);
                 p.PutShortBE(-1);
                 p.PutIntBE(transport.X);
                 p.PutIntBE(transport.Y);
@@ -226,10 +227,14 @@ namespace Common.Characters
     /// client sent when it bought the shuttle (0x21 bytes 52-59: 1, 0x31 to Space and 0, 0x2E to Earth in the
     /// captures) and where the shuttle took off.
     /// </summary>
+    /// <summary>
+    /// A shuttle flight: 1 for a launch to Space or 0 for a re-entry to Earth, the destination town (TOWNINFO
+    /// id, see the game server's ShuttleRoutes) and the take-off point.
+    /// </summary>
     public class Transport
     {
-        public int A { get; set; }
-        public int B { get; set; }
+        public int Launch { get; set; }
+        public int Town { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
         public int Z { get; set; }

@@ -94,7 +94,8 @@ else
     fi
     (setsid mariadbd --user="$(id -un)" --datadir="$WORK/db" --pid-file="$WORK/db.pid" --socket="$DBSOCK" \
       --port=3306 --bind-address=127.0.0.1 >> "$LOGS/db.log" 2>&1 < /dev/null &)
-    for _ in $(seq 1 30); do [ -S "$DBSOCK" ] && break; sleep 1; done
+    for _ in $(seq 1 30); do [ -S "$DBSOCK" ] && mariadb -uroot --socket="$DBSOCK" -e "select 1" >/dev/null 2>&1 && break
+      mariadb "${DBARGS[@]}" -e "select 1" >/dev/null 2>&1 && break; sleep 1; done
     # A fresh server's root has no password yet: give it the one the configs use.
     mariadb -uroot --socket="$DBSOCK" -e "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('titans'); FLUSH PRIVILEGES;" 2>/dev/null
   fi

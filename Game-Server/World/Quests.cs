@@ -162,19 +162,19 @@ namespace TitansUC.GameServer.World
             int total = SkillGrowth.Total(c);
             if (SkillMax >= 0 && total > SkillMax)
             {
-                return string.Format("skills total {0:0.0}, above {1:0.0}", total / 10.0, SkillMax / 10.0);
+                return string.Format("your skills total {0:0.0}, more than its {1:0.0}", total / 10.0, SkillMax / 10.0);
             }
             if (SkillMin > 0 && total < SkillMin)
             {
-                return string.Format("skills total {0:0.0}, below {1:0.0}", total / 10.0, SkillMin / 10.0);
+                return string.Format("your skills total {0:0.0}, less than its {1:0.0}", total / 10.0, SkillMin / 10.0);
             }
             if ((sbyte)RankMax >= 0 && c.Rank > RankMax)
             {
-                return "rank " + c.Rank + ", above " + RankMax;
+                return "your rank is above what it allows";
             }
             if (RankMin > 0 && c.Rank < RankMin)
             {
-                return "rank " + c.Rank + ", below " + RankMin;
+                return "your rank is too low for it";
             }
             return null;
         }

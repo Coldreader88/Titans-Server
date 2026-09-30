@@ -474,7 +474,8 @@ namespace TitansUC.GameServer.World
                     }
                     if (have < need.Value)
                     {
-                        refusal = string.Format("{0} of {1} handed in, {2} needed", have, need.Key, need.Value);
+                        var needed = ItemTemplates.Get(need.Key);
+                        refusal = string.Format("it needs {2} {1}, you handed in {0}", have, needed != null && needed.Name != null ? needed.Name : need.Key.ToString(), need.Value);
                         return null;
                     }
                 }
@@ -484,7 +485,7 @@ namespace TitansUC.GameServer.World
                     rewardContainer = Find(PlayerContainers.Backpack);
                     if (rewardContainer == null || !CanHoldItems(rewardContainer))
                     {
-                        refusal = "no backpack for the reward";
+                        refusal = "you have no backpack for the reward";
                         return null;
                     }
                 }

@@ -82,8 +82,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
             {
                 Transport = new Common.Characters.Transport
                 {
-                    A = (int)Bytes.U32(body, 52),
-                    B = (int)Bytes.U32(body, 56),
+                    Launch = (int)Bytes.U32(body, 52),
+                    Town = (int)Bytes.U32(body, 56),
                     X = (int)Bytes.U32(body, 66),
                     Y = (int)Bytes.U32(body, 70),
                     Z = (int)Bytes.U32(body, 74),

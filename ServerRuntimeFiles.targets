@@ -3,9 +3,10 @@
   Copies the files the servers need at runtime into the build output (..\Bin\) after every build:
     ConfigFiles\*  ->  Bin\Config\   (servers load ./Config/<Server>.xml)
     DB\**          ->  Bin\DB\       (encryption table, templates, properties, SQL, ...)
+    Launcher\*     ->  Bin\          (Start-Servers.bat / .ps1: check the setup and start every server)
   Files are always overwritten, so Bin\ matches the repo after each build. Local edits made
   directly in Bin\Config or Bin\DB are lost; edit ConfigFiles\ and DB\ instead.
-  Imported by each server project (Login, Lobby, Account, Character, CMS, Game).
+  Imported by each server project (Login, Lobby, CMS, Game).
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
@@ -19,6 +20,7 @@
     <ItemGroup>
       <TitansConfigFile Include="$(TitansRepoRoot)ConfigFiles\*.*" />
       <TitansDbFile Include="$(TitansRepoRoot)DB\**\*.*" />
+      <TitansLauncherFile Include="$(TitansRepoRoot)Launcher\*.*" />
     </ItemGroup>
     <!-- Several servers build into the same Bin\ (in parallel in VS), so retry on a locked file. -->
     <Copy SourceFiles="@(TitansConfigFile)"
@@ -29,6 +31,12 @@
           RetryDelayMilliseconds="500" />
     <Copy SourceFiles="@(TitansDbFile)"
           DestinationFiles="@(TitansDbFile->'$(OutDir)DB\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false"
+          OverwriteReadOnlyFiles="true"
+          Retries="10"
+          RetryDelayMilliseconds="500" />
+    <Copy SourceFiles="@(TitansLauncherFile)"
+          DestinationFolder="$(OutDir)"
           SkipUnchangedFiles="false"
           OverwriteReadOnlyFiles="true"
           Retries="10"

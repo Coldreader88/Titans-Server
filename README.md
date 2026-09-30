@@ -12,8 +12,6 @@ official client, version 4265. `Java.zip` holds the older Java server this one w
 | Game-Server | 42010 (Earth), 42011 (Space) | The game world. Run one copy for Earth and a second with `-instance=space` for Space |
 | Cms-Server | 42016 (clients), 10241 (game link) | Chat, friends, teams and GM commands |
 
-Account-Server and Character-Server are empty and not needed.
-
 ## Build
 
 - **Windows:** open `Titans-UCGO.sln` in Visual Studio and build. The servers go into `Bin\`, and every build copies
@@ -59,8 +57,13 @@ player logged in to the Lobby from.
 
 ## Run
 
-Start the servers from `Bin\` in this order: Lobby-Server, Cms-Server, Game-Server, and a second Game-Server with
-`-instance=space`. Login-Server is optional.
+Double-click `Bin\Start-Servers.bat` (every build copies it there). It checks the setup first: the programs are
+built, the three configs use the same database, the database accepts that login and has its tables, the chat
+passwords and ports match, and no port is already taken. If all is well it starts Lobby-Server, Cms-Server,
+Game-Server (Earth), Game-Server `-instance=space` and Login-Server, each in its own window, waiting for each to
+listen before the next. `Start-Servers.bat -CheckOnly` only checks; `-NoLogin` leaves out the Login-Server.
+
+To start them by hand, run them from `Bin\` in the same order.
 
 Settings worth knowing:
 - `LobbyServer.xml` `GameServerIP`: the address the client connects to for the game (127.0.0.1 when everything

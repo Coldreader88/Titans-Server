@@ -150,6 +150,17 @@ class Test
 
         if (testDelete)
         {
+            // Names follow the client's CHARAFILTER_NAME.LST: "<" is not allowed, and no reply comes (the list does).
+            c.Send(0x30003, CreateBody(res.Acc, "Bad<Name>", faction));
+            c.Send(0x30001, new B().Byte(0).U32(res.Acc).U32(0).Get());
+            var badName = c.Recv();
+            Check(badName.Item1 == 0x38001 && Sql("SELECT COUNT(*) FROM characters WHERE char_name = 'Bad<Name>'") == "0",
+                "a name with a character the client does not allow is refused");
+            c.Send(0x30003, CreateBody(res.Acc, "Seventeen letters", faction));
+            c.Send(0x30001, new B().Byte(0).U32(res.Acc).U32(0).Get());
+            var longName = c.Recv();
+            Check(longName.Item1 == 0x38001 && Sql("SELECT COUNT(*) FROM characters WHERE char_name = 'Seventeen letters'") == "0",
+                "and so is a name longer than the client's 16 characters");
             c.Send(0x30001, new B().Byte(0).U32(res.Acc).U32(0).Get()); c.Recv();
             c.Send(0x30003, CreateBody(res.Acc, charName + "X", faction));
             var second = c.Recv();
@@ -366,6 +377,10 @@ class Test
     static Conn FlightTests(Conn g, LobbyResult a, uint me)
     {
         uint weared = me + 120001;
+        // Shuttles leave from the faction's spaceport (EF: Perth, 55456000, -58372000).
+        g.Send(0x40, new B().U32(a.Key).U32(me).U16(2).Get());
+        Check(NoReply(g), "a flight to Space far from Perth Spaceport is refused");
+        g.Send(0x02, Coord(me, 55456000 + 3000, -58372000, 0));
         // As Earth_To_Space.pcap: 0x40 first, then the client buys its FREIGHTER, flies, and leaves with 0x42.
         g.Send(0x40, new B().U32(a.Key).U32(me).U16(2).Get());
         var r = RecvOp(g, 0x8040); var rr = new R(r.Item2); uint head = rr.U16(); uint who = rr.U32(); int cluster = rr.U16(); int unk = rr.U16();
@@ -398,8 +413,10 @@ class Test
         int ta = rr.I32(), tb = rr.I32(); rr.U16(); int tx = rr.I32(), ty = rr.I32();
         var pos = new R(body) { Pos = end - 22 - 20 };
         int zone = pos.U16(); uint px = pos.U32();
-        Check(r.Item1 == 0x805F && ta == 1 && tb == 0x31 && tx == 1000 && ty == 2000 && zone == 2 && px == 0x7FFFFFFF,
-            "0x805F: in Space, position unknown, take-off point and shuttle details");
+        Check(r.Item1 == 0x805F && ta == 0x30 && tb == 1 && tx == 1000 && ty == 2000 && zone == 2 && px == 0x7FFFFFFF,
+            "0x805F: in Space, position unknown, destination ISAEO 29 (48, the EF route, not the 0x31 the client sent) then 1 (launch), take-off point");
+        Check(Sql("SELECT CONCAT(x, ',', y) FROM characters WHERE char_name = 'Amuro'") == "-3424000,5688000",
+            "Amuro is saved at ISAEO 29, the EF shuttle's destination");
         s2.Send(0x0A, new B().U32(0).U32(me).Byte(5).Get());
         var looks = s2.Recv(); rr = new R(looks.Item2) { Pos = 8 };
         Check(Conn.Hex(looks.Item2).StartsWith("00 04 00 02") && rr.U32() == 400020, "still in the shuttle on arrival (saved as the piloted vehicle by the Earth server)");
@@ -1627,6 +1644,23 @@ class Test
     }
 
     // The console spawns the item of Sydney combat quest 1 (550410); the GM hands it in, then adds promotion points.
+    /// <summary>
+    /// The system lines (0x8004) the chat server sends within a few seconds, until one starts with <paramref name="stop"/>.
+    /// </summary>
+    static List<string> ChatLines(Conn cms, int seconds, string stop)
+    {
+        var lines = new List<string>();
+        var until = DateTime.Now.AddSeconds(seconds);
+        while (DateTime.Now < until)
+        {
+            var r = cms.Recv(true);
+            if (r == null || r.Item1 != 0x8004) continue;
+            lines.Add(new R(r.Item2) { Pos = 4 }.Str());
+            if (stop != null && lines[lines.Count - 1].StartsWith(stop)) break;
+        }
+        return lines;
+    }
+
     static void QuestTests(Conn g, uint me)
     {
         int rank0 = int.Parse(Sql("SELECT `rank` FROM appearance WHERE char_id = (SELECT char_id FROM characters WHERE char_name = 'Gmtest')"));
@@ -1644,8 +1678,11 @@ class Test
         g.Send(0x3E, HandIn(me, 151));
         var far = RecvOp(g, 0x803E);
         System.Threading.Thread.Sleep(300);
-        Check(far.Item1 == 0x803E && far.Item2[3] != 2 && GameLog().Contains("hand-in of quest 151 refused: no NPC who gives it"),
+        Check(far.Item1 == 0x803E && far.Item2[3] != 2 && GameLog().Contains("hand-in of quest 151 refused: you are not near anyone who gives it"),
             "handing in the Sydney quest far from its NPC is refused");
+        var told = ChatLines(cms, 3, "You cannot complete");
+        Check(told.Exists(l => l.StartsWith("You cannot complete") && l.Contains("not near anyone who gives it")),
+            "and the player is told why in the chat window (" + string.Join(" / ", told) + ")");
         g.Send(0x03, new B().U32(0).U32(me).U16(1).Bytes(new byte[6]).I32(72537600).I32(-59309800).I32(7700).U32(0x45FA0000).Get());
         RecvOp(g, 0x8003);
         System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "3", "ready");

@@ -400,9 +400,10 @@ namespace TitansUC.LobbyServer.Network.Client
         /// </summary>
         private string CheckCreateRequest(CM_REQUEST_CREATE_CHARACTER p, string name)
         {
-            if (name.Length == 0 || name.Length > 20)
+            string nameProblem = Common.CharacterFilter.NameProblem(name);
+            if (nameProblem != null)
             {
-                return "the name must be 1 to 20 characters.";
+                return nameProblem + ".";
             }
             if (p.Gender != (byte)Gender.MALE && p.Gender != (byte)Gender.FEMALE)
             {

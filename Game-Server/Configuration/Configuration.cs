@@ -10,7 +10,7 @@ namespace TitansUC.GameServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, questNpcDistance = 3000;
+        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, questNpcDistance = 3000, shuttleDistance = 200000;
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
@@ -110,6 +110,11 @@ namespace TitansUC.GameServer
         /// distance is unknown); 0 = not checked.
         /// </summary>
         public int QuestNpcDistance { get { return questNpcDistance; } }
+
+        /// <summary>
+        /// How close to their faction's spaceport a player must be to fly between Earth and Space (0 = anywhere).
+        /// </summary>
+        public int ShuttleDistance { get { return shuttleDistance; } }
 
         /// <summary>
         /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
@@ -232,6 +237,9 @@ namespace TitansUC.GameServer
                             break;
                         case "questnpcdistance":
                             questNpcDistance = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "shuttledistance":
+                            shuttleDistance = int.Parse(i.InnerText.Trim());
                             break;
                         case "chathost":
                             chatHost = i.InnerText.Trim();
