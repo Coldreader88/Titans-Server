@@ -42,8 +42,19 @@ ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWOR
 
 ## Accounts
 
-`AutoCreateAccounts` in `LobbyServer.xml` creates an account the first time an unknown user name logs in. Account
-levels are in `accounts.acc_level`: 10 player, 4 GM, 9 admin. GMs can use the `#` commands in chat (`#help` lists them).
+Create accounts on the Lobby-Server console:
+```
+account <name> <password> [level]
+```
+The level is 10 for a player (the default), 4 for a GM and 9 for an admin. The same command sets a new password and
+level for an existing account. GMs can use the `#` commands in chat (`#help` lists them).
+
+`AutoCreateAccounts` in `LobbyServer.xml` (off by default) makes an account the first time an unknown user name logs
+in. Only turn it on for a private server.
+
+Passwords are stored salted (PBKDF2-SHA256). Accounts from the Java server's database keep working: their old SHA-1
+hash is replaced the next time they log in. The game and chat servers only accept a character from the address its
+player logged in to the Lobby from.
 
 ## Run
 

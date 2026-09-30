@@ -17,6 +17,14 @@ class Conn
     public List<byte[]> Gains = new List<byte[]>();
     public bool KeepGains;
     public Conn(string name, string host, int port) { Name = name; tcp = new TcpClient(host, port); s = tcp.GetStream(); s.ReadTimeout = 5000; }
+    // From another local address (127.0.0.2): a different player's machine as far as the servers can tell.
+    public Conn(string name, string host, int port, string from)
+    {
+        Name = name;
+        tcp = new TcpClient(new System.Net.IPEndPoint(System.Net.IPAddress.Parse(from), 0));
+        tcp.Connect(host, port);
+        s = tcp.GetStream(); s.ReadTimeout = 5000;
+    }
     public void Send(uint op, byte[] body)
     {
         seq++;
@@ -192,6 +200,26 @@ class Test
         return res;
     }
 
+    // Passwords are stored salted; an old Java SHA-1 password still logs in and is rehashed; a wrong one does not.
+    static void PasswordTests()
+    {
+        Check(Sql("SELECT password FROM accounts WHERE name = 'tester1'").StartsWith("pbkdf2$100000$"), "new passwords are stored salted (pbkdf2$100000$...)");
+        Sql("DELETE FROM accounts WHERE name = 'oldjava'; INSERT INTO accounts (name, password, acc_level, creation_date) VALUES ('oldjava', SHA1('oldpass1'), 10, '')");
+        Check(LobbyStatus("oldjava", "wrongpass") != 1, "a wrong password is refused");
+        Check(LobbyStatus("oldjava", "oldpass1") == 1, "an old unsalted SHA-1 password (Java server) still logs in");
+        Check(Sql("SELECT password FROM accounts WHERE name = 'oldjava'").StartsWith("pbkdf2$"), "and is stored salted from then on");
+        Check(LobbyStatus("oldjava", "oldpass1") == 1 && LobbyStatus("oldjava", "OLDPASS1") != 1, "the salted password logs in, the wrong case does not");
+    }
+
+    static uint LobbyStatus(string user, string pass)
+    {
+        var c = new Conn("lobby:" + user, "127.0.0.1", 42018);
+        c.Send(0x30000, LoginBody(user, pass));
+        var r = c.Recv();
+        c.Close();
+        return r == null ? 0 : new R(r.Item2).U32();
+    }
+
     static Conn GameLogin(string who, LobbyResult lr, uint key)
     {
         var g = new Conn("game:" + who, lr.IP, lr.Port);
@@ -299,10 +327,13 @@ class Test
     }
 
     // Nothing comes back for a refused request: the next reply is the server time.
+    // Town war events (0x8076) go to everyone at any time and are skipped.
     static bool NoReply(Conn c)
     {
         c.Send(0x13, new B().U32(0).I32(-1).Byte(0).Get());
-        return c.Recv().Item1 == 0x8013;
+        var r = c.Recv();
+        while (r != null && r.Item1 == 0x8076) r = c.Recv();
+        return r != null && r.Item1 == 0x8013;
     }
 
     // Shops: town 25 shop 101 is the EF weapon shop of the official captures, town 51 shop 7 the Zeon one (Zeon).
@@ -325,14 +356,14 @@ class Test
         uint weared = me + 120001;
         // As Earth_To_Space.pcap: 0x40 first, then the client buys its FREIGHTER, flies, and leaves with 0x42.
         g.Send(0x40, new B().U32(a.Key).U32(me).U16(2).Get());
-        var r = g.Recv(); var rr = new R(r.Item2); uint head = rr.U16(); uint who = rr.U32(); int cluster = rr.U16(); int unk = rr.U16();
+        var r = RecvOp(g, 0x8040); var rr = new R(r.Item2); uint head = rr.U16(); uint who = rr.U32(); int cluster = rr.U16(); int unk = rr.U16();
         int n = rr.Size(); string ip = Encoding.ASCII.GetString(r.Item2, rr.Pos, n); rr.Pos += n; int port = rr.U16();
         Check(r.Item1 == 0x8040 && head == 2 && who == me && cluster == 2 && unk == 0x17BF && ip == "127.0.0.1" && port == 42011 && r.Item2.Length == 13 + ip.Length,
             "cleared for Space: 0x8040 (00 02, char, 00 02, 17 BF, as official) sends the Space server, 127.0.0.1:42011");
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "1", "still on Earth until the client leaves");
 
         g.Send(0x21, Buy(3, me, weared, 1, 400020, 1, 0x31));
-        r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint shuttle = rr.U32(); rr.Pos = 28;
+        r = RecvOp(g, 0x8021); rr = new R(r.Item2); rr.Pos = 8; uint shuttle = rr.U32(); rr.Pos = 28;
         Check(r.Item1 == 0x8021 && r.Item2[1] == 3 && rr.U32() == 2000, "then buy the FREIGHTER for 2000 and ride it");
         g.Send(0x02, Coord(me, 1200, 2200, 500));
         g.Send(0x42, new B().U32(me).U32(2).U32(a.Key).Byte(0x80).U16(0).Byte(0x80).Get());
@@ -1309,7 +1340,7 @@ class Test
         {
             g.Send(0x03, new B().U32(a.Acc).U32(me).U16(1).Bytes(new byte[6]).I32(7000).I32(2000).I32(30).U32(0x45FA0000).Get());
             var list = RecvOp(g, 0x8003); var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
-            for (int i = 0; i < count; i++) { var rr = new R(list.Item2) { Pos = lr.Pos + 53 * i }; int x = rr.I32(); rr.Pos += 14; uint id = rr.U32(); if (id >= 1090000000) return x; }
+            for (int i = 0; i < count; i++) { var rr = new R(list.Item2) { Pos = lr.Pos + 53 * i }; int x = rr.I32(); rr.Pos += 14; uint id = rr.U32(); if (id == 1090000000) return x; }
             return int.MinValue;
         };
         // The script teleports the GM to the NPC (#tp) about 4 seconds after ready2: move away only after that.
@@ -1317,7 +1348,7 @@ class Test
         if (settled > TimeSpan.Zero) System.Threading.Thread.Sleep(settled);
         g.Send(0x00, Coord(me, 7000, 2000, 30)); RecvOp(g, 0x8000);
         int x1 = npcX();
-        Check(x1 != int.MinValue, "the spawned hostile ZAKU II is in the position list");
+        Check(x1 != int.MinValue, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
         System.Threading.Thread.Sleep(3000);
         int x2 = npcX();
         Console.WriteLine("  NPC x {0} -> {1}", x1, x2);
@@ -1419,6 +1450,11 @@ class Test
     {
         int rank0 = int.Parse(Sql("SELECT `rank` FROM appearance WHERE char_id = (SELECT char_id FROM characters WHERE char_name = 'Gmtest')"));
         long money0 = long.Parse(Sql("SELECT char_money FROM characters WHERE char_name = 'Gmtest'"));
+        var stranger = new Conn("cms:elsewhere", "127.0.0.1", 42016, "127.0.0.2");
+        stranger.Send(0x01, new B().U32(me).Str("Gmtest").U32(0xFFFFFFFF).Get());
+        Tuple<uint, byte[]> strangerReply = null;
+        try { strangerReply = stranger.Recv(true); } catch (Exception) { }
+        Check(strangerReply == null, "a chat login for the GM from another address is refused (disconnected)");
         var cms = new Conn("cms", "127.0.0.1", 42016);
         cms.Send(0x01, new B().U32(me).Str("Gmtest").U32(0xFFFFFFFF).Get());
         Check(RecvOp(cms, 0x8001).Item1 == 0x8001, "the GM logs in to the chat server before the promotion");
@@ -1514,6 +1550,14 @@ class Test
         var badReply = bad.Recv();
         Check(badReply.Item1 == 0x8041 && badReply.Item2.Length == 4 && badReply.Item2[3] == 7, "game login with a wrong key is refused (7)");
         bad.Close();
+        // Game server: the right key, but from another address than the Lobby login.
+        var elsewhere = new Conn("game:elsewhere", a.IP, a.Port, "127.0.0.2");
+        elsewhere.Send(0x41, new B().U32(0x10000).U32(a.Chars[0]).U32(a.Key).U32(0).Str("Amuro").U16(2).Byte(0x80).Get());
+        var elsewhereReply = elsewhere.Recv();
+        Check(elsewhereReply.Item1 == 0x8041 && elsewhereReply.Item2.Length == 4 && elsewhereReply.Item2[3] == 7,
+            "game login with the right key from another address is refused (7)");
+        elsewhere.Close();
+        PasswordTests();
 
         var g = GameLogin("Amuro", a, a.Key);
         var login = g.Recv();

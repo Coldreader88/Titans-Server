@@ -5,8 +5,10 @@
   <!-- Client version the server accepts (Java reference: client_version = 4265). 0 accepts any version. -->
   <Required-Client-Version>4265</Required-Client-Version>
 
-  <!-- Create an account on first login when the user name does not exist yet. -->
-  <AutoCreateAccounts>true</AutoCreateAccounts>
+  <!-- Create an account on first login when the user name does not exist yet. Off by default: anyone who can
+       reach the server could make accounts. Create them on the Lobby console instead:
+       account <name> <password> [level: 10 player, 4 GM, 9 admin] (also sets a new password). -->
+  <AutoCreateAccounts>false</AutoCreateAccounts>
 
   <!-- Money a new character starts with (Java reference: default_money = 50000). -->
   <DefaultMoney>50000</DefaultMoney>

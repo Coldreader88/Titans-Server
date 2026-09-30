@@ -77,7 +77,7 @@ namespace TitansUC.LobbyServer.Network.Client
                 {
                     try
                     {
-                        this.account.SessionKey = LoginSessionDatabase.Instance.Begin(this.account.AccountID);
+                        this.account.SessionKey = LoginSessionDatabase.Instance.Begin(this.account.AccountID, RemoteAddress);
                     }
                     catch (Exception ex)
                     {

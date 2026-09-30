@@ -126,9 +126,10 @@ namespace TitansUC.CmsServer.Network.Client
                     Refuse(string.Format("character {0} does not exist", p.CharacterID));
                     return;
                 }
-                if (Configuration.Instance.CheckLoginSession && !LoginSessionDatabase.Instance.IsSelected(p.CharacterID))
+                if (Configuration.Instance.CheckLoginSession && !LoginSessionDatabase.Instance.IsSelected(p.CharacterID,
+                    LoginSessionDatabase.AddressOf(this.Network.Socket)))
                 {
-                    Refuse(string.Format("{0} (character {1}) was not taken to the game through the Lobby", member.Name, p.CharacterID));
+                    Refuse(string.Format("{0} (character {1}) was not taken to the game through the Lobby from this address", member.Name, p.CharacterID));
                     return;
                 }
                 if (!string.Equals(member.Name, p.Name, StringComparison.Ordinal))

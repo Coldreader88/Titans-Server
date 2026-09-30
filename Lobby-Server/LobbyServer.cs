@@ -103,6 +103,7 @@ namespace TitansUC.LobbyServer
                 try
                 {
                     LoginSessionDatabase.Instance.EnsureTable();
+                    AccountDatabase.Instance.EnsurePasswordColumn();
                 }
                 catch (Exception ex)
                 {
@@ -139,6 +140,23 @@ namespace TitansUC.LobbyServer
                     args = cmd.Split(' ');
                     switch (args[0].ToLower())
                     {
+                        case "account":
+                            // account <name> <password> [level]: create an account or set its password
+                            // (level 10 player, 4 GM, 9 admin).
+                            if (args.Length < 3 || args[1].Length == 0 || args[2].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: account <name> <password> [level: 10 player (default), 4 GM, 9 admin]");
+                                break;
+                            }
+                            int level = (int)Common.Account.Account.AccountLevel.PLAYER;
+                            if (args.Length > 3 && !int.TryParse(args[3], out level))
+                            {
+                                Logger.ShowInfo("The level must be a number: 10 player, 4 GM, 9 admin.");
+                                break;
+                            }
+                            Logger.ShowInfo(AccountDatabase.Instance.CreateOrUpdate(args[1], args[2], level));
+                            break;
+
 
                         case "printthreads":
                             ClientManager.PrintAllThreads();

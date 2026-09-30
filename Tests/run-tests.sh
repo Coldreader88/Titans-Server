@@ -142,7 +142,7 @@ run_full() {
   stop_all
   grep -E "^FAIL" "$LOGS/full.out"
   tail -1 "$LOGS/full.out"
-  [ $rc -eq 0 ] || FAILED=1
+  [ $rc -eq 0 ] || { tail -40 "$LOGS/full.out"; FAILED=1; }
 }
 
 run_spawn() {

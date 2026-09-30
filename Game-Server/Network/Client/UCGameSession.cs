@@ -132,7 +132,8 @@ namespace TitansUC.GameServer.Network.Client
                 uint accountID = 0;
                 if (Configuration.Instance.CheckSessionKey)
                 {
-                    accountID = LoginSessionDatabase.Instance.Verify(p.SessionKey, p.CharacterID);
+                    accountID = LoginSessionDatabase.Instance.Verify(p.SessionKey, p.CharacterID,
+                        LoginSessionDatabase.AddressOf(this.Network.Socket));
                     if (accountID == 0)
                     {
                         RefuseLogin(string.Format("character {0} has no valid session key from the Lobby", p.CharacterID));
