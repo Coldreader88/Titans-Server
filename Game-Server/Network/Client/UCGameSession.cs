@@ -964,7 +964,7 @@ namespace TitansUC.GameServer.Network.Client
             }
             else if (p.Action == CM_PRODUCT_ITEM.ActionUpgrade)
             {
-                refusal = "vehicle upgrades are not implemented yet";
+                refusal = Upgrade(p, factory);
             }
             else if (p.Action == CM_PRODUCT_ITEM.ActionDismantle)
             {
@@ -1149,6 +1149,82 @@ namespace TitansUC.GameServer.Network.Client
         /// Zaku_F2A_Dismantle_Success.pcap); a failure gives back 70% of that (an Oggo of 10 gave 5,
         /// Oggo_Dismantle_Fail_(ZSSAEO3).pcap). Returns why it cannot, or null once it answered.
         /// </summary>
+        /// <summary>
+        /// 0x28 action 8: raises one of a vehicle's upgrade levels (see <see cref="Improvements"/>). The vehicle must
+        /// be in the factory and the one ingredient is the next level's material of the type upgraded; every skill
+        /// of that level is needed, as the client checks. The material is used up either way; the reply's improve
+        /// flag says whether it worked. Returns why it cannot, or null once it answered.
+        /// </summary>
+        private string Upgrade(CM_PRODUCT_ITEM p, ItemNode factory)
+        {
+            var vehicle = Inventory.Get(p.VehicleUniqueID);
+            if (vehicle == null || vehicle.Parent != factory || vehicle.Format != ItemNode.Multi || vehicle.StaticID != p.ProductID)
+            {
+                return string.Format("{0:X8} is not their vehicle {1} in the factory", p.VehicleUniqueID, p.ProductID);
+            }
+            var template = VehicleTemplates.Get(vehicle.StaticID);
+            if (template == null || template.ModelIndex < 0)
+            {
+                return "the vehicle cannot be upgraded";
+            }
+            if (p.Inputs.Count != 1 || p.ImproveOffset < 0)
+            {
+                return p.Inputs.Count + " items listed";
+            }
+            var input = p.Inputs[0];
+            int type = 0;
+            Improvements.Level level = null;
+            foreach (int t in new[] { Improvements.Power, Improvements.Hit, Improvements.Defence })
+            {
+                var next = Improvements.Get(template.ModelIndex, Improvements.LevelOf(vehicle.Improvement, t) + 1);
+                if (next != null && Improvements.TypeOf(next, input.TemplateID) == t)
+                {
+                    type = t;
+                    level = next;
+                    break;
+                }
+            }
+            if (level == null)
+            {
+                return string.Format("{0} is not the next upgrade's material for it", input.TemplateID);
+            }
+            if (Improvements.Total(vehicle.Improvement) >= Improvements.MaxTotal)
+            {
+                return "it has all " + Improvements.MaxTotal + " upgrades";
+            }
+            foreach (var skill in level.Skills)
+            {
+                if (Character.GetSkill(skill.Key) < skill.Value)
+                {
+                    return string.Format("{0} {1:0.#} needed", skill.Key, skill.Value / 10.0);
+                }
+            }
+            int amount = level.Materials[type - Improvements.Power].Value;
+            if (!Inventory.CanUse(input.UniqueID, input.ContainerUniqueID, input.TemplateID, amount))
+            {
+                return string.Format("{0:X8} is not {1} x {2} of theirs", input.UniqueID, amount, input.TemplateID);
+            }
+
+            uint state = Inventory.UseUp(input.UniqueID, input.ContainerUniqueID, amount);
+            int chance = (int)((long)Recipe.Chance(Character, level.Skills, level.SuccessRate) * Improvements.Chance(level.Number) / 10000);
+            bool success = Roll() < chance;
+            if (success)
+            {
+                PlayerInventory.SetImprovement(vehicle, Improvements.WithLevel(vehicle.Improvement, type, level.Number));
+                GainSkill(level.Skills);
+            }
+
+            Logger.ShowInfo(string.Format("{0} {1} {2} ({3}) to {4} level {5} at {6:0.#}% (upgrades {7:X3}).", Character.Name,
+                success ? "upgraded" : "failed to upgrade", vehicle.Name, vehicle.StaticID,
+                type == Improvements.Power ? "power" : type == Improvements.Hit ? "hit" : "defence", level.Number,
+                chance / 100.0, vehicle.Improvement));
+            p.Body[p.ImproveOffset] = (byte)(success ? 1 : 0);
+            this.Network.SendPacket(new SM_PRODUCT_ITEM(p, success ? SM_PRODUCT_ITEM.Done : SM_PRODUCT_ITEM.Failed,
+                (uint)GameWorld.UnixTime(), new List<uint> { state }, new List<KeyValuePair<int, int>>()));
+            SaveItems();
+            return null;
+        }
+
         private string Dismantle(CM_PRODUCT_ITEM p, ItemNode factory)
         {
             if (p.Inputs.Count != 1)
@@ -2871,6 +2947,27 @@ namespace TitansUC.GameServer.Network.Client
             }
         }
 
+        /// <summary>
+        /// The player's team changed on the CMS server: nearby players see the new team id in their position record.
+        /// </summary>
+        public void SetTeam(int teamID)
+        {
+            if (Character == null)
+            {
+                return;
+            }
+            Character.TeamID = teamID;
+            lock (sync)
+            {
+                if (Coord != null)
+                {
+                    Coord.TeamID = teamID;
+                    Coord.UpdateCounter++;
+                }
+            }
+            Logger.ShowInfo(string.Format("{0} is now in team {1}.", Character.Name, teamID));
+        }
+
         private void UpdateCoord(CoordData coord)
         {
             if (coord == null)
@@ -2884,8 +2981,10 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            // Fields the server owns: the client sends 0xFFFF for the machine id and cannot promote itself.
+            // Fields the server owns: the client sends 0xFFFF for the machine id and cannot promote itself, or put
+            // itself in a team (the CMS server says which it is in).
             coord.MachineID = MachineID;
+            coord.TeamID = Character.TeamID;
             coord.AccountLevel = AccountLevel;
             coord.ClusterID = (ushort)Character.Zone;
             coord.Faction = CoordData.StateAndNationality(Character);
@@ -2939,6 +3038,22 @@ namespace TitansUC.GameServer.Network.Client
             Save();
             this.Network.SendPacket(new SM_FORCE_LOGOUT(CharacterID));
         }
+
+        /// <summary>
+        /// Saves the player, tells the client to log out and closes the connection a moment later, whether the
+        /// client leaves by itself or not (game server console "kick" and "ban").
+        /// </summary>
+        public void Kick()
+        {
+            var network = this.Network;
+            ForceLogout();
+            System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ => network.Disconnect());
+        }
+
+        /// <summary>
+        /// The address the player is connected from.
+        /// </summary>
+        public string Address { get { return LoginSessionDatabase.AddressOf(this.Network.Socket); } }
 
         private void SaveIfDue()
         {

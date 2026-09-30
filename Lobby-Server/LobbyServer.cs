@@ -158,6 +158,31 @@ namespace TitansUC.LobbyServer
                             break;
 
 
+                        case "ban":
+                            // ban <account> [days]: 0 or none bans for good
+                            if (args.Length < 2 || args[1].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: ban <account> [days] (no days: for good); unban <account>");
+                                break;
+                            }
+                            int days = 0;
+                            if (args.Length > 2 && (!int.TryParse(args[2], out days) || days < 0))
+                            {
+                                Logger.ShowInfo("The days must be a number, 0 or more (0: for good).");
+                                break;
+                            }
+                            Logger.ShowInfo(Common.Database.AccountBans.Ban(args[1], days));
+                            break;
+
+                        case "unban":
+                            if (args.Length < 2 || args[1].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: unban <account>");
+                                break;
+                            }
+                            Logger.ShowInfo(Common.Database.AccountBans.Ban(args[1], -1));
+                            break;
+
                         case "unlock":
                             // unlock: lift every wrong-password lockout
                             Logger.ShowInfo(string.Format("Cleared {0} login lockout entries.", Manager.LoginGuard.Clear()));

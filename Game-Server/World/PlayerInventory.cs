@@ -941,6 +941,23 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Sets a vehicle's upgrade levels, in its node and its stats field.
+        /// </summary>
+        public static void SetImprovement(ItemNode vehicle, int packed)
+        {
+            vehicle.Improvement = packed;
+            var stats = vehicle.Options != null && vehicle.Options.Length > 5 ? vehicle.Options[5] : null;
+            int o = 1 + Improvements.StatsIndex * 4;
+            if (stats != null && stats.Length >= o + 4)
+            {
+                stats[o] = (byte)(packed >> 24);
+                stats[o + 1] = (byte)(packed >> 16);
+                stats[o + 2] = (byte)(packed >> 8);
+                stats[o + 3] = (byte)packed;
+            }
+        }
+
+        /// <summary>
         /// Sets a vehicle's health, in its node and its stats field.
         /// </summary>
         public static void SetHealth(ItemNode vehicle, int health)
@@ -1413,7 +1430,7 @@ namespace TitansUC.GameServer.World
             var inventory = vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 });
 
             // Java's container.child format: "itemID-amount" separated by spaces; equipped armaments are
-            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle, and a worn or partly loaded
+            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle, "^levels" for an upgraded one, and a worn or partly loaded
             // weapon or shield has its state after the entry ("@0-280000~d450~l30", see StateOf).
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
             foreach (var whole in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
@@ -1422,6 +1439,14 @@ namespace TitansUC.GameServer.World
                 int tilde = whole.IndexOf('~');
                 string entry = tilde >= 0 ? whole.Substring(0, tilde) : whole;
                 string state = tilde >= 0 ? whole.Substring(tilde) : null;
+                if (entry.StartsWith("^"))
+                {
+                    if (int.TryParse(entry.Substring(1), out first) && Improvements.Total(first) <= Improvements.MaxTotal)
+                    {
+                        vehicle.Improvement = first;
+                    }
+                    continue;
+                }
                 if (entry.StartsWith("!"))
                 {
                     if (int.TryParse(entry.Substring(1), out first) && first >= 0 && first < health)
@@ -1455,7 +1480,7 @@ namespace TitansUC.GameServer.World
                     inventory.Add(ApplyState(NewItem(first, second > 0 ? second : 1, null), state));
                 }
             }
-            vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine);
+            vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine, vehicle.Improvement);
             return vehicle;
         }
 
@@ -1485,6 +1510,10 @@ namespace TitansUC.GameServer.World
             {
                 entries.Add("!" + Math.Max(0, vehicle.Health));
             }
+            if (vehicle.Improvement != 0)
+            {
+                entries.Add("^" + vehicle.Improvement);
+            }
             return string.Join(" ", entries);
         }
 
@@ -1493,13 +1522,13 @@ namespace TitansUC.GameServer.World
         /// in the 18th (UCGOZone-Login.pcap); the other values are the Java server's constants
         /// (Vehicle.write), which it had not decoded.
         /// </summary>
-        private static byte[] VehicleStats(int health, int maxHealth, int engineID)
+        private static byte[] VehicleStats(int health, int maxHealth, int engineID, int improvement)
         {
             var values = new[]
             {
                 health, 0x7D0, 0x9C4, 0x9C4, 0xBB8, 0xBB8,
                 maxHealth, 0x7D0, 0x9C4, 0x9C4, 0xBB8, 0xBB8,
-                0x4B, 0x3E8, 0x19, 0x14, 0, engineID, 0,
+                0x4B, 0x3E8, 0x19, 0x14, 0, engineID, improvement,
             };
 
             var bytes = new byte[1 + values.Length * 4];

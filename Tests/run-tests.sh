@@ -68,7 +68,8 @@ def patch(path, values):
             s = s.replace('</%s>' % root, '  <%s>%s</%s>\n</%s>' % (key, value, key, root))
     open(path, 'w', encoding='utf-8-sig').write(s)
 patch(sys.argv[1] + '/GameServer.xml', {'OccupationPeaceMinutes': '0', 'OccupationCaptureSeconds': '3',
-                                         'CrimeExileCount': '6', 'WreckChance': '100'})
+                                         'CrimeExileCount': '6', 'WreckChance': '100',
+                                         'UpgradeChance': '100'})
 patch(sys.argv[1] + '/LobbyServer.xml', {'AutoCreateAccounts': 'true'})
 EOF
 
@@ -108,7 +109,7 @@ if ! sql -e "USE \`titans-server\`" 2>/dev/null; then
 fi
 reset_db() {
   sql titans-server -e "DELETE FROM characters; DELETE FROM appearance; DELETE FROM container; DELETE FROM garments;
-    DELETE FROM skills; DELETE FROM login_sessions; DELETE FROM ground_items;
+    DELETE FROM skills; DELETE FROM login_sessions; DELETE FROM ground_items; DELETE FROM team;
     DROP TABLE IF EXISTS flights; DROP TABLE IF EXISTS character_state; DROP TABLE IF EXISTS occupation_city;" 2>/dev/null
 }
 
@@ -149,7 +150,7 @@ run_spawn() {
   echo "== Spawn test"
   reset_db
   local fifo=$WORK/game.fifo ready=$WORK/ready
-  rm -f "$fifo" "$ready" "${ready}2" "${ready}3"
+  rm -f "$fifo" "$ready" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
   mkfifo "$fifo"
   start lobby.log Lobby-Server.exe
   start cms.log Cms-Server.exe
@@ -177,6 +178,12 @@ run_spawn() {
   say "spawn Gmtest id 550410"
   sleep 3
   say "gm Gmtest rank points 20" "gm Gmtest rank"
+  for _ in $(seq 1 60); do [ -f "${ready}4" ] && break; sleep 1; done
+  say "players" "backup"
+  sleep 2
+  say "ban Gmtest 3"
+  for _ in $(seq 1 60); do [ -f "${ready}5" ] && break; sleep 1; done
+  say "unban Gmtest"
   wait $client
   stop_all
   grep -E "^FAIL" "$LOGS/spawn.out"

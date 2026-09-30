@@ -13,6 +13,9 @@
   <!-- Chance in percent that a destroyed vehicle (a player's or an NPC's) leaves a wreck; otherwise nothing is left. -->
   <WreckChance>70</WreckChance>
 
+  <!-- Chance in percent that a level 1 vehicle upgrade works; each level above is 5 less (at least 5). -->
+  <UpgradeChance>65</UpgradeChance>
+
   <!-- Skills, in tenths (1000 = 100.0). All skills together stop at SkillTotalCap (the Java server's 800.0;
        0 = no cap); past it a gain takes the same from skills whose arrow in the Status Setting window points down.
        Strength, spirit and luck rise by play up to StatusCap. SkillGainRate scales every growth chance (percent). -->
@@ -42,6 +45,13 @@
   <OccupationWarMinutes>60</OccupationWarMinutes>
   <OccupationPeaceMinutes>180</OccupationPeaceMinutes>
   <OccupationMedals>1, 5, 10</OccupationMedals>
+
+  <!-- Database backups: every BackupHours (0 = off) the Earth server writes the whole database to an .sql file in
+       BackupFolder and keeps the newest BackupKeep. "backup" on the console makes one now. Load one back with
+       mariadb -uroot -p titans-server < file.sql -->
+  <BackupHours>6</BackupHours>
+  <BackupFolder>Backups</BackupFolder>
+  <BackupKeep>28</BackupKeep>
 
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>

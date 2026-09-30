@@ -141,7 +141,9 @@ namespace TitansUC.GameServer.World
                     // Freighters, cargo boats, most battleships and some event units have 0 (the client never reads it).
                     t.Health = DefaultHealth;
                 }
-                t.CargoSlots = d[p + 21];
+                t.CargoSlots = d[p + 17];
+                int mi = p + 18;
+                t.ModelIndex = ReadInt(d, ref mi);
                 int g = p + 26;
                 t.EquipGroup = ReadInt(d, ref g);
                 p += 30;
@@ -219,6 +221,11 @@ namespace TitansUC.GameServer.World
         /// Item slots in the vehicle's cargo (MS 8, cars 16-20, 0 = no cargo), as the client shows them.
         /// </summary>
         public int CargoSlots { get; set; }
+
+        /// <summary>
+        /// The vehicle's upgrade table (<see cref="Improvements"/>); -1 when it has none.
+        /// </summary>
+        public int ModelIndex { get; set; }
     }
 
     /// <summary>

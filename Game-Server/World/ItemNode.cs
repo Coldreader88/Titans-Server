@@ -103,6 +103,11 @@ namespace TitansUC.GameServer.World
         public int MaxHealth { get; set; }
 
         /// <summary>
+        /// For a vehicle: its upgrade levels, packed as in its stats field (see <see cref="Improvements"/>).
+        /// </summary>
+        public int Improvement { get; set; }
+
+        /// <summary>
         /// For a weapon or shield: its stats list, which its description carries instead of children (7 ints:
         /// durability, max durability, power, a rate-like value, range, 0, 1000; a shield: durability, max
         /// durability, 0, 0, 0, 0, 1000), and the rounds loaded in it (its fifth option). Null for other items.

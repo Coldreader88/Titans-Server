@@ -86,6 +86,7 @@ class B
 class R
 {
     byte[] d; public int Pos;
+    public byte[] Buf { get { return d; } }
     public R(byte[] d) { this.d = d; }
     public uint U32() { uint v = (uint)(d[Pos] << 24 | d[Pos + 1] << 16 | d[Pos + 2] << 8 | d[Pos + 3]); Pos += 4; return v; }
     public ushort U16() { ushort v = (ushort)(d[Pos] << 8 | d[Pos + 1]); Pos += 2; return v; }
@@ -257,6 +258,7 @@ class Test
         var r = g.Recv(); var rr = new R(r.Item2);
         uint kind = rr.U32(); rr.Pos = 32; uint packed = rr.U32();
         Check(r.Item1 == 0x8017 && kind == 0x02010002 && packed != 0, "split 2 yarn into the trade pack (0x0201)");
+        System.Threading.Thread.Sleep(300);
         Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 110005 AND item_id = 240000") == "2",
             "the trade pack's 2 yarn are saved (container_id 110005)");
         g.Send(0x17, Move(7, me, packed, 0x13, tradePack, backpack, 110005, 110001, 2, 0xFF, 0xFF));
@@ -1122,6 +1124,8 @@ class Test
         var seen1 = RecvOp(g2, 0x8035); var seen2 = RecvOp(g2, 0x8035);
         Check(new R(seen1.Item2).U32() == 1 && new R(seen2.Item2).U32() == 2, "Char nearby sees it put down and taken (0x8035 1 and 2, as the capture)");
 
+        UpgradeTests(g, me, info, zaku, factory);
+
         // Take it apart: 70% of the 60 steel (42), the engine is lost.
         g.Send(0x28, Product(5, me, 6, 0x0A, 410046, 1, factory, new[] { new uint[] { 410046, zaku, factory, 110006, 1 } }, true));
         pr = ProductReply(RecvOp(g, 0x8028), 1);
@@ -1136,6 +1140,121 @@ class Test
             "an MS-07 shield (or its EX), or 2 of the 4 steel back");
         Check(Sql("SELECT skill_level FROM skills WHERE char_id = " + me + " AND skill_idx = 22") == "1300", "MS/MA construction stays at its 130 cap");
         DyeTests(g, g2, me, info);
+    }
+
+    // Amuro logs in again (to the Space server, where the flight ended): every container, item, stack, vehicle
+    // with its cargo, armaments, engine, health and upgrades, weapon state and clothes colour is as it was.
+    static void RelogTest(LobbyResult a, uint me, List<string> before)
+    {
+        var lobby = new Conn("lobby:Amuro2", "127.0.0.1", 42018);
+        lobby.Send(0x30000, LoginBody("tester1", "secret1"));
+        var lr = new R(lobby.Recv().Item2); uint ok = lr.U32(); uint key = lr.U32(); uint acc = lr.U32();
+        Check(ok == 1, "Amuro's player logs in to the Lobby again");
+        lobby.Send(0x30001, new B().Byte(0).U32(acc).U32(0).Get()); lobby.Recv();
+        lobby.Send(0x30005, new B().U32(key).U32(acc).U32(me).U16(1).U16(0xFFFF).Byte(0x80).Get());
+        var gr = new R(lobby.Recv().Item2);
+        uint handed = gr.U32(); int n = gr.Size(); string ip = Encoding.ASCII.GetString(gr.Buf, gr.Pos, n); gr.Pos += n; int port = gr.U16();
+        lobby.Close();
+        Check(handed == 1 && port == a.Port + 1, "and is sent to the Space server (" + ip + ":" + port + ")");
+        var space = new LobbyResult { IP = ip, Port = port, Key = key, Acc = acc };
+        space.Chars.Add(me);
+        var g = GameLogin("Amuro", space, key);
+        var login = RecvOp(g, 0x8041);
+        Check(Conn.Hex(login.Item2).StartsWith("00 10 00 02"), "Amuro is back on the Space server");
+        var after = Snapshot(g, me);
+        var lost = before.Except(after).ToList();
+        var gained = after.Except(before).ToList();
+        foreach (var x in lost) Console.WriteLine("  before only: " + x);
+        foreach (var x in gained) Console.WriteLine("  after only:  " + x);
+        Check(before.Count > 10 && lost.Count == 0 && gained.Count == 0, "after a relog every item is as it was (" + before.Count + " nodes)");
+        g.Send(0x55, new B().U32(me).Get()); RecvOp(g, 0x8055);
+        g.Send(0x42, new byte[0]); RecvOp(g, 0x8042);
+        g.Close();
+    }
+
+    // Every item under the player's containers, without unique ids and times: "parent static > template x amount
+    // [options and children formats]", sorted. The same list after a relog means everything came back as it was.
+    static List<string> Snapshot(Conn g, uint me)
+    {
+        int[][] top = { new[] { 110001, 0x14 }, new[] { 120001, 0x14 }, new[] { 110002, 0x14 }, new[] { 500000, 0x13 }, new[] { 500001, 0x13 }, new[] { 110003, 0x14 }, new[] { 110004, 0x14 }, new[] { 110006, 0x14 } };
+        var queue = new Queue<uint[]>();
+        foreach (var t in top) queue.Enqueue(new uint[] { me + (uint)t[0], (uint)t[1], 0, 0, t[0] == 500001 ? 500000u : (uint)t[0], 0, (uint)t[0] });
+        var result = new List<string>();
+        Drain(g);
+        while (queue.Count > 0)
+        {
+            var q = queue.Dequeue();
+            g.Send(0x16, new B().U32(0x00020000).U32(me).U32(q[0]).U32(q[1]).U32(q[2]).U32(q[3]).U32(q[4]).U32(q[5]).U32(0xB).Byte(0xFF).Get());
+            var rep = RecvOp(g, 0x8016);
+            var r = new R(rep.Item2);
+            r.Pos = 36; r.Size();
+            r.U32(); uint fmt = r.U32(); r.U32(); uint amount = r.U32(); uint stat = r.U32(); r.U32(); r.U32();
+            int optStart = r.Pos;
+            for (int i = 0; i < (int)fmt - 14; i++) { int os = r.Size(); r.Pos += (i == 5 && os > 0) || (fmt == 0x13 && i == 4 && os > 1) ? os * 4 : os; }
+            string options = Conn.Hex(rep.Item2).Substring(optStart * 3, (r.Pos - optStart) * 3).Trim();
+            int kids = r.Size();
+            var formats = new List<string>();
+            for (int i = 0; i < kids; i++)
+            {
+                uint cu = r.U32(), cf = r.U32(), cs = r.U32();
+                formats.Add(cu == 0 ? "empty" : cs.ToString());
+                if (cu != 0) queue.Enqueue(new uint[] { cu, cf, q[0], q[1], cs, q[4], cs });
+            }
+            if (fmt != 0x14 || stat != 120001) formats.Sort(); // only weared has fixed slots
+            result.Add(string.Format("{0} > {1} x {2} [{3}] ({4})", q[5], stat, amount, options, string.Join(",", formats)));
+        }
+        result.Sort();
+        return result;
+    }
+
+    // Zaku II F2 upgrades (UpgradeChance 100 in the tests): level 1 of each type takes 3 of its package; the levels
+    // show in the vehicle's stats list (19th int: power bits 0-3, defence 4-7, hit 8-11) and are saved ("^levels").
+    static void UpgradeTests(Conn g, uint me, Dictionary<uint, uint[]> info, uint zaku, uint factory)
+    {
+        uint backpack = me + 110001, power = 0, hit = 0, defence = 0;
+        foreach (var kv in info)
+        {
+            if (kv.Value[2] != backpack) continue;
+            if (kv.Value[1] == 510021) power = kv.Key;
+            if (kv.Value[1] == 510022) hit = kv.Key;
+            if (kv.Value[1] == 510023) defence = kv.Key;
+        }
+        Check(power != 0 && hit != 0 && defence != 0, "found the seeded improvement packages");
+        Func<uint, uint, uint, byte[]> upgrade = (template, uid, amount) =>
+        {
+            var body = Product(8, me, 6, 0x0A, 410046, 1, factory, new[] { new uint[] { template, uid, backpack, 110001, amount } }, true);
+            body[body.Length - 9] = 1; // improve flag
+            new B().U32(zaku).Get().CopyTo(body, body.Length - 8);
+            return body;
+        };
+        Func<int> levels = () =>
+        {
+            g.Send(0x16, new B().U32(0x00020000).U32(me).U32(zaku).U32(0x14).U32(factory).U32(0x14).U32(410046).U32(110006).U32(0xB).Byte(0xFF).Get());
+            var d = RecvOp(g, 0x8016).Item2;
+            for (int i = 0; i + 77 <= d.Length; i++)
+                if (d[i] == 0x93 && d[i + 1] == 0 && d[i + 2] == 0) return (int)new R(d) { Pos = i + 1 + 18 * 4 }.U32();
+            return -1;
+        };
+        Check(levels() == 0, "a new Zaku has no upgrades");
+
+        g.Send(0x28, upgrade(510022, hit, 3));
+        var r = RecvOp(g, 0x8028); var pr = ProductReply(r, 1);
+        Check(pr.Item1 == 2 && pr.Item2[0] == 8 && pr.Item3.Count == 0 && r.Item2[r.Item2.Length - 11] == 1,
+            "hit upgrade 1 works: the 3 accuracy packages are used up, improve flag 1, nothing out");
+        g.Send(0x28, upgrade(510021, power, 10));
+        r = RecvOp(g, 0x8028); pr = ProductReply(r, 1);
+        Check(pr.Item1 == 2 && pr.Item2[0] == 9 && r.Item2[r.Item2.Length - 11] == 1, "power upgrade 1 works: 3 of the 10 enhancement packages used");
+        int packed = levels();
+        Check(packed == 0x101, "the stats list shows hit 1 and power 1 (" + packed.ToString("X") + ", as the official 0x111 layout)");
+        System.Threading.Thread.Sleep(300);
+        Check(Sql("SELECT child FROM container WHERE char_id = " + me + " AND item_id = 410046") == "^257", "saved with the vehicle (^257)");
+
+        g.Send(0x28, upgrade(510023, defence, 2));
+        pr = ProductReply(RecvOp(g, 0x8028), 1);
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "defence upgrade 1 needs 3 packages, 2 are not enough: refused, nothing used");
+        g.Send(0x28, upgrade(510022, hit, 3));
+        pr = ProductReply(RecvOp(g, 0x8028), 1);
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "the accuracy packages are gone: refused");
     }
 
     // Clothes are dyed when they are made: a shirt (240082: 2 silk yarn and a dye) from the seeded silk yarn and dyes.
@@ -1380,8 +1499,58 @@ class Test
         Console.WriteLine("  NPC attack weapons: " + string.Join(", ", templates.Select(kv => kv.Key + " x" + kv.Value)));
         Check(templates.Count > 0, "the NPCs keep attacking");
         QuestTests(g, me);
+        AdminConsoleTests(g, me);
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;
+    }
+
+    // The game server console lists the players, backs up the database and bans the GM's account for 3 days: the GM is
+    // logged out and the Lobby refuses the account (0x0B) until "unban". The backup loads into an empty database.
+    static void AdminConsoleTests(Conn g, uint me)
+    {
+        foreach (var f in System.IO.Directory.Exists("Backups") ? System.IO.Directory.GetFiles("Backups") : new string[0]) System.IO.File.Delete(f);
+        System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "4", "ready");
+        Tuple<uint, byte[]> logout = null;
+        var until = DateTime.Now.AddSeconds(30);
+        while (DateTime.Now < until && logout == null) { var r = g.Recv(true); if (r != null && r.Item1 == 0x8052) logout = r; }
+        Check(logout != null, "\"ban Gmtest 3\" logs the GM out (0x8052)");
+        System.Threading.Thread.Sleep(4000);
+        var log = GameLog();
+        Check(log.Contains("Gmtest (character " + me) && log.Contains("from 127.0.0.1"), "\"players\" lists the GM with their account and address");
+        Check(Sql("SELECT DATEDIFF(ban_time, CURDATE()) FROM accounts WHERE name = 'gm1'") == "3", "the account is banned for 3 days");
+        Check(LobbyStatus("gm1", "secret1") == 0x0B, "and the Lobby refuses it (0x0B)");
+        Check(LobbyStatus("gm1", "wrong") == 9, "a wrong password still gets the wrong-password answer, not the ban");
+
+        var files = System.IO.Directory.Exists("Backups") ? System.IO.Directory.GetFiles("Backups", "titans-server-*.sql") : new string[0];
+        Check(files.Length == 1, "\"backup\" wrote one backup (" + files.Length + ")");
+        if (files.Length == 1)
+        {
+            var dump = System.IO.File.ReadAllText(files[0]);
+            Check(dump.Contains("CREATE TABLE `accounts`") && dump.Contains("INSERT INTO `characters`"), "with the tables and their rows");
+            Sql("DROP DATABASE IF EXISTS titans_restore; CREATE DATABASE titans_restore");
+            var psi = new System.Diagnostics.ProcessStartInfo("mariadb", DbArgs() + " titans_restore") { UseShellExecute = false, RedirectStandardInput = true };
+            var proc = System.Diagnostics.Process.Start(psi);
+            proc.StandardInput.Write(dump); proc.StandardInput.Close(); proc.WaitForExit();
+            string[] tables = { "accounts", "characters", "container", "skills" };
+            bool same = proc.ExitCode == 0;
+            foreach (var t in tables)
+            {
+                var a = Sql("SELECT COUNT(*) FROM " + t);
+                var b = Sql("SELECT COUNT(*) FROM titans_restore." + t);
+                if (a != b) { same = false; Console.WriteLine("  " + t + ": " + a + " vs " + b); }
+            }
+            Check(same, "the backup loads into an empty database with the same rows");
+            Sql("DROP DATABASE IF EXISTS titans_restore");
+        }
+        System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "5", "ready");
+        System.Threading.Thread.Sleep(2000);
+        Check(Sql("SELECT status, ban_time IS NULL FROM accounts WHERE name = 'gm1'") == "1\t1" && LobbyStatus("gm1", "secret1") == 1,
+            "\"unban Gmtest\" lets the account in again");
+
+        // A ban for good (status 0) is refused too.
+        Sql("UPDATE accounts SET status = 0 WHERE name = 'gm1'");
+        Check(LobbyStatus("gm1", "secret1") == 0x0B, "an account banned for good (status 0) is refused");
+        Sql("UPDATE accounts SET status = 1 WHERE name = 'gm1'");
     }
 
     static byte[] HandIn(uint me, int quest, params uint[] items)
@@ -1527,6 +1696,60 @@ class Test
         cms.Send(0x13, new B().U32(me).I32(-1).U32(0).Str("Gmtest").Byte(1).Byte(2).Get());
         var card = RecvOp(cms, 0x8012);
         Check(card.Item1 == 0x8012 && card.Item2[card.Item2.Length - 1] == 2, "the chat server's card has the new rank 2 (" + Conn.Hex(card.Item2) + ")");
+        TeamAndScriptTests(g, cms, me);
+    }
+
+    // The GM makes a team: the game server's position record carries the team at once (CMS link 0x0B). #script is
+    // for admins: a GM is told it does not exist; as an admin the GM runs DB/Scripts/example.txt.
+    static void TeamAndScriptTests(Conn g, Conn cms, uint me)
+    {
+        Drain(cms);
+        cms.Send(0x0D, new B().Str("Testers").U32(me).Get());
+        var made = RecvOp(cms, 0x800C);
+        int team = new R(made.Item2) { Pos = 4 }.I32();
+        Check(made.Item2[3] == 2 && team >= 51500000, "the GM makes team Testers (" + team + ")");
+        System.Threading.Thread.Sleep(300);
+        Drain(g);
+        g.Send(0x03, new B().U32(0).U32(me).U16(1).Bytes(new byte[6]).I32(72537600).I32(-59309800).I32(7700).U32(0x45FA0000).Get());
+        var list = RecvOp(g, 0x8003).Item2;
+        var lr = new R(list); lr.U16(); int count = lr.Size(); int mine = int.MinValue;
+        for (int i = 0; i < count; i++)
+        {
+            int o = lr.Pos + i * 53;
+            if (new R(list) { Pos = o + 18 }.U32() == me) mine = new R(list) { Pos = o + 44 }.I32();
+        }
+        Check(mine == team, "the game server's position record of the GM has team " + team + " (" + mine + ")");
+
+        Func<string, List<string>> say = line =>
+        {
+            Drain(cms);
+            cms.Send(0x03, new B().U32(me).Str(line).U32(2).U32(0).Byte(0x80).Get());
+            var lines = new List<string>();
+            var until = DateTime.Now.AddSeconds(3);
+            while (DateTime.Now < until)
+            {
+                var r = cms.Recv(true);
+                if (r == null) continue;
+                if (r.Item1 == 0x8004) { var rr = new R(r.Item2) { Pos = 4 }; lines.Add(rr.Str()); if (lines[lines.Count - 1].StartsWith("Script ")) break; }
+            }
+            return lines;
+        };
+        var refused = say("#script example");
+        Check(refused.Exists(l => l.Contains("does not exist")), "a GM cannot use #script (" + string.Join(" / ", refused) + ")");
+        string access = Sql("SELECT char_access FROM characters WHERE char_id = " + me.ToString().Substring(1));
+        Sql("UPDATE characters SET char_access = 9 WHERE char_id = " + me.ToString().Substring(1));
+        cms.Close();
+        cms = new Conn("cms", "127.0.0.1", 42016);
+        cms.Send(0x01, new B().U32(me).Str("Gmtest").U32(0xFFFFFFFF).Get());
+        RecvOp(cms, 0x8001);
+        var listed = say("#script");
+        Check(listed.Exists(l => l.Contains("example")), "an admin's #script lists the scripts (" + string.Join(" / ", listed) + ")");
+        var ran = say("#script example");
+        Check(ran.Exists(l => l.Contains("restart in 10 minutes")) && ran.Exists(l => l == "Script example: ran 2 commands."),
+            "#script example runs its 2 commands (" + string.Join(" / ", ran) + ")");
+        var sneaky = say("#script ../Config/CMSServer");
+        Check(sneaky.Exists(l => l.Contains("no script called")), "a script name cannot leave DB/Scripts");
+        Sql("UPDATE characters SET char_access = " + access + " WHERE char_id = " + me.ToString().Substring(1));
         cms.Close();
     }
 
@@ -1550,7 +1773,7 @@ class Test
             DbArgs() + " titans-server -e \"INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 240000, 'cotton yarn', 10, '')\"") { UseShellExecute = false });
         seed.WaitForExit();
         // Crafting ingredients and skills for CraftTests.
-        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 530001, 'iron ore', 1000, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510001, 'super high tensile steel', 64, ''), (" + a.Chars[0] + ", 110001, 'backpack', 290033, 'jet engine', 1, '')");
+        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 530001, 'iron ore', 1000, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510001, 'super high tensile steel', 64, ''), (" + a.Chars[0] + ", 110001, 'backpack', 290033, 'jet engine', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510021, 'enhancement package', 10, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510022, 'accuracy improvement package', 3, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510023, 'defensive improvement package', 2, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 240088, 'cap', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 240092, 'glasses', 1, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 230009, 'silk yarn', 6, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350000, 'basic color dyes', 3, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350001, 'light color dyes', 2, '')");
         Sql("DELETE FROM skills WHERE char_id = " + a.Chars[0] + " AND skill_idx IN (22, 24); INSERT INTO skills (char_id, skill_idx, skill_level, skill_exp) VALUES (" + a.Chars[0] + ", 22, 1300, 0), (" + a.Chars[0] + ", 24, 1300, 0)");
@@ -1685,6 +1908,7 @@ class Test
         g = FlightTests(g, a, me);
         Check(NoReply(g2), "Amuro's vehicle stays on the Earth ground while Amuro is in Space");
 
+        var before = Snapshot(g, me);
         g.Send(0x02, Coord(me, 5000, 6000, 40));
         g.Send(0x55, new B().U32(me).Get());
         Check(g.Recv().Item1 == 0x8055, "logout");
@@ -1714,6 +1938,7 @@ class Test
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "2", "Amuro is saved in Space");
         Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 500001") == "500", "the bank holds 500");
         Check(Sql("SELECT COUNT(*) FROM flights") == "0", "the flight is over");
+        RelogTest(a, me, before);
         if (chr != null) ExileTest(g2, k, other, kai, chr);
         g2.Close();
         k.Close();

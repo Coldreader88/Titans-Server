@@ -237,6 +237,7 @@ namespace Common.Network.Packets
         CMS_TELEPORT_TO_PLAYER = 0x08,
         CMS_RUN_SCRIPT = 0x09,
         CMS_GM_COMMAND = 0x0A,
+        CMS_TEAM = 0x0B,
 
         // Game server -> CMS server (Java mina_cmsserver cluster/CGOpcodeMap).
         GS_NPC_CHAT = 0x01,

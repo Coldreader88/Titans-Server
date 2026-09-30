@@ -70,7 +70,23 @@ Settings worth knowing:
 - `GameServer.xml` also holds the game rules: wreck chance, skill caps, crime and exile, promotions, town wars, NPC
   aggro range and the autosave interval.
 
-The game server's console takes commands too: `save`, `spawn <player> <what>`, `gm <player> <#command>`.
+Console commands:
+- Lobby-Server: `account <name> <password> [level]`, `ban <account> [days]` (no days: for good), `unban <account>`,
+  `unlock` (lifts the wrong-password lockouts).
+- Game-Server: `players` (who is online, with account and address), `kick <character>`, `ban <character> [days]`
+  and `unban <character>` (the whole account; a banned player is logged out), `backup`, `save`,
+  `spawn <player> <what>`, `gm <player> <#command>`.
+
+In chat, admins can run `#script name`: the GM commands in `DB/Scripts/name.txt`, one per line.
+
+## Backups and logs
+
+The Earth game server writes the whole database to `Backups\titans-server-<date>-<time>.sql` every 6 hours and keeps
+the newest 28 (`BackupHours`, `BackupFolder`, `BackupKeep` in `GameServer.xml`; `backup` on its console makes one
+now). To restore one: `mariadb -uroot -p titans-server < Backups\titans-server-....sql`.
+
+On Windows every server also writes what it shows to `Log\<date>\<server>_<date>.log` next to its exe
+(`NLog.config`).
 
 Error 4002 in the client comes from the client itself. It shows when an overlay (RivaTuner and similar) hooks the
 client's timers.

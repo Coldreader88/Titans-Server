@@ -89,6 +89,17 @@ namespace TitansUC.GameServer
         public int SaveInterval { get { return saveInterval; } }
 
         /// <summary>
+        /// Hours between database backups (the Earth server makes them; 0 turns them off), where they go, and how
+        /// many are kept (see Common.Database.Backup).
+        /// </summary>
+        public int BackupHours { get { return backupHours; } }
+        public string BackupFolder { get { return backupFolder; } }
+        public int BackupKeep { get { return backupKeep; } }
+        int backupHours = 6;
+        string backupFolder = "Backups";
+        int backupKeep = 28;
+
+        /// <summary>
         /// Hostile NPCs attack pilots of the other faction who come this close (position units); 0 = they only
         /// fire back when attacked, as the official captures show.
         /// </summary>
@@ -143,6 +154,9 @@ namespace TitansUC.GameServer
                             break;
                         case "checksessionkey":
                             checkSessionKey = bool.Parse(i.InnerText.Trim());
+                            break;
+                        case "upgradechance":
+                            World.Improvements.FirstLevelChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
                             break;
                         case "wreckchance":
                             World.Combat.WreckChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
@@ -200,6 +214,15 @@ namespace TitansUC.GameServer
                             break;
                         case "viewdistance":
                             viewDistance = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "backuphours":
+                            backupHours = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "backupfolder":
+                            backupFolder = i.InnerText.Trim();
+                            break;
+                        case "backupkeep":
+                            backupKeep = Math.Max(1, int.Parse(i.InnerText.Trim()));
                             break;
                         case "saveinterval":
                             saveInterval = int.Parse(i.InnerText.Trim());

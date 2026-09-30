@@ -97,6 +97,29 @@ namespace TitansUC.GameServer.Network.Link
     }
 
     /// <summary>
+    /// 0x0B: uint32 BE character id, int32 BE team id. See <see cref="GameLink.Team"/>.
+    /// </summary>
+    public class CMS_TEAM : UCPacket<CGOpcode>
+    {
+        public CMS_TEAM()
+        {
+            this.ID = CGOpcode.CMS_TEAM;
+        }
+
+        public override Packet<CGOpcode> New()
+        {
+            return new CMS_TEAM();
+        }
+
+        public override void OnProcess(Session<CGOpcode> client)
+        {
+            var link = (CmsLink)client;
+            uint id = this.GetUIntBE();
+            link.OnTeam(id, this.GetIntBE());
+        }
+    }
+
+    /// <summary>
     /// 0x06: uint32 BE character id, UC string message. Java: RequestPositionLog.java. See <see cref="GameLink"/>.
     /// </summary>
     public class CMS_POSITION_LOG : UCPacket<CGOpcode>

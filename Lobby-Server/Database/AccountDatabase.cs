@@ -53,6 +53,7 @@ namespace TitansUC.LobbyServer.Database
             {
                 using (var connection = Open())
                 {
+                    bool upgrade = false;
                     using (var cmd = new MySqlCommand(
                         "SELECT acc_id, acc_level, password FROM accounts WHERE name = @name LIMIT 1", connection))
                     {
@@ -63,7 +64,6 @@ namespace TitansUC.LobbyServer.Database
                             if (reader.Read())
                             {
                                 var storedHash = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-                                bool upgrade;
                                 if (!CheckPassword(account.Password, storedHash, out upgrade))
                                 {
                                     Logger.ShowInfo(string.Format("Login failed for {0}: wrong password.", account.UserName));
@@ -75,12 +75,21 @@ namespace TitansUC.LobbyServer.Database
                                     ? (byte)Account.AccountLevel.PLAYER
                                     : Convert.ToByte(reader.GetValue(1));
                                 account.Status = Account.AuthenticationStatus.SUCCESS;
-                                if (!upgrade)
-                                {
-                                    return;
-                                }
                             }
                         }
+                    }
+
+                    string until;
+                    if (account.Status == Account.AuthenticationStatus.SUCCESS &&
+                        Common.Database.AccountBans.IsBanned(connection, account.AccountID, out until))
+                    {
+                        Logger.ShowInfo(string.Format("Login refused for {0}: banned {1}.", account.UserName, until));
+                        account.Status = Account.AuthenticationStatus.BLOCKED;
+                        return;
+                    }
+                    if (account.Status == Account.AuthenticationStatus.SUCCESS && !upgrade)
+                    {
+                        return;
                     }
 
                     if (account.Status == Account.AuthenticationStatus.SUCCESS)

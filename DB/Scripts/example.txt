@@ -1,0 +1,4 @@
+// An example #script: GM commands, one per line, run in order as if the admin typed them.
+// Lines starting with // are skipped. Run it in chat with: #script example
+#sys The server will restart in 10 minutes.
+#online

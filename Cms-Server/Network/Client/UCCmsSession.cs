@@ -7,6 +7,7 @@ using SmartEngine.Core;
 using SmartEngine.Network;
 using TitansUC.CmsServer.Commands;
 using TitansUC.CmsServer.Database;
+using TitansUC.CmsServer.Manager;
 using TitansUC.CmsServer.Network.Packets;
 using TitansUC.CmsServer.Network.Packets.Client;
 using TitansUC.CmsServer.Network.Packets.Server;
@@ -479,6 +480,7 @@ namespace TitansUC.CmsServer.Network.Client
 
                 var team = CmsDatabase.Instance.CreateTeam(name, Member, CmsServer.UnixTime());
                 Member.TeamID = team.ID;
+                GameLinkManager.Instance.Team(CharacterID, team.ID);
                 Logger.ShowInfo(string.Format("{0} created team {1} ({2}).", Name, team.Name, team.ID));
                 Send(new SM_CREATE_TEAM(CmsPacket.ResultYes, team.ID, team.Created, team.Name));
             }
@@ -651,6 +653,7 @@ namespace TitansUC.CmsServer.Network.Client
 
         private static void SetOnlineTeam(uint characterID, int teamID)
         {
+            GameLinkManager.Instance.Team(characterID, teamID);
             var session = CmsWorld.Instance.Get(characterID);
             if (session != null && session.Member != null)
             {

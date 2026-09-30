@@ -34,6 +34,7 @@ namespace TitansUC.GameServer.Network.Link
             RegisterPacketHandler(CGOpcode.CMS_POSITION_LOG, new CMS_POSITION_LOG());
             RegisterPacketHandler(CGOpcode.CMS_TELEPORT_TO_PLAYER, new CMS_TELEPORT_TO_PLAYER());
             RegisterPacketHandler(CGOpcode.CMS_GM_COMMAND, new CMS_GM_COMMAND());
+            RegisterPacketHandler(CGOpcode.CMS_TEAM, new CMS_TEAM());
         }
 
         /// <summary>
@@ -184,6 +185,18 @@ namespace TitansUC.GameServer.Network.Link
             foreach (var line in GmCommands.Run(player, command))
             {
                 SystemMessage(characterID, line);
+            }
+        }
+
+        /// <summary>
+        /// A player made, joined or left a team: their position records carry the new team id from now on.
+        /// </summary>
+        public void OnTeam(uint characterID, int teamID)
+        {
+            var player = GameWorld.Instance.Get(characterID);
+            if (player != null)
+            {
+                player.SetTeam(teamID);
             }
         }
 

@@ -92,6 +92,7 @@
     <Compile Include="World\Quests.cs" />
     <Compile Include="World\Ranks.cs" />
     <Compile Include="World\Production.cs" />
+    <Compile Include="World\Improvements.cs" />
     <Compile Include="Network\Packets\Client\Bytes.cs" />
     <Compile Include="Network\Packets\Client\CM_SPACE_PLACED_ITEM.cs" />
     <Compile Include="Network\Packets\Client\SM_SPACE_PLACED_ITEM.cs" />

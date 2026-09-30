@@ -226,10 +226,17 @@ namespace TitansUC.GameServer.World
                     shieldRoll = random.NextDouble();
                 }
 
+                // Upgrades (ours; the captures show none in use): each power level adds 5% damage, each hit level 2
+                // points of hit chance, each defence level takes 5% off the damage taken.
+                var attackerVehicle = weapon.Parent != null ? weapon.Parent.Parent : null;
+                int power = attackerVehicle != null ? Improvements.LevelOf(attackerVehicle.Improvement, Improvements.Power) : 0;
+                int hit = attackerVehicle != null ? Improvements.LevelOf(attackerVehicle.Improvement, Improvements.Hit) : 0;
+                int defence = Improvements.LevelOf(vehicle.Improvement, Improvements.Defence);
+
                 bool outOfRange = template != null && template.Range > 0 && distance > template.Range;
                 bool emptyGun = template != null && template.Magazine > 0 && rounds == 0;
                 if (vehicle.Health <= 0 || outOfRange || emptyGun ||
-                    hitRoll >= HitChance(template, band, attacker, defender, vehicle))
+                    hitRoll >= Math.Min(0.95, HitChance(template, band, attacker, defender, vehicle) + 0.02 * hit))
                 {
                     r.Result = ResultMiss;
                     r.Explosion = ExplosionMiss;
@@ -239,6 +246,7 @@ namespace TitansUC.GameServer.World
                 bool critical = criticalRoll < CriticalChance;
                 bool shieldHit = shield != null && shieldRoll < GuardChance(shield, defender);
                 int damage = Damage(template, band, damageRoll);
+                damage = damage * (100 + 5 * power) * (100 - 5 * defence) / 10000;
                 if (critical)
                 {
                     damage = (int)(damage * CriticalFactor);

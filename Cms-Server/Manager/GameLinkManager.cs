@@ -66,6 +66,11 @@ namespace TitansUC.CmsServer.Manager
             return SendToAll(() => GameLink.GmCommand(characterID, name, list));
         }
 
+        public bool Team(uint characterID, int teamID)
+        {
+            return SendToAll(() => GameLink.Team(characterID, teamID));
+        }
+
         public bool PositionLog(uint characterID, string message)
         {
             return SendToAll(() => GameLink.PositionLog(characterID, message));
