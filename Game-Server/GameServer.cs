@@ -149,7 +149,7 @@ namespace TitansUC.GameServer
                             // gm <character name or id> <command>, e.g. gm Brian items weapon or gm Brian skill ambac 80
                             if (args.Length < 3)
                             {
-                                Logger.ShowInfo("Usage: gm <character name or id> items [category [filter] [page]] | skill [name level]");
+                                Logger.ShowInfo("Usage: gm <character name or id> items [category [filter] [page]] | skill [name level] | town [town action]");
                                 break;
                             }
                             uint gmID;

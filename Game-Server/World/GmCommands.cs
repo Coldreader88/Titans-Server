@@ -40,6 +40,8 @@ namespace TitansUC.GameServer.World
                     return TeleportTo(gm, args);
                 case "crime":
                     return CrimeCommand(gm, args);
+                case "town":
+                    return Occupation.GmCommand(gm, args);
                 case "npcs":
                     return Npcs(gm, args);
                 default:

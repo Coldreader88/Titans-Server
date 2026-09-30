@@ -151,6 +151,15 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "town", Usage = "#town [richmond|newman] [peace [minutes] | open | war [minutes] | end [ef|zeon] | owner ef|zeon | icf 1-5 ef|zeon | reset]",
+                Level = AccessLevel.GM,
+                Description = "Shows the battle towns, or sets one's state: ceasefire, open to attack, at war, the war's end and winner, the owner, one ICF, or back to the start.",
+                Examples = new[] { "#town", "#town newman peace 30", "#town richmond open", "#town newman war 10", "#town newman end zeon",
+                    "#town richmond owner ef", "#town newman icf 3 zeon", "#town richmond reset" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "town", a)),
+            });
+            Add(new Command
+            {
                 Name = "poslog", Usage = "#poslog message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
                 Examples = new[] { "#poslog stuck in wall" },
