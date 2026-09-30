@@ -53,7 +53,8 @@ level for an existing account. GMs can use the `#` commands in chat (`#help` lis
 in. Only turn it on for a private server.
 
 Passwords are stored salted (PBKDF2-SHA256). Accounts from the Java server's database keep working: their old SHA-1
-hash is replaced the next time they log in. The game and chat servers only accept a character from the address its
+hash is replaced the next time they log in. Five wrong passwords from one address lock it out for 15 minutes (`LoginFailLimit`,
+`LoginLockMinutes`; `unlock` on the Lobby console lifts every lock). The game and chat servers only accept a character from the address its
 player logged in to the Lobby from.
 
 ## Run

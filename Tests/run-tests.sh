@@ -124,7 +124,7 @@ trap stop_all EXIT
 start() { # log name, args...: runs a server with its stdin held open
   local log=$1
   shift
-  (cd "$BIN" && exec mono "$@" < <(sleep 3600) > "$LOGS/$log" 2>&1) &
+  (cd "$BIN" && exec mono "$@" < <(sleep 3600 2>/dev/null) > "$LOGS/$log" 2>&1) &
   PIDS+=($!)
 }
 

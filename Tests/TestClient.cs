@@ -209,11 +209,21 @@ class Test
         Check(LobbyStatus("oldjava", "oldpass1") == 1, "an old unsalted SHA-1 password (Java server) still logs in");
         Check(Sql("SELECT password FROM accounts WHERE name = 'oldjava'").StartsWith("pbkdf2$"), "and is stored salted from then on");
         Check(LobbyStatus("oldjava", "oldpass1") == 1 && LobbyStatus("oldjava", "OLDPASS1") != 1, "the salted password logs in, the wrong case does not");
+
+        // LoginFailLimit 5: the fifth wrong password from one address locks it out (0x15), other addresses still log in.
+        uint last = 0;
+        for (int i = 0; i < 5; i++)
+        {
+            last = LobbyStatus("oldjava", "guess" + i, "127.0.0.3");
+        }
+        Check(last == 9, "five wrong passwords are each refused as wrong (9)");
+        Check(LobbyStatus("oldjava", "oldpass1", "127.0.0.3") == 0x15, "then that address is locked out even with the right password (0x15)");
+        Check(LobbyStatus("oldjava", "oldpass1") == 1, "the player still logs in from their own address");
     }
 
-    static uint LobbyStatus(string user, string pass)
+    static uint LobbyStatus(string user, string pass, string from = null)
     {
-        var c = new Conn("lobby:" + user, "127.0.0.1", 42018);
+        var c = from == null ? new Conn("lobby:" + user, "127.0.0.1", 42018) : new Conn("lobby:" + user, "127.0.0.1", 42018, from);
         c.Send(0x30000, LoginBody(user, pass));
         var r = c.Recv();
         c.Close();

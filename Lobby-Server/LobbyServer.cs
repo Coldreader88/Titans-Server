@@ -158,6 +158,11 @@ namespace TitansUC.LobbyServer
                             break;
 
 
+                        case "unlock":
+                            // unlock: lift every wrong-password lockout
+                            Logger.ShowInfo(string.Format("Cleared {0} login lockout entries.", Manager.LoginGuard.Clear()));
+                            break;
+
                         case "printthreads":
                             ClientManager.PrintAllThreads();
                             break;

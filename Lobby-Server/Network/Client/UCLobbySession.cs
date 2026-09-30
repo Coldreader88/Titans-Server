@@ -7,6 +7,7 @@ using Common.Network.Packets;
 using SmartEngine.Core;
 using SmartEngine.Network;
 using TitansUC.LobbyServer.Database;
+using TitansUC.LobbyServer.Manager;
 using TitansUC.LobbyServer.Network.Packets.Client;
 
 namespace TitansUC.LobbyServer.Network.Client
@@ -65,9 +66,28 @@ namespace TitansUC.LobbyServer.Network.Client
                         p.User.Name, p.User.Version, requiredVersion));
                     this.account.Status = Account.AuthenticationStatus.BAD_CLIENT;
                 }
+                else if (LoginGuard.IsLocked(RemoteAddress, p.User.Name, DateTime.Now))
+                {
+                    Logger.ShowInfo(string.Format("Login refused for {0} from {1}: too many wrong passwords.",
+                        p.User.Name, RemoteAddress));
+                    this.account.Status = Account.AuthenticationStatus.LOGIN_TOO_SOON;
+                }
                 else
                 {
                     AccountDatabase.Instance.Authenticate(this.account, Configuration.Instance.AutoCreateAccounts, RemoteAddress);
+                    if (this.account.Status == Account.AuthenticationStatus.WRONG_INPUT)
+                    {
+                        if (LoginGuard.Failed(RemoteAddress, p.User.Name, Configuration.Instance.LoginFailLimit,
+                            Configuration.Instance.LoginLockMinutes, DateTime.Now))
+                        {
+                            Logger.ShowWarning(string.Format("Locked out {0} / {1} for {2} minutes after repeated wrong passwords.",
+                                RemoteAddress, p.User.Name, Configuration.Instance.LoginLockMinutes));
+                        }
+                    }
+                    else if (this.account.Authenticated)
+                    {
+                        LoginGuard.Succeeded(RemoteAddress, p.User.Name);
+                    }
                 }
 
                 // The plain password is only needed to check it.

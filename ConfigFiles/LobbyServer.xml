@@ -10,6 +10,12 @@
        account <name> <password> [level: 10 player, 4 GM, 9 admin] (also sets a new password). -->
   <AutoCreateAccounts>false</AutoCreateAccounts>
 
+  <!-- Password guessing: after LoginFailLimit wrong passwords from one address, logins from it are refused
+       for LoginLockMinutes (the client says to try again later). A user name is locked after four times as
+       many wrong passwords from anywhere. 0 turns it off. "unlock" on the Lobby console lifts every lock. -->
+  <LoginFailLimit>5</LoginFailLimit>
+  <LoginLockMinutes>15</LoginLockMinutes>
+
   <!-- Money a new character starts with (Java reference: default_money = 50000). -->
   <DefaultMoney>50000</DefaultMoney>
 
