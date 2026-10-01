@@ -317,12 +317,21 @@ namespace TitansUC.CmsServer.Network.Client
 
             uint sender = CharacterID;
             Send(new SM_CHAT_MSG(sender, message, type, sender));
+            bool factionOnly = type == ChatType.AllianceAll || type == ChatType.Alliance;
             foreach (uint id in p.Recipients.Distinct())
             {
-                if (id != sender)
+                if (id == sender)
                 {
-                    CmsWorld.Instance.SendTo(id, () => new SM_CHAT_MSG(sender, message, type, id));
+                    continue;
                 }
+                // The client lists only its own side for alliance chat; a modified one could list others.
+                var to = factionOnly ? CmsWorld.Instance.Get(id) : null;
+                if (to != null && to.Member != null && Member.Faction != 0 && to.Member.Faction != Member.Faction)
+                {
+                    Logger.ShowWarning(string.Format("{0}: alliance chat to {1} dropped (the other side).", Name, to.Name));
+                    continue;
+                }
+                CmsWorld.Instance.SendTo(id, () => new SM_CHAT_MSG(sender, message, type, id));
             }
         }
 
@@ -484,6 +493,20 @@ namespace TitansUC.CmsServer.Network.Client
                 else if (CmsDatabase.Instance.TeamNameExists(name))
                 {
                     problem = "the name is taken";
+                }
+                else
+                {
+                    // The help: a team cannot be created again for 7 days after creating one. The client does not
+                    // check it; a refusal shows its "team creation failed" message (468).
+                    long wait = (long)Configuration.Instance.TeamRecreateDays * 86400;
+                    long since = (long)CmsServer.UnixTime() - CmsDatabase.Instance.LastTeamCreated(CharacterID);
+                    if (wait > 0 && since < wait)
+                    {
+                        long left = wait - since;
+                        problem = string.Format("they created a team less than {0} days ago", Configuration.Instance.TeamRecreateDays);
+                        CmsWorld.Instance.SystemMessage(this, string.Format("You can create a team again in {0}.",
+                            left >= 86400 ? (left + 86399) / 86400 + " days" : (left + 3599) / 3600 + " hours"));
+                    }
                 }
 
                 if (problem != null)

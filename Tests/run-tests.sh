@@ -113,7 +113,7 @@ fi
 reset_db() {
   sql titans-server -e "DELETE FROM characters; DELETE FROM appearance; DELETE FROM container; DELETE FROM garments;
     DELETE FROM skills; DELETE FROM login_sessions; DELETE FROM ground_items; DELETE FROM team;
-    DROP TABLE IF EXISTS flights; DROP TABLE IF EXISTS character_state; DROP TABLE IF EXISTS occupation_city;" 2>/dev/null
+    DROP TABLE IF EXISTS flights; DROP TABLE IF EXISTS team_created; DROP TABLE IF EXISTS character_state; DROP TABLE IF EXISTS occupation_city;" 2>/dev/null
 }
 
 # ---- servers ---------------------------------------------------------------------------------------------------

@@ -25,6 +25,11 @@
         public int TeamID { get; set; }
 
         /// <summary>
+        /// appearance.faction: 1 EF, 2 Zeon (0 when unknown).
+        /// </summary>
+        public byte Faction { get; set; }
+
+        /// <summary>
         /// characters.char_access: the GM tag (see <see cref="AccessLevel"/>).
         /// </summary>
         public int Access { get; set; }
@@ -68,10 +73,13 @@
     /// </summary>
     public static class ChatType
     {
-        public const uint Wide = 0;
-        public const uint Unknown1 = 1;
-        public const uint Say = 2;
-        public const uint Faction = 3;
+        // The client's chat types (0x55b54c, specs/re-combat-chat-targets.md): range wide (~2000) or near (~500),
+        // to everyone or to the own faction (the client's "alliance" is the faction, 軍). The client picks the
+        // recipients itself from the characters around it.
+        public const uint All = 0;          // /all: wide, everyone
+        public const uint AllianceAll = 1;  // /allianceall: wide, own faction
+        public const uint Say = 2;          // /say: near, everyone
+        public const uint Alliance = 3;     // /alliance: near, own faction
         public const uint Tell = 4;
         public const uint Team = 5;
         public const uint GroupChat = 6;

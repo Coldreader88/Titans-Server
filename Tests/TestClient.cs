@@ -1799,6 +1799,15 @@ class Test
         }
         Check(mine == team, "the game server's position record of the GM has team " + team + " (" + mine + ")");
 
+        // The help's rule: no new team for 7 days after creating one (CMSServer.xml TeamRecreateDays).
+        cms.Send(0x10, new B().U32(me).U32((uint)team).Get());
+        System.Threading.Thread.Sleep(300);
+        Drain(cms);
+        cms.Send(0x0D, new B().Str("Testers Two").U32(me).Get());
+        var again = RecvOp(cms, 0x800C);
+        Check(again.Item2[3] != 2 && Sql("SELECT COUNT(*) FROM team WHERE name = 'Testers Two'") == "0",
+            "the GM left and cannot create another team within 7 days (0x800C code " + again.Item2[3] + ")");
+
         Func<string, List<string>> say = line =>
         {
             Drain(cms);
@@ -1838,6 +1847,44 @@ class Test
         if (string.IsNullOrEmpty(path)) return "";
         using (var f = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
         using (var r = new System.IO.StreamReader(f)) return r.ReadToEnd();
+    }
+
+    // /allianceall (type 1) and /alliance (3) are the faction's chat: the client lists only its own side, and the chat
+    // server drops anyone else a modified client lists. /all (0) reaches everyone listed.
+    static void AllianceChatTests(uint amuro, uint chr, uint kai)
+    {
+        Console.WriteLine("== Alliance chat");
+        Func<uint, string, Conn> login = (id, name) =>
+        {
+            var c = new Conn("cms:" + name, "127.0.0.1", 42016);
+            c.Send(0x01, new B().U32(id).Str(name).U32(0xFFFFFFFF).Get());
+            RecvOp(c, 0x8001);
+            return c;
+        };
+        var ca = login(amuro, "Amuro"); var cc = login(chr, "Char"); var ck = login(kai, "Kai");
+        System.Threading.Thread.Sleep(500);
+        Func<Conn, List<string>> heard = c =>
+        {
+            var lines = new List<string>();
+            var until = DateTime.Now.AddSeconds(2);
+            while (DateTime.Now < until)
+            {
+                Tuple<uint, byte[]> r;
+                try { r = c.Recv(true); } catch (Exception) { break; }
+                if (r == null) break;
+                if (r.Item1 != 0x8004) continue;
+                var rr = new R(r.Item2); uint from = rr.U32(); string text = rr.Str(); uint type = rr.U32();
+                if (from == kai) lines.Add(type + ":" + text);
+            }
+            return lines;
+        };
+        ca.KeepGains = true;
+        ck.Send(0x03, new B().U32(kai).Str("Sieg Zeon").U32(1).U32(0).Size(2).U32(chr).U32(amuro).Get());
+        ck.Send(0x03, new B().U32(kai).Str("hello all").U32(0).U32(0).Size(2).U32(chr).U32(amuro).Get());
+        var toChar = heard(cc); var toAmuro = heard(ca);
+        Check(toChar.Contains("1:Sieg Zeon") && toChar.Contains("0:hello all"), "Char (Zeon) hears Kai's /allianceall and /all (" + string.Join(" / ", toChar) + ")");
+        Check(!toAmuro.Contains("1:Sieg Zeon") && toAmuro.Contains("0:hello all"), "Amuro (EF) hears only the /all (" + string.Join(" / ", toAmuro) + ")");
+        ca.Close(); cc.Close(); ck.Close();
     }
 
     // The launcher asks the Login-Server (42012) for the status: 0x8000 body = 0, status (0 online, 1 offline,
@@ -2067,6 +2114,7 @@ class Test
         g2.Close();
         k.Close();
 
+        AllianceChatTests(a.Chars[0], b.Chars[0], c.Chars[0]);
         LoginStatusTests();
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;

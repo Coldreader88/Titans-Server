@@ -20,6 +20,9 @@
   <GameLinkPassword>titans_chat</GameLinkPassword>
 
   <!-- MySQL database shared with the Lobby and Game servers (DB/SQL/accounts.sql, characters.sql, cms.sql). -->
+  <!-- Days a character must wait after creating a team before creating another (the game's help: 7). 0 = none. -->
+  <TeamRecreateDays>7</TeamRecreateDays>
+
   <Database>
     <Host>127.0.0.1</Host>
     <Port>3306</Port>

@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS `team` (
 -- For a team table made from the Java team.sql (MariaDB syntax):
 --   ALTER TABLE `team` ADD COLUMN IF NOT EXISTS `created` int(11) NOT NULL DEFAULT '0';
 
+-- When each character last created a team (CMSServer.xml TeamRecreateDays: no new team for 7 days).
+CREATE TABLE IF NOT EXISTS `team_created` (
+  `char_id` int(10) unsigned NOT NULL PRIMARY KEY,
+  `created` int(11) NOT NULL DEFAULT '0'
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
 CREATE TABLE IF NOT EXISTS `friends` (
   `char_id` int(10) unsigned NOT NULL,
   `friend_id` int(10) unsigned NOT NULL,
