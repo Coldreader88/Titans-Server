@@ -277,7 +277,7 @@ namespace TitansUC.GameServer.World
         /// A player's attack on an NPC (0x0F, 0x67); null when it cannot be attacked (a vendor, or dead).
         /// The caller sends the results, then calls <see cref="AfterAttack"/>.
         /// </summary>
-        public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null)
+        public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null, SpecialAttack special = null)
         {
             if (npc.IsVendor)
             {
@@ -289,7 +289,7 @@ namespace TitansUC.GameServer.World
                 {
                     return null;
                 }
-                var r = Combat.Attack(weapon, npc.Vehicle, null, distance, attacker);
+                var r = Combat.Attack(weapon, npc.Vehicle, null, distance, attacker, null, special);
                 if (r.Result != Combat.ResultMiss)
                 {
                     npc.AttackNumber = (int)r.AttackNumber;

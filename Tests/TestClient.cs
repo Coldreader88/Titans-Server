@@ -1500,9 +1500,11 @@ class Test
         while (!destroyed && shots < 85)
         {
             shots++;
-            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(0xFFFF).U32(msUid).U32(0x14).U32(410000).Get());
+            // The first shot asks for melee special 0, which a machine gun does not have: a normal shot (FFFF back).
+            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(shots == 1 ? (ushort)0 : (ushort)0xFFFF).U32(msUid).U32(0x14).U32(410000).Get());
             var r = RecvOp(g, 0x8011);
             if (r.Item1 != 0x8011 || r.Item2.Length != 42) { Check(false, "0x8011 (42 bytes) for a shot at the parked GM"); break; }
+            if (shots == 1) Check(r.Item2[14] == 0xFF && r.Item2[15] == 0xFF && r.Item2[20] <= 1, "a machine gun cannot do melee special 0: a normal shot (special FFFF, durability 0 or 1)");
             if (new R(r.Item2) { Pos = 8 }.U32() == 0) continue;
             var u = RecvOp(g, 0x8035); uint action = new R(u.Item2).U32(); int hp = new R(u.Item2) { Pos = 4 + 47 }.I32();
             if (action == 5) damaged++;

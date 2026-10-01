@@ -227,6 +227,15 @@ namespace TitansUC.GameServer.World
                 t.AttackRatios = ReadFloats(d, afterPrice + 96, 7);
                 t.HitRatios = ReadFloats(d, afterPrice + 125, 7);
                 p = afterPrice + 153; t.HitRate = ReadInt(d, ref p);
+                // Four aim limits, then the special attacks (UC size 3 + int16 BE SPECIALATTACKTEMPLATE ids, -1 none).
+                if (afterPrice + 168 <= d.Length && d[afterPrice + 161] == 0x83)
+                {
+                    t.SpecialAttackIDs = new short[3];
+                    for (int i = 0; i < 3; i++)
+                    {
+                        t.SpecialAttackIDs[i] = (short)((d[afterPrice + 162 + 2 * i] << 8) | d[afterPrice + 163 + 2 * i]);
+                    }
+                }
             }
             if (range == 36)
             {
@@ -414,6 +423,12 @@ namespace TitansUC.GameServer.World
         /// A weapon's hit rate in 1/10000 (4000 to 8000).
         /// </summary>
         public int HitRate { get; set; }
+
+        /// <summary>
+        /// The melee special attacks the weapon can do (SPECIALATTACKTEMPLATE ids by combo tier, -1 none); null
+        /// for weapons without the list.
+        /// </summary>
+        public short[] SpecialAttackIDs { get; set; }
 
         /// <summary>
         /// A shield's chance in 1/10000 to take a hit (2000 or 3000).

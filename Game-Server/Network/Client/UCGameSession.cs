@@ -2054,9 +2054,15 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
             var weapon = Inventory.Armament(p.Slot);
+            var special = SpecialAttacks.Resolve(p.SpecialAttackID, weapon, Character);
+            if (p.SpecialAttackID != SpecialAttacks.None && special == null)
+            {
+                Logger.ShowWarning(string.Format("{0}: special attack {1} not possible with that weapon or skill; a normal attack.",
+                    Character.Name, p.SpecialAttackID));
+            }
             if (Npc.IsNpcID(p.TargetID))
             {
-                AttackNpc(weapon, NpcManager.Instance.Get(p.TargetID), p.Distance);
+                AttackNpc(weapon, NpcManager.Instance.Get(p.TargetID), p.Distance, special);
                 return;
             }
             var target = GameWorld.Instance.Get(p.TargetID);
@@ -2068,7 +2074,7 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            var r = target.TakeHit(weapon, p.Distance, Character);
+            var r = target.TakeHit(weapon, p.Distance, Character, special);
             if (r == null)
             {
                 return;
@@ -2121,14 +2127,14 @@ namespace TitansUC.GameServer.Network.Client
                     Character.Name, ground.CityID));
                 return;
             }
-            var r = Combat.Attack(weapon, ground.Node, null, 0, Character);
+            var r = Combat.Attack(weapon, ground.Node, null, 0, Character, null, SpecialAttacks.Resolve(p.SpecialAttackID, weapon, Character));
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
             r.Crime = Criminal.Counts(AccountLevel) && ground.OwnerID != CharacterID &&
                 (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction));
             uint attacker = CharacterID;
-            this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, p.Echo, r, ground));
+            this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, r, ground));
             if (r.Crime)
             {
                 CommitCrime(Criminal.TypeAttack, 1);
@@ -2162,7 +2168,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 GameWorld.Instance.Place(ground);
             }
-            ushort echo = p.Echo;
+            ushort echo = r.SpecialAttackID;
             uint action = gone ? SM_UPDATE_ITEM_INFO.ItemPickedUp : r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged;
             GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance, () =>
                 new SM_UPDATE_ITEM_INFO(action, ground, attacker, echo));
@@ -2176,14 +2182,14 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// An attack on an NPC: 0x800F to the attacker only (an NPC has no client), 0x8036 to everyone near it.
         /// </summary>
-        private void AttackNpc(ItemNode weapon, Npc npc, int distance)
+        private void AttackNpc(ItemNode weapon, Npc npc, int distance, SpecialAttack special = null)
         {
             if (weapon == null || npc == null || npc.Zone != Coord.ClusterID)
             {
                 Logger.ShowWarning(string.Format("{0}: attack on an NPC refused: no weapon or no such NPC.", Character.Name));
                 return;
             }
-            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character);
+            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character, special);
             if (r == null)
             {
                 return;
@@ -2315,7 +2321,7 @@ namespace TitansUC.GameServer.Network.Client
         /// when they are on foot (or have no vehicle any more). Sets the damage and attack number of the position
         /// record, as the official server did.
         /// </summary>
-        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null)
+        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null, SpecialAttack special = null)
         {
             var vehicle = Inventory.Piloting;
             if (vehicle == null || vehicle.Health <= 0)
@@ -2325,7 +2331,7 @@ namespace TitansUC.GameServer.Network.Client
             var shield = Inventory.Armament(Combat.ShieldSlot);
             var shieldTemplate = shield != null ? ItemTemplates.Get(shield.StaticID) : null;
             var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance,
-                attacker, Character);
+                attacker, Character, special);
             if (r.Result != Combat.ResultMiss)
             {
                 lock (sync)

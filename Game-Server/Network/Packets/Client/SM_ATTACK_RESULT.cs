@@ -13,7 +13,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// byte       result: 0 hit, 1 critical, 3 shield, 6 miss
     /// byte       0
     /// byte       1 when the attack was a crime (the attacker's client then adds a crime point), else 0
-    /// uint16 BE   FFFF
+    /// uint16 BE   melee special attack (SPECIALATTACKTEMPLATE id), FFFF none
     /// byte       explosion: 0 none, 1 destroyed (a wreck stays), 3 shield broken, 4 miss
     /// byte       00 when the vehicle was damaged, FF otherwise
     /// uint32 BE   attack number
@@ -39,7 +39,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutByte(r.Result);
             this.PutByte(0);
             this.PutByte(r.Crime ? (byte)1 : (byte)0);
-            this.PutUShortBE(0xFFFF);
+            this.PutUShortBE(r.SpecialAttackID);
             this.PutByte(r.Explosion);
             this.PutByte(r.VehicleDamaged ? (byte)0 : (byte)0xFF);
             this.PutUIntBE(r.AttackNumber);

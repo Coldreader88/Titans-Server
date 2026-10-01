@@ -86,6 +86,7 @@
     <Compile Include="World\Mining.cs" />
     <Compile Include="World\Facilities.cs" />
     <Compile Include="World\Shops.cs" />
+    <Compile Include="World\SpecialAttacks.cs" />
     <Compile Include="World\ShuttleRoutes.cs" />
     <Compile Include="World\SkillGrowth.cs" />
     <Compile Include="World\Criminal.cs" />
