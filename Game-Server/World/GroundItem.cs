@@ -77,6 +77,11 @@ namespace TitansUC.GameServer.World
         public bool IsTower { get { return CityID != 0; } }
 
         /// <summary>
+        /// A breakable rock or temporary plant (33xxxx): it can be shot, and is gone (no wreck) at 0 health.
+        /// </summary>
+        public bool IsTarget { get { return Node.StaticID / 10000 == 33; } }
+
+        /// <summary>
         /// Gives it to another player (0x25), or to nobody (FFFFFFFF).
         /// </summary>
         public void ChangeOwner(uint ownerID)

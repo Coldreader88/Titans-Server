@@ -1909,6 +1909,7 @@ namespace TitansUC.GameServer.Network.Client
                 g == null || !g.IsVehicle ? "no vehicle there" :
                 g.IsWreck ? "it is a wreck" :
                 g.IsTower ? "it is a battle town's tower" :
+                g.IsTarget ? "it is a rock or plant" :
                 c == null || g.ClusterID != c.ClusterID || Math.Abs((long)g.X - c.X) > OpenDistance ||
                     Math.Abs((long)g.Y - c.Y) > OpenDistance ? "too far away" :
                 g.OwnerID != CharacterID && !(unowned && p.NewOwnerID == CharacterID) ? "not theirs" :
@@ -2114,7 +2115,7 @@ namespace TitansUC.GameServer.Network.Client
             var weapon = Inventory.Armament(p.Slot);
             var ground = GameWorld.Instance.GetGround(p.ItemUniqueID);
             if (weapon == null || ground == null || !ground.IsVehicle || ground.IsWreck || ground.ClusterID != Coord.ClusterID ||
-                ground.Node.MaxHealth <= 0)
+                ground.Node.MaxHealth <= 0 || ground.Node.Health <= 0)
             {
                 Logger.ShowWarning(string.Format("{0}: attack on ground item {1:X8} refused: no weapon, or not a vehicle.",
                     Character.Name, p.ItemUniqueID));
@@ -2131,8 +2132,10 @@ namespace TitansUC.GameServer.Network.Client
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
+            var targetTemplate = ground.IsTarget ? ItemTemplates.Get(ground.Node.StaticID) : null;
             r.Crime = Criminal.Counts(AccountLevel) && ground.OwnerID != CharacterID &&
-                (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction));
+                (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction) ||
+                 (targetTemplate != null && targetTemplate.TargetFaction == (int)Character.Faction));
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, r, ground));
             if (r.Crime)
@@ -2147,8 +2150,8 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 uint formerOwner = ground.OwnerID;
-                // A tower falls and is gone until the war is over.
-                gone = ground.IsTower || !Combat.LeavesWreck();
+                // A tower falls and is gone until the war is over; rocks and plants leave nothing (no wreck template).
+                gone = ground.IsTower || ground.IsTarget || !Combat.LeavesWreck();
                 if (gone)
                 {
                     GameWorld.Instance.Take(ground.UniqueID, g => true);
@@ -2512,6 +2515,24 @@ namespace TitansUC.GameServer.Network.Client
 
             ItemNode node;
             string loadout = null;
+            if (item.IsTarget)
+            {
+                // A breakable rock or temporary plant, 300 in front, at full health; nobody owns it.
+                node = new ItemNode(PlayerInventory.NewUniqueID(), ItemNode.Multi, item.ID)
+                {
+                    Name = item.Name,
+                    Health = Math.Max(1, item.TargetHealth),
+                    MaxHealth = Math.Max(1, item.TargetHealth),
+                    Created = GameWorld.UnixTime(),
+                    Modified = GameWorld.UnixTime(),
+                };
+                var target = new GroundItem(node, c.ClusterID, c.X, c.Y + 300, c.Z, new byte[6], 0xFFFFFFFF);
+                GameWorld.Instance.Place(target);
+                BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, target);
+                Logger.ShowInfo(string.Format("{0} placed {1} ({2}, {3} health) at {4}, {5}.", Character.Name, item.Name, item.ID,
+                    node.MaxHealth, c.X, c.Y + 300));
+                return string.Format("You are placing a {0} ({1} health).", item.Name, node.MaxHealth);
+            }
             if (item.IsVehicle && engine < 0 && Loadouts.Applies(item))
             {
                 // No engine named: a random loadout and a lv.3 engine it can have, ready to fight.

@@ -154,7 +154,7 @@ run_spawn() {
   echo "== Spawn test"
   reset_db
   local fifo=$WORK/game.fifo ready=$WORK/ready
-  rm -f "$fifo" "$ready" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
+  rm -f "$fifo" "$ready" "${ready}t" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
   mkfifo "$fifo"
   start lobby.log Lobby-Server.exe
   start cms.log Cms-Server.exe
@@ -175,6 +175,8 @@ run_spawn() {
     "gm Gmtest skill" "gm Gmtest npcs" "gm Gmtest npcs zeon space 2" "gm Gmtest npcs all vender" \
     "spawn Gmtest id 410000" "spawn Gmtest id 410057" "spawn Gmtest id 420000" "spawn Gmtest id 410007" \
     "spawn Gmtest ideng 400000 jet engine typeA lv.3"
+  for _ in $(seq 1 90); do [ -f "${ready}t" ] && break; sleep 1; done
+  say "spawn Gmtest id 330002"
   for _ in $(seq 1 60); do [ -f "${ready}2" ] && break; sleep 1; done
   say "spawn Gmtest npc 410007" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000" "gm Gmtest near" \
     "gm Gmtest near 20000" "gm Gmtest tp 1000000005" "gm Gmtest tp nobody" "gm Gmtest tp burchard" "gm Gmtest tp 1090000000"

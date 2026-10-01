@@ -1458,6 +1458,35 @@ class Test
     }
 
     // GM spawn through the game server console (run with "spawn"; run/spawn.sh types the commands).
+    // A breakable plant of the GM's own side (330002, EF, 15000 health) placed with #spawn id: shooting it changes its
+    // health for everyone near (0x8035 action 5) and is a crime; nobody can make it theirs.
+    static void TargetTests(Conn g, uint me)
+    {
+        System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "t", "ready");
+        Tuple<uint, byte[]> placed = null;
+        var until = DateTime.Now.AddSeconds(15);
+        while (DateTime.Now < until && placed == null) { var r = g.Recv(true); if (r != null && r.Item1 == 0x8035 && new R(r.Item2) { Pos = 12 }.I32() == 330002) placed = r; }
+        if (placed == null) { Check(false, "#spawn id 330002 places a temporary plant"); return; }
+        var pr = new R(placed.Item2) { Pos = 4 }; uint plant = pr.U32(); uint fmt = pr.U32();
+        int hp0 = new R(placed.Item2) { Pos = 4 + 47 }.I32();
+        Check(new R(placed.Item2).U32() == 1 && fmt == 0x14 && hp0 == 15000, "#spawn id 330002 places an EF temporary plant with 15000 health (" + hp0 + ")");
+        g.Send(0x25, new B().U32(me).U32(me).U32(330002).U32(plant).U32(0x14).U32(0).Get());
+        Check(Refused(g, 0x8025), "nobody can make the plant theirs");
+        bool hit = false;
+        for (int i = 0; i < 10 && !hit; i++)
+        {
+            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(0xFFFF).U32(plant).U32(0x14).U32(330002).Get());
+            var r = RecvOp(g, 0x8011);
+            if (r.Item1 != 0x8011) break;
+            if (new R(r.Item2) { Pos = 8 }.U32() == 0) continue;
+            hit = true;
+            Check(r.Item2[13] == 1, "shooting your own side's plant is a crime (0x8011 crime byte " + r.Item2[13] + ")");
+            var u = RecvOp(g, 0x8035); int hp = new R(u.Item2) { Pos = 4 + 47 }.I32();
+            Check(new R(u.Item2).U32() == 5 && hp < 15000 && hp > 0, "the plant's new health goes out (0x8035 action 5, " + hp + ")");
+        }
+        Check(hit, "the plant can be shot");
+    }
+
     static int SpawnTest()
     {
         var a = Lobby("gm1", "secret1", "Gmtest", 1, false);
@@ -1513,6 +1542,8 @@ class Test
         Console.WriteLine("  {0} shots at the parked GM", shots);
         Check(damaged > 0, "hits on the parked GM send its new health (0x8035 action 5)");
         Check(destroyed, "the parked GM is destroyed and becomes a wreck (0x8035 action 1, health 0)");
+
+        TargetTests(g, me);
 
         System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "2", "ready");
         var ready2 = DateTime.Now;

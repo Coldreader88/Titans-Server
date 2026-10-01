@@ -198,6 +198,15 @@ namespace TitansUC.GameServer.World
         private static void ReadEquipmentStats(byte[] d, int afterPrice, ItemTemplate t)
         {
             int range = t.ID / 10000;
+            if (range == 33 && afterPrice + 45 <= d.Length)
+            {
+                // TARGETTEMPLATE (breakable rocks and temporary plants): int32 max health, byte faction (0 none,
+                // 1 EF, 2 Zeon; attacking your own side's plant is a crime).
+                int q = afterPrice + 40;
+                t.TargetHealth = ReadInt(d, ref q);
+                t.TargetFaction = d[afterPrice + 44];
+                return;
+            }
             if (range == 29 && afterPrice + 44 <= d.Length)
             {
                 // Engines: avoid_rate, the engine's evasion bonus ("EngineTempAvoidRate" in the client's battle
@@ -429,6 +438,13 @@ namespace TitansUC.GameServer.World
         /// for weapons without the list.
         /// </summary>
         public short[] SpecialAttackIDs { get; set; }
+
+        /// <summary>
+        /// Breakable targets (33xxxx, TARGETTEMPLATE): full health, and the faction whose plant it is (0 none).
+        /// </summary>
+        public int TargetHealth { get; set; }
+        public int TargetFaction { get; set; }
+        public bool IsTarget { get { return ID / 10000 == 33; } }
 
         /// <summary>
         /// A shield's chance in 1/10000 to take a hit (2000 or 3000).
