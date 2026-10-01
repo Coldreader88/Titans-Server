@@ -314,6 +314,21 @@ namespace TitansUC.GameServer.Network.Client
                     SaveItems();
                     return;
                 }
+                case CM_MOVE_ITEM.SectionIntoMoney:
+                case CM_MOVE_ITEM.SectionIntoStack:
+                {
+                    // Official (money out of the trade pack): 0x0301 with the money item as the target.
+                    var result = Inventory.MergeInto(p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, p.Amount);
+                    if (result == null)
+                    {
+                        RefuseMove(p, "cannot add it to that item");
+                        return;
+                    }
+                    this.Network.SendPacket(new SM_MOVE_ITEM(result.Kind == MoveKind.Merged ? SM_MOVE_ITEM.Merged : SM_MOVE_ITEM.AddedToStack,
+                        p, result.Target, result.Item.StaticID));
+                    SaveItems();
+                    return;
+                }
                 default:
                     RefuseMove(p, "section " + p.Section + " is not implemented");
                     return;
@@ -845,8 +860,29 @@ namespace TitansUC.GameServer.Network.Client
             }
             else if (p.MiniOp == CM_SPACE_PLACED_ITEM.DropItem)
             {
+                var held = Inventory.Get(p.ItemUniqueID);
+                string camp = held != null && Camps.IsCamp(held.StaticID) ? CampRefusal(held.StaticID, p.Amount) : null;
+                if (camp != null)
+                {
+                    RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PLACED_ITEM, p.Body, Refused), "camp", p.ItemUniqueID, camp);
+                    Tell("You cannot set up this camp: " + camp + ".");
+                    return;
+                }
                 placed = Inventory.TakeForDrop(p.ItemUniqueID, p.ContainerUniqueID, p.Amount);
                 action = SM_UPDATE_ITEM_INFO.ItemDropped;
+                if (placed != null && Camps.IsCamp(placed.StaticID))
+                {
+                    // Set up: it stands with its health like a tower (keeping the item's unique id), see Camps.
+                    int now = GameWorld.UnixTime();
+                    placed = new ItemNode(placed.UniqueID, ItemNode.Multi, placed.StaticID)
+                    {
+                        Name = placed.Name,
+                        Health = Camps.Health,
+                        MaxHealth = Camps.Health,
+                        Created = now,
+                        Modified = now,
+                    };
+                }
             }
             if (placed == null)
             {
@@ -897,7 +933,7 @@ namespace TitansUC.GameServer.Network.Client
             // A vehicle of theirs can also be dragged into the factory (mini op 1 with the factory as destination).
             bool toFactory = !vehicle && PlayerInventory.IsFactory(Inventory.Get(p.DestUniqueID));
             var ground = GameWorld.Instance.Take(p.ItemUniqueID, g => g.ClusterID == zone &&
-                (vehicle || (toFactory && g.IsVehicle) ? g.IsVehicle && !g.IsWreck && g.OwnerID == CharacterID : !g.IsVehicle));
+                (vehicle || (toFactory && g.IsVehicle) ? g.IsVehicle && !g.IsWreck && !g.IsCamp && g.OwnerID == CharacterID : !g.IsVehicle));
             if (ground == null)
             {
                 RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PICKUP_ITEM, p.Body, Refused), "pick up", p.ItemUniqueID, "nothing there they can take");
@@ -1046,7 +1082,22 @@ namespace TitansUC.GameServer.Network.Client
                 return null;
             }
             var f = Facilities.FindShop(town, shop);
-            return f == null ? "there is no such shop in that town" : Facilities.Refusal(f, Character.Faction, Character.IsCriminal);
+            string refusal = f == null ? "there is no such shop in that town" : Facilities.Refusal(f, Character.Faction, Character.IsCriminal);
+            return refusal ?? CampFacilityRefusal(town, f.Index);
+        }
+
+        /// <summary>
+        /// A camp town's facility (towns 37, 38, 60, 61) is opened by a camp, base building or vendor truck in the field:
+        /// one of them must be near the player (<see cref="Camps.FarRefusal"/>). Null for other towns.
+        /// </summary>
+        private string CampFacilityRefusal(int town, int index)
+        {
+            var c = Coord;
+            if (!Camps.IsObjectTown(town))
+            {
+                return null;
+            }
+            return c == null ? "you are nowhere" : Camps.FarRefusal(town, index, c.ClusterID, c.X, c.Y);
         }
 
         /// <summary>
@@ -2133,9 +2184,10 @@ namespace TitansUC.GameServer.Network.Client
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
             var targetTemplate = ground.IsTarget ? ItemTemplates.Get(ground.Node.StaticID) : null;
+            bool ownSideStructure = (ground.IsCamp || ground.IsBaseBuilding) && Camps.FactionOf(ground.Node.StaticID) == Character.Faction;
             r.Crime = Criminal.Counts(AccountLevel) && ground.OwnerID != CharacterID &&
                 (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction) ||
-                 (targetTemplate != null && targetTemplate.TargetFaction == (int)Character.Faction));
+                 (targetTemplate != null && targetTemplate.TargetFaction == (int)Character.Faction) || ownSideStructure);
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, r, ground));
             if (r.Crime)
@@ -2151,7 +2203,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 uint formerOwner = ground.OwnerID;
                 // A tower falls and is gone until the war is over; rocks and plants leave nothing (no wreck template).
-                gone = ground.IsTower || ground.IsTarget || !Combat.LeavesWreck();
+                gone = ground.IsTower || ground.IsTarget || ground.IsCamp || ground.IsBaseBuilding || !Combat.LeavesWreck();
                 if (gone)
                 {
                     GameWorld.Instance.Take(ground.UniqueID, g => true);
@@ -2796,6 +2848,23 @@ namespace TitansUC.GameServer.Network.Client
                 () => new SM_UPDATE_ITEM_INFO(action, ground, actor));
         }
 
+        /// <summary>
+        /// Why this player cannot set up that camp, or null: the rank the client checks too (CAMPTEMPLATE
+        /// required_rank), their own side's camp, one at a time.
+        /// </summary>
+        private string CampRefusal(int templateID, int amount)
+        {
+            if (Character.Rank < Camps.RequiredRank)
+            {
+                return "it needs the rank of " + Ranks.Name(Camps.RequiredRank) + " or higher";
+            }
+            if (Camps.FactionOf(templateID) != Character.Faction)
+            {
+                return "it is the other side's camp";
+            }
+            return amount != 1 ? "set up one camp at a time" : null;
+        }
+
         private void RefuseGround(Packet<GSOpcode> reply, string what, uint uniqueID, string reason)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2:X8} refused: {3}.", Character.Name, what, uniqueID, reason));
@@ -2891,6 +2960,32 @@ namespace TitansUC.GameServer.Network.Client
                 }
             }
             this.Network.SendPacket(new SM_LOGOUT_GAME_FE());
+        }
+
+        /// <summary>
+        /// 0x3F: the client quits (after 0x42 / 0x8042). Save if still in the world and confirm; the client
+        /// disconnects when 0x803F arrives and ignores its contents.
+        /// </summary>
+        public void OnSystemLogout(CM_SYSTEM_LOGOUT p)
+        {
+            if (InGame && GameWorld.Instance.Remove(this) && !departed)
+            {
+                Save();
+            }
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_SYSTEM_LOGOUT, 1, SM_RESULT_MSG.Done));
+        }
+
+        /// <summary>
+        /// 0x43: the client gives up the flight it reserved with 0x40.
+        /// </summary>
+        public void OnCancelAnotherGameFE(CM_CANCEL_ANOTHER_GAME_FE p)
+        {
+            if (reservedCluster != 0 && InGame)
+            {
+                Logger.ShowInfo(string.Format("{0} cancels the flight to cluster {1}.", Character.Name, reservedCluster));
+            }
+            reservedCluster = 0;
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_CANCEL_ANOTHER_GAME_FE, 1, SM_RESULT_MSG.Done));
         }
 
         /// <summary>

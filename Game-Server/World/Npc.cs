@@ -55,6 +55,11 @@ namespace TitansUC.GameServer.World
         public int MaxHealth { get; set; }
 
         /// <summary>
+        /// The quest item this NPC always drops (a combat quest's squad leader or spy, DB/Npcs/quest_squads.csv), 0 for none.
+        /// </summary>
+        public int QuestItem { get; set; }
+
+        /// <summary>
         /// Vendor trucks and PUZOCKs (1000xxx) never fight and cannot be hurt.
         /// </summary>
         public bool IsVendor { get { return TemplateID / 10000 == 100; } }

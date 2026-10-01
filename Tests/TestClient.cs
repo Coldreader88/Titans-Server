@@ -276,6 +276,42 @@ class Test
         r = g.Recv();
         Check(r.Item1 == 0x8017 && new R(r.Item2).U32() == 0x03010002, "and merge back into the backpack stack (0x0301)");
         Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110005") == "0", "the trade pack is empty again");
+
+        // RequestMoneyDivide (section 7 from the main money) and RequestMoneyAddition (section 0x0A into it).
+        uint money = me + 500000;
+        g.Send(0x17, Move(7, me, money, 0x13, 0, tradePack, 0, 110005, 111, 0xFF, 0xFF));
+        r = g.Recv(); rr = new R(r.Item2); kind = rr.U32(); rr.Pos = 32; uint coins = rr.U32();
+        Check(r.Item1 == 0x8017 && kind == 0x02010002 && coins != 0, "111 money split into the trade pack (0x0201)");
+        g.Send(0x17, Move(0x0A, me, coins, 0x13, tradePack, money, 110005, 500000, 111, 0xFF, 0xFF));
+        r = g.Recv(); rr = new R(r.Item2); kind = rr.U32(); rr.Pos = 32;
+        Check(r.Item1 == 0x8017 && kind == 0x03010002 && rr.U32() == money, "and back into the main money with section 0x0A (0x0301, the money as target, as official)");
+        System.Threading.Thread.Sleep(300);
+        Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110005") == "0", "the trade pack holds no money");
+    }
+
+    // Amuro (EF, Lieutenant) sets up an EF camp weapon shop far from everyone and buys at it (camp town 37, shop 201).
+    static void CampTests(Conn g, uint me, uint backpack, Dictionary<uint, uint[]> info)
+    {
+        uint ef = 0, zeon = 0;
+        foreach (var kv in info) { if (kv.Value[1] == 340001) ef = kv.Key; if (kv.Value[1] == 340003) zeon = kv.Key; }
+        Check(ef != 0 && zeon != 0, "found the seeded camps");
+        g.Send(0x21, Buy(1, me, backpack, 10, 540000, town: 37, shop: 201));
+        Check(Refused(g, 0x8021), "no camp near: the camp town's shop is refused");
+        g.Send(0x02, Coord(me, 500000, 500000, 30));
+        g.Send(0x23, Drop(1, me, zeon, 0x13, backpack, 1, 340003, 110001, 0, 500100, 500000, 0xFF));
+        Check(Refused(g, 0x8023), "an EF player cannot set up a Zeon camp (0x8023 refused)");
+        g.Send(0x23, Drop(1, me, ef, 0x13, backpack, 1, 340001, 110001, 0, 500100, 500000, 0xFF));
+        var placed = RecvOp(g, 0x8023);
+        Check(placed.Item1 == 0x8023 && placed.Item2[3] == 2, "a Lieutenant sets up the EF camp weapon shop (0x8023 done)");
+        Drain(g);
+        g.Send(0x21, Buy(1, me, backpack, 10, 540001, town: 37, shop: 201));
+        var bought = RecvOp(g, 0x8021);
+        Check(bought.Item1 == 0x8021 && bought.Item2[3] == 2 && new R(bought.Item2) { Pos = 28 }.U32() == 350, "and buys 10 vulcan cartridges for 350 at the camp (town 37, shop 201)");
+        string saved = "";
+        for (int i = 0; i < 30 && saved != "1,500100"; i++) { System.Threading.Thread.Sleep(500); saved = Sql("SELECT CONCAT(vehicle, ',', x) FROM ground_items WHERE item_id = 340001"); }
+        Check(saved == "1,500100", "the camp is saved with the ground (" + saved + ")");
+        g.Send(0x02, Coord(me, 1000, 2000, 30));
+        Drain(g);
     }
 
     static uint MoveTests(Conn g, uint me, uint backpack, uint bank, uint hangar, uint weared, uint vehicle, uint yarn)
@@ -401,6 +437,12 @@ class Test
         Check(r.Item1 == 0x8040 && head == 2 && who == me && cluster == 2 && unk == 0x17BF && ip == "127.0.0.1" && port == 42011 && r.Item2.Length == 13 + ip.Length,
             "cleared for Space: 0x8040 (00 02, char, 00 02, 17 BF, as official) sends the Space server, 127.0.0.1:42011");
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "1", "still on Earth until the client leaves");
+        // A failed purchase gives the flight up (0x43), then the client asks again.
+        g.Send(0x43, new B().U32(a.Key).U32(me).Byte(0xFF).Get());
+        var cancel = RecvOp(g, 0x8043);
+        Check(cancel.Item1 == 0x8043 && cancel.Item2.Length == 28 && Conn.Hex(cancel.Item2).StartsWith("00 01 00 02"), "0x43 cancels the flight (0x8043 00 01 00 02, 28 bytes)");
+        g.Send(0x40, new B().U32(a.Key).U32(me).U16(2).Get());
+        Check(RecvOp(g, 0x8040).Item1 == 0x8040, "cleared again");
 
         g.Send(0x21, Buy(3, me, weared, 1, 400020, 1, 0x31));
         r = RecvOp(g, 0x8021); rr = new R(r.Item2); rr.Pos = 8; uint shuttle = rr.U32(); rr.Pos = 28;
@@ -964,6 +1006,12 @@ class Test
             g2.Send(0x27, new B().U16(1).U16(0x0F98).U32(wuid).U32(0x14).U32(410007).U32(other).Get());
             var lst = RecvOp(g2, 0x8027); var lsr = new R(lst.Item2) { Pos = 16 }; int n = lsr.Size();
             Check(lst.Item1 == 0x8027 && n >= 1 && lst.Item2.Length == 16 + 1 + 62 * n, "the wreck lists its loot (0x8027, " + n + " items of 62 bytes)");
+            bool questItem = false;
+            for (int k = 0; k < n && lst.Item2.Length >= 17 + 62 * (k + 1); k++)
+            {
+                questItem |= new R(lst.Item2) { Pos = 17 + 62 * k + 8 }.I32() == 550029;
+            }
+            Check(questItem, "a quest leader's wreck holds its quest item (550029)");
             if (n >= 1)
             {
                 var it = new R(lst.Item2) { Pos = 17 }; uint iuid = it.U32(); it.U32(); int itpl = it.I32(); it.Pos = 17 + 34; int iamt = it.I32();
@@ -1980,6 +2028,9 @@ class Test
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 530001, 'iron ore', 1000, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510001, 'super high tensile steel', 64, ''), (" + a.Chars[0] + ", 110001, 'backpack', 290033, 'jet engine', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510021, 'enhancement package', 10, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510022, 'accuracy improvement package', 2, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510023, 'defensive improvement package', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510000, 'titanium alloy', 40, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510002, 'titanium ceramic composite', 2, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 240088, 'cap', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 240092, 'glasses', 1, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 230009, 'silk yarn', 6, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350000, 'basic color dyes', 3, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350001, 'light color dyes', 2, '')");
+        // Two camps and the rank to set one up (Lieutenant, 8) for CampTests.
+        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 340001, 'EF Camp Weapon Shop', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 340003, 'ZEON Camp Weapon Shop', 1, '')");
+        Sql("UPDATE appearance SET `rank` = 8 WHERE char_id = " + a.Chars[0].ToString().Substring(1));
         Sql("DELETE FROM skills WHERE char_id = " + a.Chars[0] + " AND skill_idx IN (22, 24); INSERT INTO skills (char_id, skill_idx, skill_level, skill_exp) VALUES (" + a.Chars[0] + ", 22, 1300, 0), (" + a.Chars[0] + ", 24, 1300, 0)");
 
         // Game server: wrong key.
@@ -2065,6 +2116,7 @@ class Test
 
         g.Send(0x00, Coord(me, 1000, 2000, 30));
         Check(g.Recv().Item1 == 0x8000, "register coordinates");
+        CampTests(g, me, backpack, info);
 
         // Second player joins nearby.
         var g2 = GameLogin("Char", b, b.Key);
@@ -2118,6 +2170,9 @@ class Test
         Check(g.Recv().Item1 == 0x8055, "logout");
         g.Send(0x42, new byte[0]);
         Check(g.Recv().Item1 == 0x8042, "leave game server");
+        g.Send(0x3F, new B().U32(me).I32(1).U32(0).Byte(0x80).U16(0).Byte(0x80).Get());
+        var quit = g.Recv();
+        Check(quit != null && quit.Item1 == 0x803F && quit.Item2.Length == 28 && Conn.Hex(quit.Item2).StartsWith("00 01 00 02"), "0x3F quits (0x803F 00 01 00 02)");
         g.Close();
 
         // The second player no longer sees the first.
@@ -2131,14 +2186,14 @@ class Test
         Check(left == 2, "Amuro's vehicle and the freighter's wreck lie on the ground (" + left + ")");
         Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110003") == "0", "the ground vehicle is not in the hangar");
         System.Threading.Thread.Sleep(11000);
-        var groundRows = Sql("SELECT vehicle, wreck, owner_id, child FROM ground_items WHERE zone = 1 AND vehicle = 1 ORDER BY wreck");
+        var groundRows = Sql("SELECT vehicle, wreck, owner_id, child FROM ground_items WHERE zone = 1 AND vehicle = 1 AND item_id NOT BETWEEN 340000 AND 340003 ORDER BY wreck");
         Console.WriteLine("  ground rows: " + groundRows.Replace("\n", " | "));
         var gr = groundRows.Split('\n');
         Check(gr.Length >= 2 && gr[0].StartsWith("1\t0\t" + me) && gr[0].EndsWith("240000-2"), "the ground vehicle is saved with the world, with its 2 yarn");
         Check(Array.Exists(gr, x => x.StartsWith("1\t1\t" + other)), "the freighter's wreck is saved too, owned by Char who destroyed it");
         Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 110001 AND item_id = 240000") == "3", "3 yarn left in the backpack");
         // 30410 before the mining tests' ThunderGoliath (10000) and drill (2000).
-        Check(Sql("SELECT char_money FROM characters WHERE char_name = 'Amuro'") == "22080", "Amuro's money is saved as 22080");
+        Check(Sql("SELECT char_money FROM characters WHERE char_name = 'Amuro'") == "21730", "Amuro's money is saved as 21730");
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "2", "Amuro is saved in Space");
         Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 500001") == "100", "the bank holds 100 (500 less the 400 paid from it)");
         Check(Sql("SELECT COUNT(*) FROM flights") == "0", "the flight is over");

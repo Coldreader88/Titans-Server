@@ -63,6 +63,8 @@ namespace TitansUC.GameServer.Manager
             RegisterPacketHandler(GSOpcode.CM_PAPER_DOLL_INFO, new CM_PAPER_DOLL_INFO());
             RegisterPacketHandler(GSOpcode.CM_LOGOUT_GS, new CM_LOGOUT_GS());
             RegisterPacketHandler(GSOpcode.CM_LOGOUT_GAME_FE, new CM_LOGOUT_GAME_FE());
+            RegisterPacketHandler(GSOpcode.CM_SYSTEM_LOGOUT, new CM_SYSTEM_LOGOUT());
+            RegisterPacketHandler(GSOpcode.CM_CANCEL_ANOTHER_GAME_FE, new CM_CANCEL_ANOTHER_GAME_FE());
             RegisterPacketHandler(GSOpcode.CM_CLIENT_MSG, new CM_CLIENT_MSG());
         }
 

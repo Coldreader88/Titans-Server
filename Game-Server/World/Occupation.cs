@@ -434,6 +434,91 @@ namespace TitansUC.GameServer.World
                 city.TowerIDs[i] = tower.UniqueID;
                 BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, tower);
             }
+            PlaceBaseBuildings(city);
+        }
+
+        /// <summary>
+        /// Puts up the owner's base buildings (hangar, bank, weapon shop, MS/MA shop, repair shop, three of each;
+        /// FACILITYITEMARRANGEMENT) at full health, taking down the ones standing. They can be shot down and stay down
+        /// until the towers go up again (war over or a #town command). The official buildings' rules are not known: OUR
+        /// rule. Call with the city locked.
+        /// </summary>
+        private static void PlaceBaseBuildings(OccupationCity city)
+        {
+            foreach (var id in city.BaseIDs)
+            {
+                var old = GameWorld.Instance.Take(id, g => true);
+                if (old != null)
+                {
+                    BroadcastGround(SM_UPDATE_ITEM_INFO.ItemPickedUp, old);
+                }
+            }
+            city.BaseIDs.Clear();
+            foreach (var b in Arrangement().Where(b => b.Town == city.ID && Camps.IsBaseBuilding(b.TemplateID) &&
+                (ushort)Camps.FactionOf(b.TemplateID) == city.Owner))
+            {
+                var template = ItemTemplates.Get(b.TemplateID);
+                int health = Camps.BaseHealth(b.TemplateID);
+                var node = new ItemNode(PlayerInventory.NewUniqueID(), ItemNode.Multi, b.TemplateID)
+                {
+                    Name = template != null ? template.Name : b.Name,
+                    Health = health,
+                    MaxHealth = health,
+                    Created = GameWorld.UnixTime(),
+                    Modified = GameWorld.UnixTime(),
+                };
+                var rotation = new byte[] { 0, 0, 0, 0, (byte)(b.Direction >> 8), (byte)b.Direction };
+                var building = new GroundItem(node, (ushort)Zone.EARTH, b.X, b.Y, b.Z, rotation, 0xFFFFFFFF) { BaseCityID = city.ID };
+                GameWorld.Instance.Place(building);
+                city.BaseIDs.Add(building.UniqueID);
+                BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, building);
+            }
+        }
+
+        private class Arranged
+        {
+            public int Town, TemplateID, X, Y, Z, Direction;
+            public string Name;
+        }
+
+        private static List<Arranged> arrangement;
+
+        /// <summary>
+        /// FACILITYITEMARRANGEMENT.DAT (DB/Templates): 4-byte header, UC size count, then int16 world, int32 town,
+        /// int32 index, int32 template, UC string name, int32 x, y, z, int16 rotation x, y, z.
+        /// </summary>
+        private static List<Arranged> Arrangement()
+        {
+            if (arrangement != null)
+            {
+                return arrangement;
+            }
+            var list = new List<Arranged>();
+            try
+            {
+                var r = new Production.Reader(System.IO.File.ReadAllBytes(CharacterData.FindFile("Templates", "FACILITYITEMARRANGEMENT.DAT")), 4);
+                for (int n = r.Size(); n > 0; n--)
+                {
+                    r.Short();
+                    var a = new Arranged { Town = r.Int() };
+                    r.Int();
+                    a.TemplateID = r.Int();
+                    a.Name = r.String();
+                    a.X = r.Int();
+                    a.Y = r.Int();
+                    a.Z = r.Int();
+                    r.Short();
+                    r.Short();
+                    a.Direction = r.Short();
+                    list.Add(a);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError("Cannot read the battle towns' buildings: " + ex.Message);
+            }
+            arrangement = list;
+            return list;
         }
 
         private static void BroadcastGround(uint action, GroundItem g)
@@ -780,6 +865,7 @@ namespace TitansUC.GameServer.World
             Y = y;
             Towers = towers;
             TowerIDs = new uint[towers.Length];
+            BaseIDs = new List<uint>();
             Icf = new ushort[Occupation.IcfCount];
             Participants = new Dictionary<uint, DateTime>();
             LastCapture = new Dictionary<uint, DateTime>();
@@ -798,6 +884,11 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public int[][] Towers { get; private set; }
         public uint[] TowerIDs { get; private set; }
+
+        /// <summary>
+        /// The base buildings standing (ground unique ids).
+        /// </summary>
+        public List<uint> BaseIDs { get; private set; }
 
         public ushort Owner { get; set; }
 

@@ -9,7 +9,9 @@ namespace TitansUC.GameServer.Network.Packets.Client
     ///
     /// <code>
     /// uint16 BE   section: 7 = between containers, 8 = get in a vehicle from the hangar,
-    ///             9 = put the piloted vehicle back in the hangar (0x0A = trade, not handled)
+    ///             9 = put the piloted vehicle back in the hangar, 0x0A = put money into a money item (the
+    ///             "destination container" is the money item: the main money, 500000), 0x0B = the same into
+    ///             another stackable item (specs/re-unknown-packets.md 3.3)
     /// uint16 BE   0
     /// uint32 BE   character id
     /// uint32 BE   item unique id, format
@@ -29,6 +31,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public const int SectionContainers = 7;
         public const int SectionRide = 8;
         public const int SectionPutBack = 9;
+        public const int SectionIntoMoney = 0x0A;
+        public const int SectionIntoStack = 0x0B;
 
         public CM_MOVE_ITEM()
         {

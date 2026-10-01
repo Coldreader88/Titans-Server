@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Builds the servers with mono's mcs and runs the scripted client tests (Tests/TestClient.cs) against MariaDB.
 #
 #   Tests/run-tests.sh [all|full|spawn]
@@ -75,9 +75,10 @@ patch(sys.argv[1] + '/LobbyServer.xml', {'AutoCreateAccounts': 'true'})
 patch(sys.argv[1] + '/LoginServer.xml', {'Seconds': '1'})
 EOF
 
-# Three test NPCs next to Char's spot: a target with 300 health, a shooter that fires back, and a vendor.
+# Three test NPCs next to Char's spot: a target with 300 health (which drops quest item 550029 like a quest squad's
+# leader), a shooter that fires back, and a vendor.
 cat >> "$BIN/DB/Npcs/npcs.csv" <<'EOF'
-900001,Target,2,410007,9001,1,30000,30000,30,0,0,0,6,48,280006/-1/280006/280006,300
+900001,Target,2,410007,9001,1,30000,30000,30,0,0,0,6,48,280006/-1/280006/280006,300,550029
 900002,Shooter,2,410007,9001,1,30100,30000,30,0,0,0,6,48,280006/-1/280006/280006,100000
 900003,MachineVender,2,1000003,9002,1,30200,30000,30,0,0,0,5,0,-1/-1/-1/-1,0
 EOF
