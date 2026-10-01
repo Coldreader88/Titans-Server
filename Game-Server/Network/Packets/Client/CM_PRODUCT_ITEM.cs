@@ -14,8 +14,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// uint16 BE   action: 1 vehicle, 2 refine, 3 clothes, 4 weapon or shield, 5 dismantle, 8 vehicle upgrade
     /// uint16 BE   0 (the reply's result: 2 done, 0x0C failed)
     /// uint32 BE   character id
-    /// uint32 BE   0x33 (0x04 for clothes), product category, product format (0x14 material, 0x10 weapon,
-    ///             0x0A MS, 7 clothes)
+    /// uint32 BE   town (TOWNINFOTEMPLATE id), factory id (FACTORYINFOTEMPLATE), facility index in the town
+    ///             (TOWNFACILITYINFOTEMPLATE); the client's UC_RequestProductItem town_id, factory_id, atr_id
     /// uint32 BE   product template, amount
     /// uint32 BE   productive container unique id, format 0x14, 7
     /// uint32 BE   time: -1 (the reply's start time, unix seconds)
@@ -62,6 +62,9 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public int ProductID { get; private set; }
         public int Amount { get; private set; }
         public uint FactoryUniqueID { get; private set; }
+        public int Town { get; private set; }
+        public int FactoryID { get; private set; }
+        public int FacilityIndex { get; private set; }
 
         /// <summary>
         /// Where the ingredient list's count byte is; the ingredients follow it.
@@ -117,6 +120,9 @@ namespace TitansUC.GameServer.Network.Packets.Client
             ProductID = (int)Bytes.U32(Body, 20);
             Amount = (int)Bytes.U32(Body, 24);
             FactoryUniqueID = Bytes.U32(Body, 28);
+            Town = (int)Bytes.U32(Body, 8);
+            FactoryID = (int)Bytes.U32(Body, 12);
+            FacilityIndex = (int)Bytes.U32(Body, 16);
 
             // The count is a UC size; the client sends at most a handful, so it is one byte.
             ListOffset = IngredientsOffset;

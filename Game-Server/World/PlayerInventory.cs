@@ -336,15 +336,17 @@ namespace TitansUC.GameServer.World
         /// Buys <paramref name="amount"/> of an item into a container (0x21), paying <paramref name="price"/>
         /// from the money. Items that stack join a stack of the same item there (<see cref="BuyResult.Added"/>).
         /// Vehicles go in the hangar, or into weared's vehicle slot to ride away at once (cars and shuttles).
-        /// Returns null when the container cannot take it or the money is short.
+        /// Returns null when the container cannot take it or the money is short. <paramref name="fromBank"/>: the
+        /// whole price comes from the bank (the client asks "use the bank?" when the money it carries is short, and
+        /// only when the bank alone can pay; it never splits the price).
         /// </summary>
-        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price)
+        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price, bool fromBank = false)
         {
             lock (sync)
             {
                 var dest = GetLocked(destUID);
-                var money = Money;
-                if (dest == null || amount <= 0 || price < 0 || price > money.Amount)
+                var money = fromBank ? Credit : Money;
+                if (dest == null || money == null || amount <= 0 || price < 0 || price > money.Amount)
                 {
                     return null;
                 }
