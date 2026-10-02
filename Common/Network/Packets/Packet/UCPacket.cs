@@ -108,21 +108,24 @@ namespace Common.Network.Packets
         }
 
         /// <summary>
-        /// Reads a UC size. One byte with the high bit set holds sizes up to 0x7F; larger sizes use
-        /// two bytes: the low 7 bits, then the count of 0x80s with the high bit set.
+        /// Reads a UC size: 7 bits per byte, lowest first; the last byte has the high bit set. So 0x00-0x7F is
+        /// one byte 0x80 | size, 0x80-0x3FFF two bytes (size &amp; 0x7F, 0x80 | size &gt;&gt; 7), and so on, up to five
+        /// bytes for a full int32 (the client's reader at 0x7105ac in UCClient.exe stops after 35 bits).
         /// </summary>
         public int GetSize()
         {
-            EnsureReadable(1);
-            byte first = GetByte();
-            if ((first & 0x80) != 0)
+            int value = 0;
+            for (int shift = 0; shift < 35; shift += 7)
             {
-                return first & 0x7F;
+                EnsureReadable(1);
+                byte b = GetByte();
+                value |= (b & 0x7F) << shift;
+                if ((b & 0x80) != 0)
+                {
+                    break;
+                }
             }
-
-            EnsureReadable(1);
-            byte second = GetByte();
-            return ((second & 0x7F) * 0x80) + first;
+            return value;
         }
 
         /// <summary>
@@ -174,20 +177,17 @@ namespace Common.Network.Packets
         /// </summary>
         public void PutSize(int size)
         {
-            if (size < 0 || size >= 0x80 * 0x80)
+            if (size < 0)
             {
-                throw new ArgumentOutOfRangeException("size", size, "A UC size must be between 0 and 0x3FFF.");
+                throw new ArgumentOutOfRangeException("size", size, "A UC size cannot be negative.");
             }
 
-            if (size <= 0x7F)
+            while (size > 0x7F)
             {
-                PutByte((byte)(0x80 | size));
+                PutByte((byte)(size & 0x7F));
+                size >>= 7;
             }
-            else
-            {
-                PutByte((byte)(size % 0x80));
-                PutByte((byte)(0x80 | (size / 0x80)));
-            }
+            PutByte((byte)(0x80 | size));
         }
 
         /// <summary>
