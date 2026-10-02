@@ -942,7 +942,7 @@ class Test
     {
         uint target = 1000900001, shooter = 1000900002, vendor = 1000900003;
         g2.Send(0x03, new B().U32(accB).U32(other).U16(1).Bytes(new byte[6]).I32(30500).I32(30000).I32(30).U32(0x45FA0000).Get());
-        var list = g2.Recv(); var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
+        var list = RecvOp(g2, 0x8003); var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
         var ids = new Dictionary<uint, byte[]>();
         for (int i = 0; i < count; i++) { var rec = new byte[53]; Array.Copy(list.Item2, lr.Pos + 53 * i, rec, 0, 53); ids[new R(rec) { Pos = 18 }.U32()] = rec; }
         Check(count == 4 && ids.ContainsKey(target) && ids.ContainsKey(shooter) && ids.ContainsKey(vendor), "Char sees the three NPCs in the position list (" + count + ")");
