@@ -89,7 +89,7 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (templates != null)
             {
@@ -114,6 +114,40 @@ namespace TitansUC.GameServer.World
                     catch (Exception ex)
                     {
                         Logger.ShowWarning(string.Format("Could not load {0}: {1}", file, ex.Message));
+                    }
+                }
+
+                try
+                {
+                    // Town and mine props (56xxxx): one table split over three files, read as one.
+                    var parts = new List<byte>();
+                    for (int i = 1; i <= 3; i++)
+                    {
+                        parts.AddRange(File.ReadAllBytes(CharacterData.FindFile("Templates", "BACKGROUNDITEMTEMPLATE_" + i + ".DAT")));
+                    }
+                    Load(parts.ToArray(), false, "background", result);
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowWarning("Could not load BACKGROUNDITEMTEMPLATE_1-3.DAT: " + ex.Message);
+                }
+                try
+                {
+                    LoadClothes(File.ReadAllLines(CharacterData.FindFile("Templates", "CLOTHESTEMPLATE.DAT")), result);
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowWarning("Could not load CLOTHESTEMPLATE.DAT: " + ex.Message);
+                }
+                foreach (var link in IdLinks.All)
+                {
+                    // Models with no template of their own: spawnable by id, named after their model file.
+                    if (!result.ContainsKey(link.ID))
+                    {
+                        result[link.ID] = new ItemTemplate
+                        {
+                            ID = link.ID, Name = link.ShortName, Price = NotForSale, IsVehicle = link.IsVehicle, Category = "idlink",
+                        };
                     }
                 }
 
@@ -158,6 +192,36 @@ namespace TitansUC.GameServer.World
             EnsureLoaded();
             return templates.Values.GroupBy(t => t.Category).OrderBy(g => g.Key)
                 .Select(g => new KeyValuePair<string, int>(g.Key, g.Count())).ToList();
+        }
+
+        /// <summary>
+        /// CLOTHESTEMPLATE.DAT is text: blocks of "ID: 240000", "Comment: ...", "Code: ...", "Name: cotton yarn".
+        /// Clothes are not sold, so they have no price.
+        /// </summary>
+        private static void LoadClothes(string[] lines, Dictionary<int, ItemTemplate> result)
+        {
+            int id = 0;
+            string code = null;
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                int n;
+                if (line.StartsWith("ID:") && int.TryParse(line.Substring(3).Trim(), out n))
+                {
+                    id = n;
+                    code = null;
+                }
+                else if (line.StartsWith("Code:"))
+                {
+                    code = line.Substring(5).Trim();
+                }
+                else if (line.StartsWith("Name:") && id > 0 && !result.ContainsKey(id))
+                {
+                    var name = line.Substring(5).Trim();
+                    result[id] = new ItemTemplate { ID = id, Name = name.Length > 0 ? name : code ?? id.ToString(), Price = NotForSale, Category = "clothes" };
+                    id = 0;
+                }
+            }
         }
 
         private static void Load(byte[] d, bool vehicles, string category, Dictionary<int, ItemTemplate> result)
@@ -483,7 +547,7 @@ namespace TitansUC.GameServer.World
             get
             {
                 int range = ID / 10000;
-                return !IsVehicle && range != 28 && range != 29 && range != 36;
+                return !IsVehicle && range != 28 && range != 29 && range != 36 && !PlayerInventory.IsClothes(ID);
             }
         }
     }

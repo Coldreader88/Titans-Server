@@ -112,7 +112,7 @@ namespace TitansUC.GameServer.World
             return 0;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (levels != null)
             {

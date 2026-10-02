@@ -86,6 +86,8 @@
     <Compile Include="World\Mining.cs" />
     <Compile Include="World\Camps.cs" />
     <Compile Include="World\Terrain.cs" />
+    <Compile Include="World\IdLinks.cs" />
+    <Compile Include="World\GameData.cs" />
     <Compile Include="World\Facilities.cs" />
     <Compile Include="World\Shops.cs" />
     <Compile Include="World\SpecialAttacks.cs" />

@@ -59,7 +59,7 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (templates != null)
             {
@@ -270,6 +270,11 @@ namespace TitansUC.GameServer.World
                 }
             }
             return 0;
+        }
+
+        internal static void EnsureLoaded()
+        {
+            Names.ToString();
         }
 
         private static Dictionary<int, string> Names

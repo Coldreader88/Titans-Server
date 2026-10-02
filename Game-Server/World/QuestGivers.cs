@@ -58,7 +58,7 @@ namespace TitansUC.GameServer.World
             return !known || best <= distance;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (givers != null)
             {

@@ -116,7 +116,7 @@ namespace TitansUC.GameServer.World
             return ((long)town << 32) | (uint)index;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (facilities != null)
             {

@@ -56,7 +56,7 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (recipes != null)
             {

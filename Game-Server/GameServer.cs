@@ -83,6 +83,7 @@ namespace TitansUC.GameServer
                 return;
             }
 
+            World.GameData.LoadAll();
             if (Configuration.Instance.Zone == (ushort)Common.Characters.Zone.EARTH)
             {
                 // Before the NPCs: the quest squads stand on the ground it gives.

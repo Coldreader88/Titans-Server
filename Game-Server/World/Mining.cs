@@ -127,7 +127,7 @@ namespace TitansUC.GameServer.World
             return ores.TryGetValue(templateID, out ore) ? ore.SuccessRate : 5000;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (blocks != null)
             {

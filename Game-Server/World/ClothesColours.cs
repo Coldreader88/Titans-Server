@@ -78,7 +78,7 @@ namespace TitansUC.GameServer.World
             return templateID / 10000 == 35;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (colours != null)
             {

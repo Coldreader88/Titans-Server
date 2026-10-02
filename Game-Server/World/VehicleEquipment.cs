@@ -81,7 +81,7 @@ namespace TitansUC.GameServer.World
             return vehicle != null && groups.TryGetValue(vehicle.EquipGroup, out masks) ? masks : null;
         }
 
-        private static void EnsureLoaded()
+        internal static void EnsureLoaded()
         {
             if (groups != null)
             {

@@ -487,6 +487,11 @@ namespace TitansUC.GameServer.World
         /// FACILITYITEMARRANGEMENT.DAT (DB/Templates): 4-byte header, UC size count, then int16 world, int32 town,
         /// int32 index, int32 template, UC string name, int32 x, y, z, int16 rotation x, y, z.
         /// </summary>
+        internal static void EnsureLoaded()
+        {
+            Arrangement();
+        }
+
         private static List<Arranged> Arrangement()
         {
             if (arrangement != null)
