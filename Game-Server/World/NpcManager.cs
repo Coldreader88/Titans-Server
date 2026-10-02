@@ -214,6 +214,12 @@ namespace TitansUC.GameServer.World
                 try
                 {
                     var npc = Parse(line.Split(','));
+                    // The quest squads stand on the ground (their spots are ours; the captured NPCs keep their z).
+                    var ground = file == "quest_squads.csv" && npc.Zone == (ushort)Zone.EARTH ? Terrain.GroundZ(npc.X, npc.Y) : null;
+                    if (ground.HasValue)
+                    {
+                        npc.Z = npc.SpawnZ = ground.Value;
+                    }
                     // Each server runs one side: Earth NPCs on the Earth server, Space NPCs on the Space one.
                     if (npc.Zone == TitansUC.GameServer.Configuration.Instance.Zone)
                     {
@@ -736,6 +742,12 @@ namespace TitansUC.GameServer.World
             npc.X += (int)Math.Round(dx / d * step);
             npc.Y += (int)Math.Round(dy / d * step);
             npc.Z += (int)Math.Round(dz / d * step);
+            // On Earth everything but fighters (43xxxx) walks on the ground.
+            var ground = npc.Zone == (ushort)Zone.EARTH && npc.TemplateID / 10000 != 43 ? Terrain.GroundZ(npc.X, npc.Y) : null;
+            if (ground.HasValue)
+            {
+                npc.Z = ground.Value;
+            }
             return false;
         }
 

@@ -91,6 +91,13 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "height", Usage = "#height", Level = AccessLevel.GM,
+                Description = "Shows the ground height under you on Earth from the terrain file (metres and z) and your own z.",
+                Examples = new[] { "#height" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "height", a)),
+            });
+            Add(new Command
+            {
                 Name = "sys", Usage = "#sys message", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Sends a system message to all online players.",
                 Examples = new[] { "#sys Server restart in 10 minutes" },

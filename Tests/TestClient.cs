@@ -1547,6 +1547,7 @@ class Test
         var until = DateTime.Now.AddSeconds(20);
         while (DateTime.Now < until && (got.Count < 4 || gain == null)) { var r = g.Recv(); if (r == null) continue; if (r.Item1 == 0x8035) got.Add(r); if (r.Item1 == 0x8034) gain = r; }
         Check(got.Count == 4, "four ground items spawned");
+        Check(GameLog().Contains("Loaded the terrain of Earth (6000 x 4500 heights)."), "the Earth server reads the terrain heights (DB/Terrain/au.tr)");
         if (got.Count < 4) return 1;
         Check(gain != null && Conn.Hex(gain.Item2).Trim() == Conn.Hex(new B().U32(me).Get()).Trim() + " 81 00 00 00 00 80 81 00 11 00 00 03 57 01 80", "#skill::ambac::85.5 sends the client +85.5 AMBAC (0x8034 skill 0x11)");
         Check(Sql("SELECT skill_level FROM skills WHERE char_id = " + me + " AND skill_idx = 18") == "855", "and saves 855");

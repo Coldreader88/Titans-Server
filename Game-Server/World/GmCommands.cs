@@ -46,9 +46,30 @@ namespace TitansUC.GameServer.World
                     return RankCommand(gm, args);
                 case "npcs":
                     return Npcs(gm, args);
+                case "height":
+                    return HeightCommand(gm);
                 default:
                     return new List<string> { "This game server does not know #" + parts[0] + "." };
             }
+        }
+
+        /// <summary>
+        /// #height: the ground under the GM from the terrain (<see cref="Terrain"/>) and their own z.
+        /// </summary>
+        public static List<string> HeightCommand(UCGameSession gm)
+        {
+            var c = gm.Coord;
+            if (c == null)
+            {
+                return new List<string> { "You have no position yet." };
+            }
+            var m = c.ClusterID == (ushort)Common.Characters.Zone.EARTH ? Terrain.Metres(c.X, c.Y) : null;
+            if (!m.HasValue)
+            {
+                return new List<string> { string.Format("No terrain height at {0}, {1} (z {2}).", c.X, c.Y, c.Z) };
+            }
+            return new List<string> { string.Format("Ground at {0}, {1}: {2:0.0} m{3}, z {4}; you are at z {5}.", c.X, c.Y, m.Value,
+                m.Value < 0 ? " (sea)" : "", Terrain.GroundZ(c.X, c.Y), c.Z) };
         }
 
         public const int NearLines = 25;
