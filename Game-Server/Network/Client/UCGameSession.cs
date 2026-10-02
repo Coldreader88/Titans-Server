@@ -62,6 +62,12 @@ namespace TitansUC.GameServer.Network.Client
 
         public bool InGame { get { return Character != null; } }
 
+        /// <summary>#god: this player's vehicle takes no damage (and their shield no wear). Not saved.</summary>
+        public bool GodMode { get; set; }
+
+        /// <summary>#ammo: this player's weapons use no rounds and no durability. Not saved.</summary>
+        public bool UnlimitedAmmo { get; set; }
+
         /// <summary>
         /// Set once the player took off for the other side's server (0x40).
         /// </summary>
@@ -1781,7 +1787,7 @@ namespace TitansUC.GameServer.Network.Client
                 code = Mining.Dig(block, Character.GetSkill(Skill.MINING), out template, out amount);
             }
 
-            if (weapon != null && weapon.Stats != null && weapon.Stats.Length > 0)
+            if (weapon != null && weapon.Stats != null && weapon.Stats.Length > 0 && !UnlimitedAmmo)
             {
                 weapon.Stats[0] = Math.Max(0, weapon.Stats[0] - 1);
             }
@@ -1916,7 +1922,7 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            int damage = ChainExplosionDamage(p.ExplodedTemplateID);
+            int damage = GodMode ? 0 : ChainExplosionDamage(p.ExplodedTemplateID);
             int health;
             lock (vehicle)
             {

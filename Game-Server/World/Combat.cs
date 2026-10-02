@@ -208,15 +208,21 @@ namespace TitansUC.GameServer.World
             double specialHit = special != null ? special.HitRate / 10000.0 : 1.0;
             var vehicleTemplate = VehicleTemplates.Get(vehicle.StaticID);
 
+            // GM toggles: #ammo keeps the attacker's rounds and durability, #god keeps the defender's health and shield.
+            var attackerSession = attacker != null ? GameWorld.Instance.Get(attacker.ID) : null;
+            var defenderSession = defender != null ? GameWorld.Instance.Get(defender.ID) : null;
+            bool unlimitedAmmo = attackerSession != null && attackerSession.UnlimitedAmmo;
+            bool invulnerable = defenderSession != null && defenderSession.GodMode;
+
             lock (vehicle)
             {
                 int rounds = RoundsPerAttack(template);
-                if (rounds > 0)
+                if (rounds > 0 && !unlimitedAmmo)
                 {
                     rounds = Math.Min(rounds, Math.Max(0, weapon.Loaded));
                     weapon.Loaded -= rounds;
                 }
-                r.RoundsUsed = rounds;
+                r.RoundsUsed = unlimitedAmmo ? 0 : rounds;
 
                 int band = Band(template, distance);
                 double hitRoll, damageRoll, criticalRoll, shieldRoll;
@@ -257,9 +263,9 @@ namespace TitansUC.GameServer.World
                 {
                     damage = (int)(damage * CriticalFactor);
                 }
-                r.Damage = Math.Max(1, damage);
+                r.Damage = invulnerable ? 0 : Math.Max(1, damage);
                 r.Result = critical ? ResultCritical : ResultHit;
-                r.DurabilityUsed = special != null ? special.Durability : 1;
+                r.DurabilityUsed = unlimitedAmmo ? 0 : special != null ? special.Durability : 1;
                 UseDurability(weapon, r.DurabilityUsed);
                 r.M = vehicleTemplate != null ? vehicleTemplate.CombatValue : 1000;
 

@@ -11,7 +11,7 @@ using TitansUC.GameServer.Network.Packets.Client;
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// GM chat commands the game server answers itself (the CMS server forwards them): #items, #skill, #near, #tp and #crime.
+    /// GM chat commands the game server answers itself (the CMS server forwards them): #items, #skill, #near, #tp, #crime, #god, #ammo and more.
     /// Each returns the lines to show the GM as system messages.
     /// </summary>
     public static class GmCommands
@@ -48,6 +48,11 @@ namespace TitansUC.GameServer.World
                     return Npcs(gm, args);
                 case "height":
                     return HeightCommand(gm);
+                case "god":
+                    return Toggle(gm, args, "god", "God mode", "your vehicle takes no damage", v => gm.GodMode = v, () => gm.GodMode);
+                case "ammo":
+                    return Toggle(gm, args, "ammo", "Unlimited ammo", "your weapons use no rounds or durability",
+                        v => gm.UnlimitedAmmo = v, () => gm.UnlimitedAmmo);
                 default:
                     return new List<string> { "This game server does not know #" + parts[0] + "." };
             }
@@ -70,6 +75,23 @@ namespace TitansUC.GameServer.World
             }
             return new List<string> { string.Format("Ground at {0}, {1}: {2:0.0} m{3}, z {4}; you are at z {5}.", c.X, c.Y, m.Value,
                 m.Value < 0 ? " (sea)" : "", Terrain.GroundZ(c.X, c.Y), c.Z) };
+        }
+
+        /// <summary>
+        /// #god and #ammo: no argument flips the toggle, on/off sets it. It lasts until the GM logs out.
+        /// </summary>
+        private static List<string> Toggle(UCGameSession gm, IList<string> args, string name, string label, string effect,
+            Action<bool> set, Func<bool> get)
+        {
+            bool value;
+            string a = args.Count > 0 ? args[0].ToLowerInvariant() : "";
+            if (a == "") value = !get();
+            else if (a == "on" || a == "1" || a == "true") value = true;
+            else if (a == "off" || a == "0" || a == "false") value = false;
+            else return new List<string> { "Usage: #" + name + " [on|off]" };
+            set(value);
+            Logger.ShowInfo(string.Format("{0} turned {1} {2} with #{3}.", gm.Character.Name, label.ToLowerInvariant(), value ? "on" : "off", name));
+            return new List<string> { value ? string.Format("{0} on: {1} until you turn it off or log out.", label, effect) : label + " off." };
         }
 
         public const int NearLines = 25;

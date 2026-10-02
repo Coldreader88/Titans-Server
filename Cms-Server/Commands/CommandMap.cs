@@ -98,6 +98,20 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "god", Usage = "#god [on|off]", Level = AccessLevel.GM,
+                Description = "God mode: your vehicle takes no damage from attacks or explosions, and your shield does not wear. No argument switches it; it lasts until you log out.",
+                Examples = new[] { "#god", "#god on", "#god off" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "god", a)),
+            });
+            Add(new Command
+            {
+                Name = "ammo", Usage = "#ammo [on|off]", Level = AccessLevel.GM,
+                Description = "Unlimited ammo: your weapons (and mining tools) use no rounds and lose no durability. No argument switches it; it lasts until you log out.",
+                Examples = new[] { "#ammo", "#ammo on", "#ammo off" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "ammo", a)),
+            });
+            Add(new Command
+            {
                 Name = "sys", Usage = "#sys message", Level = AccessLevel.GM, MinArguments = 1,
                 Description = "Sends a system message to all online players.",
                 Examples = new[] { "#sys Server restart in 10 minutes" },
