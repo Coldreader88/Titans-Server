@@ -34,6 +34,7 @@ namespace TitansUC.GameServer.Network.Link
             RegisterPacketHandler(CGOpcode.CMS_POSITION_LOG, new CMS_POSITION_LOG());
             RegisterPacketHandler(CGOpcode.CMS_TELEPORT_TO_PLAYER, new CMS_TELEPORT_TO_PLAYER());
             RegisterPacketHandler(CGOpcode.CMS_GM_COMMAND, new CMS_GM_COMMAND());
+            RegisterPacketHandler(CGOpcode.CMS_TEAM, new CMS_TEAM());
         }
 
         /// <summary>
@@ -187,6 +188,18 @@ namespace TitansUC.GameServer.Network.Link
             }
         }
 
+        /// <summary>
+        /// A player made, joined or left a team: their position records carry the new team id from now on.
+        /// </summary>
+        public void OnTeam(uint characterID, int teamID)
+        {
+            var player = GameWorld.Instance.Get(characterID);
+            if (player != null)
+            {
+                player.SetTeam(teamID);
+            }
+        }
+
         public void OnPositionLog(uint characterID, string message)
         {
             var player = GameWorld.Instance.Get(characterID);
@@ -229,6 +242,7 @@ namespace TitansUC.GameServer.Network.Link
         private static void Close()
         {
             GameWorld.Instance.Closed = true;
+            SaveMaintenance(true);
             var players = GameWorld.Instance.Players;
             Logger.ShowWarning(string.Format("Closed for maintenance; logging out {0} players.", players.Count));
             foreach (UCGameSession player in players)
@@ -255,7 +269,23 @@ namespace TitansUC.GameServer.Network.Link
                 }
             }
             GameWorld.Instance.Closed = false;
+            SaveMaintenance(false);
             Logger.ShowInfo("Maintenance ended; logins are open again.");
+        }
+
+        /// <summary>
+        /// Tells the Login-Server (through the database) that the game is closed or open again.
+        /// </summary>
+        public static void SaveMaintenance(bool closed)
+        {
+            try
+            {
+                Common.Database.ServerState.SetMaintenance(closed);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
         }
     }
 }

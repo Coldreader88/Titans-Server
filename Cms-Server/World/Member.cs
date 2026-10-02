@@ -59,9 +59,19 @@
     /// and 3 also occur; what they mean is not confirmed. The client picks the recipients for every
     /// type; the server only passes the message on.
     /// </summary>
+    /// <summary>
+    /// Chat types (CM_CHAT_MSG / SM_CHAT_MSG). The client picks the recipients of every type itself; the server
+    /// passes each message on as it is. From the captures: 3 is the faction chat ("Send to Zeon Chat", "Journal
+    /// Zeon Talk"). 0 was only ever sent by the official server, from many players the capturing player was not
+    /// near or in a team with, so it is probably a wide area or server channel; 1 was rare (a few greetings,
+    /// "jhgh" sent to no one). Neither is known for sure.
+    /// </summary>
     public static class ChatType
     {
+        public const uint Wide = 0;
+        public const uint Unknown1 = 1;
         public const uint Say = 2;
+        public const uint Faction = 3;
         public const uint Tell = 4;
         public const uint Team = 5;
         public const uint GroupChat = 6;

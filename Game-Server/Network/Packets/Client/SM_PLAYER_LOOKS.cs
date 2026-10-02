@@ -9,7 +9,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// <code>
     /// uint32 BE   0x00030002
     /// uint32 BE   character id
-    /// uint16 BE   9
+    /// uint16 BE   _sum_check: the client ignores looks whose sum it already has (<see cref="CharacterLooks.SumCheck"/>)
     /// byte       gender
     /// looks (see <see cref="CharacterLooks"/>)
     /// </code>
@@ -36,7 +36,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
 
             this.PutUIntBE(0x00030002);
             this.PutUIntBE(character.ClientID);
-            this.PutUShortBE(0x0009);
+            this.PutUShortBE(CharacterLooks.SumCheck(character));
             this.PutByte((byte)character.Gender);
             CharacterLooks.Write(this, character);
         }

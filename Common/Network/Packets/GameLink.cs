@@ -48,6 +48,18 @@ namespace Common.Network.Packets
         }
 
         /// <summary>
+        /// 0x0B, CMS -> game server: uint32 BE character id, int32 BE team id (-1: none). Sent when a player
+        /// makes, joins or leaves a team, so the game server's position records carry it. Not in the Java servers.
+        /// </summary>
+        public static UCPacket<CGOpcode> Team(uint characterID, int teamID)
+        {
+            var p = New(CGOpcode.CMS_TEAM);
+            p.PutUIntBE(characterID);
+            p.PutIntBE(teamID);
+            return p;
+        }
+
+        /// <summary>
         /// 0x0A, CMS -> game server: a GM chat command the game server answers itself (#items, #skill):
         /// uint32 BE character id, UC string "name::arg::arg". Not in the Java servers.
         /// </summary>

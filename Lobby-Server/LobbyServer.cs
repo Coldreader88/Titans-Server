@@ -15,6 +15,8 @@ namespace TitansUC.LobbyServer
 {
     public class LoginServer
     {
+        static System.Threading.Timer heartbeat;
+
         static void Main(string[] args)
         {
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
@@ -103,6 +105,7 @@ namespace TitansUC.LobbyServer
                 try
                 {
                     LoginSessionDatabase.Instance.EnsureTable();
+                    AccountDatabase.Instance.EnsurePasswordColumn();
                 }
                 catch (Exception ex)
                 {
@@ -127,6 +130,8 @@ namespace TitansUC.LobbyServer
 
             Logger.ShowInfo("Listening on port:" + LobbyClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
+            // The Login-Server shows the game as online while this beats (Common.Database.ServerState).
+            heartbeat = Common.Database.ServerState.StartBeating("lobby");
 
             //处理Console命令
             while (true)
@@ -139,6 +144,53 @@ namespace TitansUC.LobbyServer
                     args = cmd.Split(' ');
                     switch (args[0].ToLower())
                     {
+                        case "account":
+                            // account <name> <password> [level]: create an account or set its password
+                            // (level 10 player, 4 GM, 9 admin).
+                            if (args.Length < 3 || args[1].Length == 0 || args[2].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: account <name> <password> [level: 10 player (default), 4 GM, 9 admin]");
+                                break;
+                            }
+                            int level = (int)Common.Account.Account.AccountLevel.PLAYER;
+                            if (args.Length > 3 && !int.TryParse(args[3], out level))
+                            {
+                                Logger.ShowInfo("The level must be a number: 10 player, 4 GM, 9 admin.");
+                                break;
+                            }
+                            Logger.ShowInfo(AccountDatabase.Instance.CreateOrUpdate(args[1], args[2], level));
+                            break;
+
+
+                        case "ban":
+                            // ban <account> [days]: 0 or none bans for good
+                            if (args.Length < 2 || args[1].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: ban <account> [days] (no days: for good); unban <account>");
+                                break;
+                            }
+                            int days = 0;
+                            if (args.Length > 2 && (!int.TryParse(args[2], out days) || days < 0))
+                            {
+                                Logger.ShowInfo("The days must be a number, 0 or more (0: for good).");
+                                break;
+                            }
+                            Logger.ShowInfo(Common.Database.AccountBans.Ban(args[1], days));
+                            break;
+
+                        case "unban":
+                            if (args.Length < 2 || args[1].Length == 0)
+                            {
+                                Logger.ShowInfo("Usage: unban <account>");
+                                break;
+                            }
+                            Logger.ShowInfo(Common.Database.AccountBans.Ban(args[1], -1));
+                            break;
+
+                        case "unlock":
+                            // unlock: lift every wrong-password lockout
+                            Logger.ShowInfo(string.Format("Cleared {0} login lockout entries.", Manager.LoginGuard.Clear()));
+                            break;
 
                         case "printthreads":
                             ClientManager.PrintAllThreads();

@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
 
@@ -18,7 +18,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// uint32 BE   amount
     /// uint32 BE   0
     /// uint32 BE   price (0 in the request)
-    /// uint32 BE   shop details (3 ints)
+    /// uint32 BE   town, shop (SHOPINFOTEMPLATE), faction
     /// </code>
     /// Layout from the official captures (Alumina (121).pcap, Sold_RGM-79.pcap and others).
     /// </summary>
@@ -43,6 +43,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public uint ItemUniqueID { get; private set; }
         public uint ContainerUniqueID { get; private set; }
         public int Amount { get; private set; }
+        public int Town { get; private set; }
+        public int Shop { get; private set; }
 
         public override void OnProcess(Session<GSOpcode> client)
         {
@@ -56,6 +58,8 @@ namespace TitansUC.GameServer.Network.Packets.Client
             ItemUniqueID = Bytes.U32(Body, 16);
             ContainerUniqueID = Bytes.U32(Body, 24);
             Amount = (int)Bytes.U32(Body, 44);
+            Town = Body.Length >= 64 ? (int)Bytes.U32(Body, 56) : -1;
+            Shop = Body.Length >= 64 ? (int)Bytes.U32(Body, 60) : -1;
 
             ((UCGameSession)client).OnSellItem(this);
         }

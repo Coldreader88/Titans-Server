@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 using Common.Database;
 using Common.Network;
 using Common.Network.Packets;
@@ -22,6 +24,7 @@ namespace TitansUC.GameServer
         static void Main(string[] args)
         {
             Console.CancelKeyPress += new ConsoleCancelEventHandler(ShuttingDown);
+            WatchConsoleClose();
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
             // The logger starts in InitServer; anything logged before it (reading the configuration does)
@@ -86,6 +89,10 @@ namespace TitansUC.GameServer
                 World.Occupation.Start();
             }
 
+            StartBackups();
+            // A restart ends any maintenance; the Login-Server shows the game as online while this beats.
+            CmsLink.SaveMaintenance(false);
+            heartbeat = Common.Database.ServerState.StartBeating("game_" + Configuration.Instance.InstanceName.ToLower());
             Logger.ShowInfo("Listening on port:" + GameClientManager.Instance.Port);
             Logger.ShowInfo("Accepting clients...");
 
@@ -149,7 +156,7 @@ namespace TitansUC.GameServer
                             // gm <character name or id> <command>, e.g. gm Brian items weapon or gm Brian skill ambac 80
                             if (args.Length < 3)
                             {
-                                Logger.ShowInfo("Usage: gm <character name or id> items [category [filter] [page]] | skill [name level]");
+                                Logger.ShowInfo("Usage: gm <character name or id> items [category [filter] [page]] | skill [name level] | town [town action]");
                                 break;
                             }
                             uint gmID;
@@ -166,6 +173,10 @@ namespace TitansUC.GameServer
                             }
                             break;
 
+                        case "backup":
+                            System.Threading.Tasks.Task.Run(() => MakeBackup());
+                            break;
+
                         case "save":
                             foreach (UCGameSession player in GameWorld.Instance.Players)
                             {
@@ -176,13 +187,65 @@ namespace TitansUC.GameServer
                             break;
 
                         case "online":
+                        case "players":
                             foreach (UCGameSession player in GameWorld.Instance.Players)
                             {
                                 var coord = player.Coord;
-                                Logger.ShowInfo(string.Format("{0} (character {1}) at {2}, {3}, {4}",
-                                    player.Character.Name, player.CharacterID, coord.X, coord.Y, coord.Z));
+                                Logger.ShowInfo(string.Format("{0} (character {1}, account {2}, level {3}) from {4} at {5}, {6}, {7}",
+                                    player.Character.Name, player.CharacterID, player.AccountID, player.AccountLevel, player.Address,
+                                    coord.X, coord.Y, coord.Z));
                             }
                             Logger.ShowInfo(string.Format("{0} players online.", GameWorld.Instance.Count));
+                            break;
+
+                        case "kick":
+                            // kick <character name or id>: saves them and logs them out
+                            if (args.Length < 2)
+                            {
+                                Logger.ShowInfo("Usage: kick <character name or id>");
+                                break;
+                            }
+                            var kicked = FindPlayer(args[1]);
+                            if (kicked == null)
+                            {
+                                Logger.ShowInfo(args[1] + " is not online.");
+                                break;
+                            }
+                            kicked.Kick();
+                            Logger.ShowInfo(string.Format("Kicked {0}.", kicked.Character.Name));
+                            break;
+
+                        case "ban":
+                        case "unban":
+                            // ban <character name> [days] (none or 0: for good), unban <character name>: the whole account
+                            if (args.Length < 2)
+                            {
+                                Logger.ShowInfo("Usage: ban <character name> [days] (no days: for good); unban <character name>");
+                                break;
+                            }
+                            int banDays = 0;
+                            if (args[0].ToLower() == "unban")
+                            {
+                                banDays = -1;
+                            }
+                            else if (args.Length > 2 && (!int.TryParse(args[2], out banDays) || banDays < 0))
+                            {
+                                Logger.ShowInfo("The days must be a number, 0 or more (0: for good).");
+                                break;
+                            }
+                            uint bannedAccount;
+                            Logger.ShowInfo(Common.Database.AccountBans.BanCharacter(args[1], banDays, out bannedAccount));
+                            if (banDays >= 0 && bannedAccount != 0)
+                            {
+                                foreach (UCGameSession player in GameWorld.Instance.Players)
+                                {
+                                    if (player.AccountID == bannedAccount)
+                                    {
+                                        player.Kick();
+                                        Logger.ShowInfo(string.Format("Kicked {0}.", player.Character.Name));
+                                    }
+                                }
+                            }
                             break;
                     }
                 }
@@ -193,15 +256,114 @@ namespace TitansUC.GameServer
             }
         }
 
+        private static Timer backupTimer;
+        private static Timer heartbeat;
+
+        /// <summary>
+        /// Starts the backups every BackupHours (the Earth server only, so two servers do not both make them).
+        /// </summary>
+        private static void StartBackups()
+        {
+            int hours = Configuration.Instance.BackupHours;
+            if (hours <= 0 || Configuration.Instance.IsSpace)
+            {
+                return;
+            }
+            var every = TimeSpan.FromHours(hours);
+            backupTimer = new Timer(_ => MakeBackup(), null, every, every);
+            Logger.ShowInfo(string.Format("Backing up the database every {0} hours to {1}.", hours, Configuration.Instance.BackupFolder));
+        }
+
+        private static void MakeBackup()
+        {
+            try
+            {
+                var started = DateTime.Now;
+                string file = Common.Database.Backup.Run(Configuration.Instance.BackupFolder, Configuration.Instance.BackupKeep);
+                Logger.ShowInfo(string.Format("Backed up the database to {0} ({1:0.0} MB, {2:0.0} s).", file,
+                    new System.IO.FileInfo(file).Length / 1048576.0, (DateTime.Now - started).TotalSeconds));
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowWarning("The database backup failed: " + ex.Message);
+            }
+        }
+
+        private static UCGameSession FindPlayer(string nameOrID)
+        {
+            uint id;
+            return uint.TryParse(nameOrID, out id) ? GameWorld.Instance.Get(id)
+                : GameWorld.Instance.Players.Find(s => string.Equals(s.Character.Name, nameOrID, StringComparison.OrdinalIgnoreCase));
+        }
+
         private static void ShuttingDown(object sender, ConsoleCancelEventArgs args)
         {
             Logger.ShowInfo("Closing.....");
+            SaveEverything();
+            GameClientManager.Instance.Stop();
+        }
+
+        private static int savedAtExit;
+
+        /// <summary>
+        /// Writes every player and the ground, once, however the server is going down.
+        /// </summary>
+        private static void SaveEverything()
+        {
+            if (Interlocked.Exchange(ref savedAtExit, 1) == 1)
+            {
+                return;
+            }
             foreach (UCGameSession player in GameWorld.Instance.Players)
             {
-                player.Save();
+                try
+                {
+                    player.Save();
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowError(ex);
+                }
             }
-            WorldDatabase.SaveGround(Configuration.Instance.Zone);
-            GameClientManager.Instance.Stop();
+            try
+            {
+                WorldDatabase.SaveGround(Configuration.Instance.Zone);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
+        }
+
+        private delegate bool ConsoleCtrlHandler(int type);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, bool add);
+
+        private static ConsoleCtrlHandler consoleHandler;
+
+        /// <summary>
+        /// Closing the console window, logging off or shutting Windows down does not raise CancelKeyPress; Windows
+        /// tells the console handler instead (close 2, logoff 5, shutdown 6), and the server saves before it goes.
+        /// </summary>
+        private static void WatchConsoleClose()
+        {
+            try
+            {
+                consoleHandler = type =>
+                {
+                    if (type == 2 || type == 5 || type == 6)
+                    {
+                        SaveEverything();
+                    }
+                    return false;
+                };
+                SetConsoleCtrlHandler(consoleHandler, true);
+            }
+            catch (Exception)
+            {
+                // Not on Windows: Ctrl+C is all there is.
+            }
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -212,6 +374,7 @@ namespace TitansUC.GameServer
             Logger.ShowError("Error Message:" + ex.Message);
             Logger.ShowError("Call Stack:" + ex.StackTrace);
 
+            SaveEverything();
             GameClientManager.Instance.Stop();
         }
     }

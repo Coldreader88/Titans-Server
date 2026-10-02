@@ -151,6 +151,22 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "rank", Usage = "#rank [0-15] | #rank points n", Level = AccessLevel.GM,
+                Description = "Shows your rank and promotion points, sets your rank, or adds points (promoting you as play would).",
+                Examples = new[] { "#rank", "#rank 8 (Lieutenant)", "#rank 0", "#rank points 50" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "rank", a)),
+            });
+            Add(new Command
+            {
+                Name = "town", Usage = "#town [richmond|newman] [peace [minutes] | open | war [minutes] | end [ef|zeon] | owner ef|zeon | icf 1-5 ef|zeon | reset]",
+                Level = AccessLevel.GM,
+                Description = "Shows the battle towns, or sets one's state: ceasefire, open to attack, at war, the war's end and winner, the owner, one ICF, or back to the start.",
+                Examples = new[] { "#town", "#town newman peace 30", "#town richmond open", "#town newman war 10", "#town newman end zeon",
+                    "#town richmond owner ef", "#town newman icf 3 zeon", "#town richmond reset" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "town", a)),
+            });
+            Add(new Command
+            {
                 Name = "poslog", Usage = "#poslog message", Level = AccessLevel.VIP, MinArguments = 1,
                 Description = "Writes your position and a message to the game server's position log.",
                 Examples = new[] { "#poslog stuck in wall" },
@@ -158,9 +174,10 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "script", Usage = "#script game|cms file", Level = AccessLevel.GM, MinArguments = 2,
-                Description = "Runs a script (Jython on the Java server; not available in the C# servers).",
-                Run = (s, a) => CmsWorld.Instance.SystemMessage(s, "Scripts are not supported by the C# servers."),
+                Name = "script", Usage = "#script [name]", Level = AccessLevel.Admin,
+                Description = "Runs the GM commands in DB/Scripts/name.txt, one per line, as if you typed them (lines starting with // are skipped). Without a name, lists the scripts. (The Java server ran Jython files instead.)",
+                Examples = new[] { "#script", "#script newman_war" },
+                Run = Script,
             });
             Add(new Command
             {
@@ -302,6 +319,76 @@ namespace TitansUC.CmsServer.Commands
         private static void Spawn(UCCmsSession session, List<string> args)
         {
             ToGame(session, GameLinkManager.Instance.Spawn(session.CharacterID, args));
+        }
+
+        [ThreadStatic]
+        private static int scriptDepth;
+
+        /// <summary>
+        /// Where the scripts are: DB/Scripts next to the executable, or in the folder above (as the templates).
+        /// </summary>
+        private static string ScriptFolder()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            foreach (var dir in new[] { System.IO.Path.Combine(baseDir, "DB", "Scripts"), System.IO.Path.Combine(baseDir, "..", "DB", "Scripts"),
+                System.IO.Path.Combine("DB", "Scripts") })
+            {
+                if (System.IO.Directory.Exists(dir))
+                {
+                    return dir;
+                }
+            }
+            return null;
+        }
+
+        private void Script(UCCmsSession session, List<string> args)
+        {
+            string folder = ScriptFolder();
+            if (args.Count == 0)
+            {
+                var names = folder == null ? new List<string>() : System.IO.Directory.GetFiles(folder, "*.txt")
+                    .Select(f => System.IO.Path.GetFileNameWithoutExtension(f)).OrderBy(n => n).ToList();
+                CmsWorld.Instance.SystemMessage(session, names.Count == 0 ? "There are no scripts in DB/Scripts." : "Scripts: " + string.Join(", ", names));
+                return;
+            }
+            // Only plain names: a script cannot reach files outside the folder.
+            string name = args[0];
+            if (folder == null || name.Length == 0 || name.Length > 64 || !name.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'))
+            {
+                CmsWorld.Instance.SystemMessage(session, "There is no script called " + name + ".");
+                return;
+            }
+            string path = System.IO.Path.Combine(folder, name + ".txt");
+            if (!System.IO.File.Exists(path))
+            {
+                CmsWorld.Instance.SystemMessage(session, "There is no script called " + name + ".");
+                return;
+            }
+            if (scriptDepth > 0)
+            {
+                CmsWorld.Instance.SystemMessage(session, "A script cannot run another script.");
+                return;
+            }
+            int run = 0;
+            scriptDepth++;
+            try
+            {
+                foreach (var raw in System.IO.File.ReadAllLines(path))
+                {
+                    string line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("//", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+                    Execute(session, line.StartsWith(Prefix, StringComparison.Ordinal) ? line.Substring(Prefix.Length) : line);
+                    run++;
+                }
+            }
+            finally
+            {
+                scriptDepth--;
+            }
+            CmsWorld.Instance.SystemMessage(session, string.Format("Script {0}: ran {1} commands.", name, run));
         }
 
         private static void Shutdown(UCCmsSession session, List<string> args)

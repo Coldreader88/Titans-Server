@@ -10,7 +10,7 @@ namespace TitansUC.GameServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500;
+        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, questNpcDistance = 3000, shuttleDistance = 200000;
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
@@ -89,10 +89,32 @@ namespace TitansUC.GameServer
         public int SaveInterval { get { return saveInterval; } }
 
         /// <summary>
+        /// Hours between database backups (the Earth server makes them; 0 turns them off), where they go, and how
+        /// many are kept (see Common.Database.Backup).
+        /// </summary>
+        public int BackupHours { get { return backupHours; } }
+        public string BackupFolder { get { return backupFolder; } }
+        public int BackupKeep { get { return backupKeep; } }
+        int backupHours = 6;
+        string backupFolder = "Backups";
+        int backupKeep = 28;
+
+        /// <summary>
         /// Hostile NPCs attack pilots of the other faction who come this close (position units); 0 = they only
         /// fire back when attacked, as the official captures show.
         /// </summary>
         public int NpcAggroRange { get { return npcAggroRange; } }
+
+        /// <summary>
+        /// A quest hand-in needs one of the quest's NPCs this close (position units; our rule, the official
+        /// distance is unknown); 0 = not checked.
+        /// </summary>
+        public int QuestNpcDistance { get { return questNpcDistance; } }
+
+        /// <summary>
+        /// How close to their faction's spaceport a player must be to fly between Earth and Space (0 = anywhere).
+        /// </summary>
+        public int ShuttleDistance { get { return shuttleDistance; } }
 
         /// <summary>
         /// The CMS (chat) server's game link (CMSServer.xml GameLinkPort), for GM commands typed in chat.
@@ -138,6 +160,9 @@ namespace TitansUC.GameServer
                         case "checksessionkey":
                             checkSessionKey = bool.Parse(i.InnerText.Trim());
                             break;
+                        case "upgradechance":
+                            World.Improvements.FirstLevelChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
+                            break;
                         case "wreckchance":
                             World.Combat.WreckChance = Math.Max(0, Math.Min(100, int.Parse(i.InnerText.Trim())));
                             break;
@@ -171,6 +196,18 @@ namespace TitansUC.GameServer
                                 World.Occupation.MedalWin = int.Parse(medals[2].Trim());
                             }
                             break;
+                        case "rankpoints":
+                            if (!World.Ranks.TryParseThresholds(i.InnerText))
+                            {
+                                Logger.ShowWarning("RankPoints needs 15 rising numbers; using the defaults.");
+                            }
+                            break;
+                        case "rankpointsplayerkill":
+                            World.Ranks.PlayerKillPoints = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "rankpointsnpckill":
+                            World.Ranks.NpcKillPoints = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
                         case "crimeexilecount":
                             World.Criminal.ExileCount = Math.Max(0, int.Parse(i.InnerText.Trim()));
                             break;
@@ -183,11 +220,26 @@ namespace TitansUC.GameServer
                         case "viewdistance":
                             viewDistance = int.Parse(i.InnerText.Trim());
                             break;
+                        case "backuphours":
+                            backupHours = Math.Max(0, int.Parse(i.InnerText.Trim()));
+                            break;
+                        case "backupfolder":
+                            backupFolder = i.InnerText.Trim();
+                            break;
+                        case "backupkeep":
+                            backupKeep = Math.Max(1, int.Parse(i.InnerText.Trim()));
+                            break;
                         case "saveinterval":
                             saveInterval = int.Parse(i.InnerText.Trim());
                             break;
                         case "npcaggrorange":
                             npcAggroRange = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "questnpcdistance":
+                            questNpcDistance = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "shuttledistance":
+                            shuttleDistance = int.Parse(i.InnerText.Trim());
                             break;
                         case "chathost":
                             chatHost = i.InnerText.Trim();

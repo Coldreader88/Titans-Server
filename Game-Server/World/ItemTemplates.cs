@@ -198,6 +198,14 @@ namespace TitansUC.GameServer.World
         private static void ReadEquipmentStats(byte[] d, int afterPrice, ItemTemplate t)
         {
             int range = t.ID / 10000;
+            if (range == 29 && afterPrice + 44 <= d.Length)
+            {
+                // Engines: avoid_rate, the engine's evasion bonus ("EngineTempAvoidRate" in the client's battle
+                // info dump), is the first value after the common part.
+                int e = afterPrice + 40;
+                t.AvoidRate = ReadInt(d, ref e);
+                return;
+            }
             if ((range != 28 && range != 36) || afterPrice + 89 > d.Length)
             {
                 return;
@@ -212,13 +220,28 @@ namespace TitansUC.GameServer.World
                 t.OperationSkill = CombatSkill(d, afterPrice + 89);
                 t.TypeSkill = CombatSkill(d, afterPrice + 92);
             }
+            if (afterPrice + 157 <= d.Length && d[afterPrice + 95] == 0x87 && d[afterPrice + 124] == 0x87)
+            {
+                // Seven damage and seven hit-rate multipliers by distance band ("WeaponAttackRatioOnDistance"
+                // and "WeaponHitRatioOnDistance" in the client's battle info dump), then the hit rate in 1/10000.
+                t.AttackRatios = ReadFloats(d, afterPrice + 96, 7);
+                t.HitRatios = ReadFloats(d, afterPrice + 125, 7);
+                p = afterPrice + 153; t.HitRate = ReadInt(d, ref p);
+            }
             if (range == 36)
             {
+                // Shields: the chance in 1/10000 that a hit lands on the shield.
+                if (afterPrice + 177 <= d.Length)
+                {
+                    p = afterPrice + 173; t.GuardProbability = ReadInt(d, ref p);
+                }
                 return;
             }
             p = afterPrice + 41; t.Range = ReadInt(d, ref p);
             p = afterPrice + 49; t.Power = ReadInt(d, ref p);
             p = afterPrice + 57; t.Rate = ReadInt(d, ref p);
+            p = afterPrice + 73; t.AmmoID = ReadInt(d, ref p);
+            p = afterPrice + 77; t.AmmoPerShot = ReadInt(d, ref p);
             p = afterPrice + 85; t.Magazine = ReadInt(d, ref p);
         }
 
@@ -255,7 +278,9 @@ namespace TitansUC.GameServer.World
                 q += 4;
                 int price = ReadInt(d, ref q);
                 p = q;
-                return new ItemTemplate { ID = id, Kind = kind, Name = name.Trim(), Price = price };
+                // The price is an int64 BE; the sell-back price (another int64) follows it.
+                int sellPrice = q + 8 <= d.Length ? (d[q + 4] << 24) | (d[q + 5] << 16) | (d[q + 6] << 8) | d[q + 7] : 0;
+                return new ItemTemplate { ID = id, Kind = kind, Name = name.Trim(), Price = price, SellPrice = sellPrice };
             }
             catch (IndexOutOfRangeException)
             {
@@ -303,6 +328,17 @@ namespace TitansUC.GameServer.World
             return -1;
         }
 
+        private static float[] ReadFloats(byte[] d, int p, int count)
+        {
+            var values = new float[count];
+            for (int i = 0; i < count; i++)
+            {
+                int bits = ReadInt(d, ref p);
+                values[i] = BitConverter.ToSingle(BitConverter.GetBytes(bits), 0);
+            }
+            return values;
+        }
+
         private static int ReadInt(byte[] d, ref int p)
         {
             int v = (d[p] << 24) | (d[p + 1] << 16) | (d[p + 2] << 8) | d[p + 3];
@@ -327,6 +363,12 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public int Price { get; set; }
 
+        /// <summary>
+        /// What a shop pays for one (the int64 after the price). The official shops paid exactly this (RGM-79
+        /// 145800 in Sold_RGM-79.pcap, alumina 215 in Alumina_(121).pcap).
+        /// </summary>
+        public int SellPrice { get; set; }
+
         public bool IsVehicle { get; set; }
 
         /// <summary>
@@ -348,8 +390,46 @@ namespace TitansUC.GameServer.World
         public int Durability { get; set; }
         public int Range { get; set; }
         public int Power { get; set; }
+        /// <summary>
+        /// WEAPONTEMPLATE eq_unk4 (10 to 38; Java called it damage_variation). The client does not read it;
+        /// <see cref="Combat"/> uses it for how far damage varies.
+        /// </summary>
         public int Rate { get; set; }
         public int Magazine { get; set; }
+
+        /// <summary>
+        /// Rounds one attack uses (77 bytes after the price; the official 100mm machine gun fired 6, a beam
+        /// rifle 8); 0 for melee weapons.
+        /// </summary>
+        public int AmmoPerShot { get; set; }
+
+        /// <summary>
+        /// Damage and hit-rate multipliers for seven distance bands, nearest first; null when the template has
+        /// none.
+        /// </summary>
+        public float[] AttackRatios { get; set; }
+        public float[] HitRatios { get; set; }
+
+        /// <summary>
+        /// A weapon's hit rate in 1/10000 (4000 to 8000).
+        /// </summary>
+        public int HitRate { get; set; }
+
+        /// <summary>
+        /// A shield's chance in 1/10000 to take a hit (2000 or 3000).
+        /// </summary>
+        public int GuardProbability { get; set; }
+
+        /// <summary>
+        /// An engine's evasion bonus (0 to 40, rising with the engine level).
+        /// </summary>
+        public int AvoidRate { get; set; }
+
+        /// <summary>
+        /// The ammunition (54xxxx) a weapon fires, from WEAPONTEMPLATE.DAT (73 bytes after the price); 0 or -1
+        /// for none (melee weapons).
+        /// </summary>
+        public int AmmoID { get; set; }
 
         /// <summary>
         /// The combat skill that operates this weapon (shooting, sniping, CQB, hand to hand; defence for a shield),

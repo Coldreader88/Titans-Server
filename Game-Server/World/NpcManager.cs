@@ -172,6 +172,14 @@ namespace TitansUC.GameServer.World
             }
         }
 
+        /// <summary>
+        /// An NPC's armaments: at least the 4 slots the official NPCs had (-1 = empty), more when its loadout has them.
+        /// </summary>
+        private static int[] PadArmaments(int[] armaments)
+        {
+            return armaments.Concat(Enumerable.Repeat(-1, Math.Max(0, 4 - armaments.Length))).ToArray();
+        }
+
         private void Load()
         {
             string path;
@@ -227,7 +235,7 @@ namespace TitansUC.GameServer.World
                 Direction = short.Parse(f[11]),
                 Rank = byte.Parse(f[12]),
                 Action = byte.Parse(f[13]),
-                Armaments = f[14].Split('/').Select(int.Parse).Concat(Enumerable.Repeat(-1, 4)).Take(4).ToArray(),
+                Armaments = PadArmaments(f[14].Split('/').Select(int.Parse).ToArray()),
                 MaxHealth = int.Parse(f[15]),
                 Alive = true,
             };
@@ -269,7 +277,7 @@ namespace TitansUC.GameServer.World
         /// A player's attack on an NPC (0x0F, 0x67); null when it cannot be attacked (a vendor, or dead).
         /// The caller sends the results, then calls <see cref="AfterAttack"/>.
         /// </summary>
-        public HitResult Attack(Npc npc, ItemNode weapon, int distance)
+        public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null)
         {
             if (npc.IsVendor)
             {
@@ -281,7 +289,7 @@ namespace TitansUC.GameServer.World
                 {
                     return null;
                 }
-                var r = Combat.Attack(weapon, npc.Vehicle, null, distance);
+                var r = Combat.Attack(weapon, npc.Vehicle, null, distance, attacker);
                 if (r.Result != Combat.ResultMiss)
                 {
                     npc.AttackNumber = (int)r.AttackNumber;

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
@@ -22,8 +22,13 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// UC size     ingredients, 40 bytes each: uint32 BE state (7; the reply's 8 used up, 9 some of the stack
     ///             left), template, unique id, format, container unique id, container format, container static
     ///             id, 2 ints, amount
-    /// 10 bytes    byte 0 or 0xFF, byte 1 with the vehicle an upgrade is for, uint32 BE its unique id, format
+    /// byte        colour index (the client's UC_RequestProductItem _color_index): the colour slot picked in the dye
+    ///             window for clothes (see ClothesColours), 0 otherwise, 0xFF when taking a vehicle apart or upgrading
+    /// byte        improve flag (1 for an upgrade; the reply has 1 when it worked, 0 when it failed), then
+    ///             uint32 BE unique id and format of the vehicle upgraded
     /// </code>
+    /// An upgrade (Zaku_F2A_Upgrade_*.pcap) lists one ingredient, the stack of improvement packages (its whole
+    /// amount), and names the vehicle's template as the product; its reply lists nothing that came out.
     /// The reply 0x8028 is the request with the result, the start time and the ingredient states filled in,
     /// then what came out: UC size, 12 bytes each (uint32 BE template, amount, 0), and a byte 0.
     /// A failure lists what it gave back. 0x29 names the productive container, product, start time and
@@ -62,6 +67,21 @@ namespace TitansUC.GameServer.Network.Packets.Client
         /// Where the ingredient list's count byte is; the ingredients follow it.
         /// </summary>
         public int ListOffset { get; private set; }
+
+        /// <summary>
+        /// The colour slot picked for clothes; -1 when the packet ends before it.
+        /// </summary>
+        public int ColourIndex { get; private set; }
+
+        /// <summary>
+        /// Where the improve flag is (the byte after the colour index); -1 when the packet ends before it.
+        /// </summary>
+        public int ImproveOffset { get; private set; }
+
+        /// <summary>
+        /// The vehicle an upgrade is for; 0 when the packet does not name one.
+        /// </summary>
+        public uint VehicleUniqueID { get; private set; }
         public List<Input> Inputs { get; private set; }
 
         public class Input
@@ -118,6 +138,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
                     Amount = (int)Bytes.U32(Body, o + 36),
                 });
             }
+            int tail = ListOffset + 1 + count * IngredientSize;
+            ColourIndex = tail < Body.Length ? Body[tail] : -1;
+            ImproveOffset = tail + 1 < Body.Length ? tail + 1 : -1;
+            VehicleUniqueID = tail + 6 <= Body.Length ? Bytes.U32(Body, tail + 2) : 0;
             session.OnProductItem(this);
         }
     }

@@ -138,6 +138,12 @@ namespace Common.Characters
         /// </summary>
         public int[] Medals { get; private set; }
 
+        /// <summary>
+        /// Promotion points towards the next rank (the server's own counter; the client has none). See the Game
+        /// server's World/Ranks.cs.
+        /// </summary>
+        public int RankPoints { get; set; }
+
         public byte GetManagement(Skill skill)
         {
             return Management[(int)skill];

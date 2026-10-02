@@ -15,6 +15,7 @@ namespace Common.Characters
     {
         private static readonly object loadLock = new object();
         private static Dictionary<int, int> wearIDs;
+        private static Dictionary<int, int> lookSlots;
         private static Dictionary<City, int[]> cities;
 
         /// <summary>
@@ -31,6 +32,17 @@ namespace Common.Characters
             EnsureLoaded();
             int wear;
             return wearIDs.TryGetValue(itemID, out wear) ? wear : 0;
+        }
+
+        /// <summary>
+        /// The looks slot a clothes item is worn in (its <see cref="ApparelType"/>: 0 dress ... 7 glasses), or -1
+        /// when the item is not clothes. The client's dress-up only puts an item in weared slot look slot + 1.
+        /// </summary>
+        public static int GetLookSlot(int itemID)
+        {
+            EnsureLoaded();
+            int slot;
+            return lookSlots.TryGetValue(itemID, out slot) ? slot : -1;
         }
 
         /// <summary>
@@ -62,14 +74,18 @@ namespace Common.Characters
                 }
 
                 cities = LoadCities(FindFile("Properties", "cities.properties"));
-                wearIDs = LoadWearIDs(FindFile("Templates", "CLOTHESLOOKSINFOTEMPLATE.DAT"));
+                var slots = new Dictionary<int, int>();
+                var wears = LoadWearIDs(FindFile("Templates", "CLOTHESLOOKSINFOTEMPLATE.DAT"), slots);
+                lookSlots = slots;
+                wearIDs = wears;
             }
         }
 
         /// <summary>
-        /// A 7 byte header, then 9 byte records: uint32 BE wear id, uint32 BE item id, byte style.
+        /// A 7 byte header, then 9 byte records: uint32 BE wear id, uint32 BE item id, byte look slot
+        /// (<see cref="ApparelType"/>; the uniforms are 0, the dress slot).
         /// </summary>
-        private static Dictionary<int, int> LoadWearIDs(string path)
+        private static Dictionary<int, int> LoadWearIDs(string path, Dictionary<int, int> slots)
         {
             var bytes = File.ReadAllBytes(path);
             var result = new Dictionary<int, int>();
@@ -80,6 +96,7 @@ namespace Common.Characters
                 if (!result.ContainsKey(item))
                 {
                     result.Add(item, wear);
+                    slots[item] = bytes[i + 8];
                 }
             }
 

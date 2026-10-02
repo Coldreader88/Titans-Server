@@ -29,6 +29,8 @@ namespace TitansUC.LobbyServer
         int defaultMoney = 50000;
         int staffDeleteWaitMinutes = 5;
         int playerDeleteWaitMinutes = 240;
+        int loginFailLimit = 5;
+        int loginLockMinutes = 15;
 
         private List<WorldInfo> worlds = new List<WorldInfo>();
 
@@ -89,6 +91,17 @@ namespace TitansUC.LobbyServer
         public bool AutoCreateAccounts { get { return autoCreateAccounts; } }
 
         /// <summary>
+        /// Wrong passwords from one address before it is locked out (0 turns the lockout off); a user name is
+        /// locked after four times as many from anywhere.
+        /// </summary>
+        public int LoginFailLimit { get { return loginFailLimit; } }
+
+        /// <summary>
+        /// How long a lockout lasts.
+        /// </summary>
+        public int LoginLockMinutes { get { return loginLockMinutes; } }
+
+        /// <summary>
         /// Money a new character starts with (Java reference: default_money in config.cfg).
         /// </summary>
         public int DefaultMoney { get { return defaultMoney; } }
@@ -133,6 +146,12 @@ namespace TitansUC.LobbyServer
                             break;
                         case "staffdeletewaitminutes":
                             this.staffDeleteWaitMinutes = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "loginfaillimit":
+                            this.loginFailLimit = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "loginlockminutes":
+                            this.loginLockMinutes = int.Parse(i.InnerText.Trim());
                             break;
                         case "playerdeletewaitminutes":
                             this.playerDeleteWaitMinutes = int.Parse(i.InnerText.Trim());

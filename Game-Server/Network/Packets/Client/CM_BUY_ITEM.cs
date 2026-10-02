@@ -17,7 +17,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// uint32 BE   0
     /// uint32 BE   amount
     /// uint32 BE   item static id
-    /// 29 bytes   shop details (FFFFFFFF, 1, ...)
+    /// uint32 BE   FFFFFFFF, 1
+    /// uint32 BE   town (TOWNINFOTEMPLATE; FFFFFFFF for the shuttles and cars of services 3 and 4)
+    /// uint32 BE   shop (SHOPINFOTEMPLATE; FFFFFFFF or 0 for services 3 and 4)
+    /// 13 bytes   (FF.., 0)
     /// byte       0x81, then 0 and int32 BE x, y, z of the player (vehicles), FFFF
     /// byte       1 or 2, byte shop kind, 3 bytes 0
     /// </code>
@@ -49,6 +52,12 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public int StaticID { get; private set; }
 
         /// <summary>
+        /// The town and shop the player buys at (51 and 7 for the Zeon weapon shop of ZSSAEO 3 in 75mm_MG.pcap).
+        /// </summary>
+        public int Town { get; private set; }
+        public int Shop { get; private set; }
+
+        /// <summary>
         /// Bytes 52-59 and the position after the 0x81 (bytes 66-77): for a shuttle, what the player info
         /// carries on arrival (see Common.Characters.Transport).
         /// </summary>
@@ -67,12 +76,14 @@ namespace TitansUC.GameServer.Network.Packets.Client
             DestFormat = (int)Bytes.U32(body, 20);
             Amount = (int)Bytes.U32(body, 28);
             StaticID = (int)Bytes.U32(body, 32);
+            Town = body.Length >= 52 ? (int)Bytes.U32(body, 44) : -1;
+            Shop = body.Length >= 52 ? (int)Bytes.U32(body, 48) : -1;
             if (body.Length >= 78)
             {
                 Transport = new Common.Characters.Transport
                 {
-                    A = (int)Bytes.U32(body, 52),
-                    B = (int)Bytes.U32(body, 56),
+                    Launch = (int)Bytes.U32(body, 52),
+                    Town = (int)Bytes.U32(body, 56),
                     X = (int)Bytes.U32(body, 66),
                     Y = (int)Bytes.U32(body, 70),
                     Z = (int)Bytes.U32(body, 74),

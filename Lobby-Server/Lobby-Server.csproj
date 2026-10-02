@@ -59,6 +59,7 @@
     <Compile Include="Database\AccountDatabase.cs" />
     <Compile Include="LobbyServer.cs" />
     <Compile Include="Manager\LobbyClientManager.cs" />
+    <Compile Include="Manager\LoginGuard.cs" />
     <Compile Include="Network\Client\UCLobbySession.cs" />
     <Compile Include="Network\Packets\Client\CM_REQUEST_CHARACTER_LIST.cs" />
     <Compile Include="Network\Packets\Client\CM_REQUEST_LOGIN.cs" />

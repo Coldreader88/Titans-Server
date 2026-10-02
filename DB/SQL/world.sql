@@ -6,7 +6,8 @@
 -- Everything lying on the ground (items, vehicles, wrecks and their cargo), per zone (1 Earth, 2 Space).
 -- The game server writes its zone's rows while the ground changes and reads them back at startup.
 -- child: the vehicle's cargo and armaments as in container.child ("itemID-amount", "@slot-itemID",
--- "!health" when damaged); item_amount: a vehicle's engine id.
+-- "!health" when damaged, "~d<durability>~l<rounds>" after a worn or partly loaded weapon or shield); for an
+-- item, just its "~d...~l..." state; item_amount: a vehicle's engine id.
 CREATE TABLE IF NOT EXISTS ground_items (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   zone SMALLINT NOT NULL,

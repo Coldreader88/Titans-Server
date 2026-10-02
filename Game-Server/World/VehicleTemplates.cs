@@ -8,18 +8,21 @@ using SmartEngine.Core;
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// Mobile suit and tank templates from DB/Templates/MSTEMPLATE.DAT and TANKTEMPLATE.DAT: name, price,
-    /// engine and health.
+    /// Vehicle templates from every vehicle file in DB/Templates (MS, MA, tanks, fighters, cars, battleships
+    /// and their Event twins; they share one record layout): name, price, engine, health and which weapons
+    /// fit (<see cref="VehicleTemplate.EquipGroup"/>).
     ///
     /// <code>
     /// uint32 BE (skipped), UC size = number of templates, then per template:
     /// uint32 BE id, uint32 BE 0, 3 x UC size + UTF-16LE (comment, model code, name),
-    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 4 bytes, UC size modifications
+    /// 4 bytes, uint32 BE price, 116 bytes, uint32 BE engine id (0 = none), 4 bytes, UC size required skills
     /// (7 bytes each), 1 byte, UC size lists (UC size int32s each), 12 bytes (speed, hover speed, -1),
-    /// uint32 BE health, then 30 bytes (wreckage id and others). Full layout: client-data-csv VEHICLE_TEMPLATES.
+    /// uint32 BE health, then 30 bytes: uint32 wreckage id, 1 byte, 3 x uint32, byte cargo slots, uint32
+    /// improvement id, uint32 mining ability, uint32 equipment group. Full layout: client-data-csv
+    /// STRUCTURES.md (vehicle part).
     /// </code>
-    /// Java reference: mina_common template/MSTemplate.java (same skips); checked to parse both files to
-    /// their last byte. Other vehicles (cars, fighters, ships) are not loaded and use defaults.
+    /// Java reference: mina_common template/MSTemplate.java (same skips); checked to parse all nine files to
+    /// their last byte.
     /// </summary>
     public static class VehicleTemplates
     {
@@ -29,6 +32,13 @@ namespace TitansUC.GameServer.World
         /// Engine the Java server gave vehicles whose template names none (Engine.DEFAULT_ID).
         /// </summary>
         public const int DefaultEngine = 290012;
+
+        private static readonly string[] Files =
+        {
+            "MSTEMPLATE.DAT", "TANKTEMPLATE.DAT", "MATEMPLATE.DAT", "FIGHTERTEMPLATE.DAT", "CARTEMPLATE.DAT",
+            "BATTLESHIPTEMPLATE.DAT", "EVENTMSTEMPLATE.DAT", "EVENTMATEMPLATE.DAT", "EVENTTANKTEMPLATE.DAT",
+            "EVENTFIGHTERTEMPLATE.DAT", "EVENTCARTEMPLATE.DAT",
+        };
 
         private static readonly object loadLock = new object();
         private static Dictionary<int, VehicleTemplate> templates;
@@ -64,7 +74,7 @@ namespace TitansUC.GameServer.World
                 }
 
                 var result = new Dictionary<int, VehicleTemplate>();
-                foreach (var file in new[] { "MSTEMPLATE.DAT", "TANKTEMPLATE.DAT" })
+                foreach (var file in Files)
                 {
                     try
                     {
@@ -99,15 +109,24 @@ namespace TitansUC.GameServer.World
                 t.CombatValue = ReadInt(d, ref m);
                 p += 116;
                 t.EngineID = ReadInt(d, ref p);
-                if (t.EngineID == 0)
+                if (t.EngineID < 290000 || t.EngineID >= 300000)
                 {
                     t.EngineID = DefaultEngine;
                 }
                 p += 4;
-                // Modifications: UC size, 7 bytes each (int16, byte, int32). Most vehicles have one; GUNTANK,
-                // GOUF, GIGAN, ZAKUTANK and a few others have two.
+                // Required skills: UC size, 7 bytes each (byte skill table, int16 skill index, int32 level x10).
+                // Most vehicles have one; GUNTANK, GOUF, GIGAN, ZAKUTANK and a few others have two, cars none.
                 int mods = ReadSize(d, ref p);
-                p += mods * 7 + 1;
+                for (int k = 0; k < mods; k++, p += 7)
+                {
+                    t.RequiredSkills.Add(new RequiredSkill
+                    {
+                        Table = d[p],
+                        Index = (short)((d[p + 1] << 8) | d[p + 2]),
+                        Level = (d[p + 3] << 24) | (d[p + 4] << 16) | (d[p + 5] << 8) | d[p + 6],
+                    });
+                }
+                p += 1;
                 // Two resistance lists of int32.
                 int lists = ReadSize(d, ref p);
                 for (int k = 0; k < lists; k++)
@@ -117,6 +136,16 @@ namespace TitansUC.GameServer.World
                 }
                 p += 12;
                 t.Health = ReadInt(d, ref p);
+                if (t.Health <= 0)
+                {
+                    // Freighters, cargo boats, most battleships and some event units have 0 (the client never reads it).
+                    t.Health = DefaultHealth;
+                }
+                t.CargoSlots = d[p + 17];
+                int mi = p + 18;
+                t.ModelIndex = ReadInt(d, ref mi);
+                int g = p + 26;
+                t.EquipGroup = ReadInt(d, ref g);
                 p += 30;
                 result[t.ID] = t;
             }
@@ -158,7 +187,18 @@ namespace TitansUC.GameServer.World
 
     public class VehicleTemplate
     {
+        public VehicleTemplate()
+        {
+            RequiredSkills = new List<RequiredSkill>();
+        }
+
         public int ID { get; set; }
+
+        /// <summary>
+        /// The skills the client wants for driving it at full speed (it checks the first two): the GM Mobile Suit,
+        /// the Ball Mobile Armor, tanks, the hover truck and planes Fighter, the Gundam Mobile Suit 30.0.
+        /// </summary>
+        public List<RequiredSkill> RequiredSkills { get; private set; }
         public string Model { get; set; }
         public string Name { get; set; }
         public int Price { get; set; }
@@ -170,6 +210,22 @@ namespace TitansUC.GameServer.World
         /// unknown "m" value for this target (GM/ZAKU/ACGUY 1000, ZOGOK/GOGG 1250, DOM 1400, RX-79G 1700).
         /// </summary>
         public int CombatValue { get; set; }
+
+        /// <summary>
+        /// The VEHICLEEQUIPMENTTEMPLATE record saying which weapons and shields fit each armament slot
+        /// (see <see cref="VehicleEquipment"/>); -1 for vehicles that carry none (cars, battleships).
+        /// </summary>
+        public int EquipGroup { get; set; }
+
+        /// <summary>
+        /// Item slots in the vehicle's cargo (MS 8, cars 16-20, 0 = no cargo), as the client shows them.
+        /// </summary>
+        public int CargoSlots { get; set; }
+
+        /// <summary>
+        /// The vehicle's upgrade table (<see cref="Improvements"/>); -1 when it has none.
+        /// </summary>
+        public int ModelIndex { get; set; }
     }
 
     /// <summary>
@@ -253,6 +309,22 @@ namespace TitansUC.GameServer.World
                     return names;
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// A skill a vehicle requires: the client's skill table (0 combat) and index (<see cref="SkillTables"/>) and
+    /// the level x10.
+    /// </summary>
+    public class RequiredSkill
+    {
+        public int Table { get; set; }
+        public int Index { get; set; }
+        public int Level { get; set; }
+
+        public Skill? Skill
+        {
+            get { return SkillTables.Get(Table, Index); }
         }
     }
 }

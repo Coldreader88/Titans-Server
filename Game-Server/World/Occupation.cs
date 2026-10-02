@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -214,7 +214,7 @@ namespace TitansUC.GameServer.World
             var coord = player.Coord;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             lock (city)
             {
@@ -228,11 +228,11 @@ namespace TitansUC.GameServer.World
                 }
                 if ((ushort)player.Character.Faction == city.Owner)
                 {
-                    return "their faction holds the town";
+                    return "your faction holds the town";
                 }
                 if (coord == null || !city.Contains(coord, OuterHalf))
                 {
-                    return "not in the town";
+                    return "you are not in the town";
                 }
                 city.Status = StatusWar;
                 city.Time = GameWorld.UnixTime() + WarSeconds;
@@ -254,7 +254,7 @@ namespace TitansUC.GameServer.World
             var coord = player.Coord;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             bool joined;
             lock (city)
@@ -265,7 +265,7 @@ namespace TitansUC.GameServer.World
                 }
                 if (coord == null || !city.Contains(coord, OuterHalf))
                 {
-                    return "not in the town";
+                    return "you are not in the town";
                 }
                 if (!city.Participants.ContainsKey(player.CharacterID))
                 {
@@ -314,7 +314,7 @@ namespace TitansUC.GameServer.World
             var faction = (ushort)player.Character.Faction;
             if (!running || city == null)
             {
-                return "no such battle town here";
+                return "there is no battle town here";
             }
             bool won;
             lock (city)
@@ -331,27 +331,27 @@ namespace TitansUC.GameServer.World
                 }
                 if (!city.Participants.TryGetValue(player.CharacterID, out since))
                 {
-                    return "not registered for the war";
+                    return "you are not registered for the war";
                 }
                 if ((now - since).TotalSeconds < CaptureSeconds * 0.9)
                 {
-                    return "registered only " + (int)(now - since).TotalSeconds + " s ago";
+                    return "you registered only " + (int)(now - since).TotalSeconds + " seconds ago";
                 }
                 if (city.LastCapture.TryGetValue(player.CharacterID, out last) && (now - last).TotalSeconds < CaptureSeconds * 0.9)
                 {
-                    return "captured another ICF " + (int)(now - last).TotalSeconds + " s ago";
+                    return "you captured another ICF " + (int)(now - last).TotalSeconds + " seconds ago";
                 }
                 if (coord == null || !city.Contains(coord, InnerHalf))
                 {
-                    return "not by the ICFs";
+                    return "you are not by the ICFs";
                 }
                 if (player.Character.IsCriminal)
                 {
-                    return "a criminal";
+                    return "criminals cannot take part";
                 }
                 if (city.Icf[flag] == faction)
                 {
-                    return "their faction holds it already";
+                    return "your faction holds it already";
                 }
                 city.Icf[flag] = faction;
                 city.LastCapture[player.CharacterID] = now;
@@ -551,6 +551,205 @@ namespace TitansUC.GameServer.World
                 cmd.Parameters.AddWithValue("@attacker", city.Attacker);
                 cmd.Parameters.AddWithValue("@by", city.StartedBy);
                 cmd.ExecuteNonQuery();
+            }
+        }
+
+        public const string GmUsage = "#town [richmond|newman] [peace [minutes] | open | war [minutes] | end [ef|zeon] | owner ef|zeon | icf 1-5 ef|zeon | reset]";
+
+        /// <summary>
+        /// #town: shows the battle towns, or changes one for testing. Every change is saved and sent to every
+        /// player (0x8070, and the matching 0x8076 event where there is one).
+        /// <list type="bullet">
+        /// <item>peace [minutes]: a ceasefire until the window opens (default OccupationPeaceMinutes); the towers
+        /// stand again and any war is called off without a winner.</item>
+        /// <item>open: the attack window opens now (event 4).</item>
+        /// <item>war [minutes]: the other faction's war starts now (event 0), for OccupationWarMinutes by default.</item>
+        /// <item>end [ef|zeon]: the war ends as if won by that side (the owner when left out): event 1, medals for
+        /// the winners who joined, peace after.</item>
+        /// <item>owner ef|zeon: the town and every ICF change hands, the status stays.</item>
+        /// <item>icf 1-5 ef|zeon: one ICF changes hands (event 2); it never ends a war by itself.</item>
+        /// <item>reset: back to the first owner, at peace for OccupationPeaceMinutes.</item>
+        /// </list>
+        /// </summary>
+        public static List<string> GmCommand(UCGameSession gm, IList<string> args)
+        {
+            var lines = new List<string>();
+            if (!running)
+            {
+                lines.Add("The battle towns are run by the Earth game server (and OccupationEnabled must be true).");
+                return lines;
+            }
+            if (args.Count < 2)
+            {
+                var only = args.Count == 1 ? FindCity(args[0]) : null;
+                if (args.Count == 1 && only == null)
+                {
+                    lines.Add("No town \"" + args[0] + "\". Use richmond or newman.");
+                }
+                foreach (var city in only != null ? new List<OccupationCity> { only } : cities)
+                {
+                    lock (city)
+                    {
+                        lines.Add(Describe(city));
+                    }
+                }
+                lines.Add("Usage: " + GmUsage);
+                return lines;
+            }
+
+            var town = FindCity(args[0]);
+            if (town == null)
+            {
+                lines.Add("No town \"" + args[0] + "\". Use richmond or newman.");
+                return lines;
+            }
+            string action = args[1].ToLowerInvariant();
+            int minutes = -1;
+            if (args.Count > 2 && (action == "peace" || action == "war") && (!int.TryParse(args[2], out minutes) || minutes < 0))
+            {
+                lines.Add("\"" + args[2] + "\" is not a number of minutes.");
+                return lines;
+            }
+            ushort faction = 0;
+            string factionArg = action == "icf" ? (args.Count > 3 ? args[3] : null) : (args.Count > 2 ? args[2] : null);
+            if ((action == "owner" || action == "icf" || (action == "end" && factionArg != null)) && !TryFaction(factionArg, out faction))
+            {
+                lines.Add("Name a side: ef or zeon.");
+                return lines;
+            }
+
+            int now = GameWorld.UnixTime();
+            lock (town)
+            {
+                switch (action)
+                {
+                    case "peace":
+                        EndWithoutWinner(town);
+                        town.Status = StatusPeace;
+                        town.Time = now + (minutes >= 0 ? minutes * 60 : PeaceSeconds);
+                        PlaceTowers(town);
+                        break;
+                    case "open":
+                        EndWithoutWinner(town);
+                        town.Status = StatusWindow;
+                        town.Time = now;
+                        PlaceTowers(town);
+                        Save(town);
+                        Broadcast(EventWindowOpen, 0xFFFFFFFF, town, 0xFF, 3, town.Time);
+                        break;
+                    case "war":
+                        EndWithoutWinner(town);
+                        town.Status = StatusWar;
+                        town.Time = now + (minutes >= 0 ? minutes * 60 : WarSeconds);
+                        town.Attacker = (ushort)(3 - town.Owner);
+                        town.StartedBy = gm.CharacterID;
+                        Save(town);
+                        Broadcast(EventWarStarted, gm.CharacterID, town, 0xFF, 3, town.Time);
+                        break;
+                    case "end":
+                        Finish(town, faction != 0 ? faction : town.Owner);
+                        break;
+                    case "owner":
+                        town.Owner = faction;
+                        for (int i = 0; i < IcfCount; i++)
+                        {
+                            town.Icf[i] = faction;
+                        }
+                        if (town.Status == StatusWar)
+                        {
+                            town.Attacker = (ushort)(3 - faction);
+                        }
+                        break;
+                    case "icf":
+                        int icf;
+                        if (args.Count < 4 || !int.TryParse(args[2], out icf) || icf < 1 || icf > IcfCount)
+                        {
+                            lines.Add("Usage: #town " + town.Name.ToLowerInvariant() + " icf 1-5 ef|zeon");
+                            return lines;
+                        }
+                        town.Icf[icf - 1] = faction;
+                        Save(town);
+                        Broadcast(EventCaptured, gm.CharacterID, town, (byte)(icf - 1), faction, 0);
+                        break;
+                    case "reset":
+                        EndWithoutWinner(town);
+                        town.Reset(now + PeaceSeconds);
+                        PlaceTowers(town);
+                        break;
+                    default:
+                        lines.Add("Unknown action \"" + args[1] + "\". Usage: " + GmUsage);
+                        return lines;
+                }
+                Save(town);
+                lines.Add(Describe(town));
+            }
+            BroadcastList();
+            Logger.ShowInfo(string.Format("{0} used #town {1}.", gm.Character.Name, string.Join(" ", args)));
+            return lines;
+        }
+
+        private static OccupationCity FindCity(string name)
+        {
+            int id;
+            return int.TryParse(name, out id) ? Get(id)
+                : cities.FirstOrDefault(c => c.Name.StartsWith(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool TryFaction(string word, out ushort faction)
+        {
+            switch ((word ?? string.Empty).ToLowerInvariant())
+            {
+                case "ef":
+                case "efsf":
+                case "federation":
+                case "fed":
+                case "1":
+                    faction = (ushort)Faction.FEDERATION;
+                    return true;
+                case "zeon":
+                case "z":
+                case "2":
+                    faction = (ushort)Faction.ZEON;
+                    return true;
+                default:
+                    faction = 0;
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Calls a war off: no winner, no medals, nobody registered. Call with the city locked.
+        /// </summary>
+        private static void EndWithoutWinner(OccupationCity city)
+        {
+            city.Attacker = 0;
+            city.StartedBy = 0;
+            city.Participants.Clear();
+            city.LastCapture.Clear();
+            city.Joined.Clear();
+        }
+
+        private static string Describe(OccupationCity city)
+        {
+            int left = city.Time - GameWorld.UnixTime();
+            string when = city.Status == StatusWar ? string.Format(", {0} min left", Math.Max(0, left) / 60)
+                : city.Status == StatusPeace ? string.Format(", opens to attack in {0} min", Math.Max(0, left) / 60) : "";
+            return string.Format("{0} ({1}): {2}, {3}{4}. ICFs: {5}.", city.Name, city.ID, FactionName(city.Owner), StatusName(city.Status), when,
+                string.Join(" ", city.Icf.Select(f => f == (ushort)Faction.ZEON ? "Zeon" : f == (ushort)Faction.FEDERATION ? "EF" : "-")));
+        }
+
+        /// <summary>
+        /// 0x8070 to every player, so their map and town list show a change that has no event of its own.
+        /// </summary>
+        private static void BroadcastList()
+        {
+            var snapshot = Snapshot();
+            foreach (var p in GameWorld.Instance.Players)
+            {
+                if (p.InGame)
+                {
+                    p.Network.SendPacket(new SM_OCCUPATION_CITY_INFO_LIST(snapshot));
+                }
             }
         }
 

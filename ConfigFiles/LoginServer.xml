@@ -4,6 +4,24 @@
 
   <required-client-version>0</required-client-version>
 
+  <!-- The status the launcher shows follows the other servers through the shared database (same as in
+       LobbyServer.xml): MAINTENANCE while the game is closed with #shutdown, OFFLINE when the Lobby or Earth
+       Game-Server stopped (no heartbeat for 30 seconds), else ONLINE. Without <Database> it stays ONLINE.
+       Console: "mode online|offline|maintenance" fixes it, "mode auto" follows the servers again. -->
+  <Database>
+    <Host>127.0.0.1</Host>
+    <Port>3306</Port>
+    <Name>titans-server</Name>
+    <User>root</User>
+    <Password>titans</Password>
+  </Database>
+  <Watch>
+    <Seconds>10</Seconds>
+    <!-- false = that server does not have to run for ONLINE. -->
+    <Lobby>true</Lobby>
+    <Game>true</Game>
+  </Watch>
+
   <!-- 
             日志等级：（加法）
             Info = 1,

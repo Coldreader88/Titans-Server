@@ -33,8 +33,20 @@ namespace TitansUC.GameServer.World
             Amount = format == Multi ? 1 : 0;
             Created = ContainerTimestamp;
             Modified = -1;
+            Colour = -1;
             Children = new List<ItemNode>();
         }
+
+        /// <summary>
+        /// For clothes: the colour, a slot of the template's colour list (<see cref="ClothesColours"/>); -1 for
+        /// items that have none. Sent as the fourth option, as the official server did for every piece of clothing.
+        /// </summary>
+        public int Colour { get; set; }
+
+        /// <summary>
+        /// The item option that holds a clothes item's colour.
+        /// </summary>
+        public const int ColourOption = 3;
 
         /// <summary>
         /// Unique id of this container or item; the client asks for it by this id.
@@ -89,6 +101,11 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public int Health { get; set; }
         public int MaxHealth { get; set; }
+
+        /// <summary>
+        /// For a vehicle: its upgrade levels, packed as in its stats field (see <see cref="Improvements"/>).
+        /// </summary>
+        public int Improvement { get; set; }
 
         /// <summary>
         /// For a weapon or shield: its stats list, which its description carries instead of children (7 ints:
@@ -197,7 +214,12 @@ namespace TitansUC.GameServer.World
             for (int i = 0; i < optionCount; i++)
             {
                 var option = Options != null && i < Options.Length ? Options[i] : null;
-                if (option == null)
+                if (i == ColourOption && Colour >= 0 && Format == Singleton)
+                {
+                    p.PutSize(1);
+                    p.PutByte((byte)Colour);
+                }
+                else if (option == null)
                 {
                     p.PutSize(0);
                 }

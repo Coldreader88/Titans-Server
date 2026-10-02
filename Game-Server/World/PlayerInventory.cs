@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Common.Characters;
 using SmartEngine.Core;
@@ -30,8 +31,9 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The clothing slots of weared after the vehicle slot, in order. The official capture has the
-        /// combat uniform (dress) in slot 1, gloves in slot 6 and the cap (hat) in slot 7; glasses have
-        /// no slot.
+        /// combat uniform (dress) in slot 1, gloves in slot 6 and the cap (hat) in slot 7, and no slot 8. The
+        /// client's dress-up (0x1B section 1) uses slots 1-8, slot n for the clothes of looks slot n - 1
+        /// (<see cref="ApparelType"/>), so glasses go in slot 8, which is only there while glasses are worn.
         /// </summary>
         public static readonly ApparelType[] WearedSlots =
         {
@@ -106,12 +108,17 @@ namespace TitansUC.GameServer.World
                 var apparel = character.GetApparel(type);
                 if (apparel.ItemID > 0)
                 {
-                    Register(weared.Add(NewItem(apparel.ItemID, 1, type.ToString().ToLowerInvariant())));
+                    Register(weared.Add(Worn(apparel, type.ToString().ToLowerInvariant())));
                 }
                 else
                 {
                     weared.Add(ItemNode.EmptySlot(0));
                 }
+            }
+            var glasses = character.GetApparel(ApparelType.GLASSES);
+            if (glasses.ItemID > 0)
+            {
+                Register(weared.Add(Worn(glasses, "glasses")));
             }
 
             // The official swap pack held a trade pack container, which the client asks for.
@@ -139,7 +146,7 @@ namespace TitansUC.GameServer.World
                     continue;
                 }
 
-                var container = Find(item.ContainerID);
+                var container = item.ContainerID == PlayerContainers.TradePack ? TradePack : Find(item.ContainerID);
                 if (container == null || item.ItemID <= 0 || item.ContainerID == PlayerContainers.Weared)
                 {
                     Logger.ShowWarning(string.Format("{0}: skipping item {1} ({2}) in unknown container {3}.",
@@ -156,8 +163,33 @@ namespace TitansUC.GameServer.World
                 }
                 else
                 {
-                    Register(container.Add(NewItem(item.ItemID, item.Amount > 0 ? item.Amount : 1, item.Name)));
+                    Register(container.Add(ApplyState(NewItem(item.ItemID, item.Amount > 0 ? item.Amount : 1, item.Name), item.Children)));
                 }
+            }
+        }
+
+        /// <summary>
+        /// The node of a worn garment; its colour is the garment's style.
+        /// </summary>
+        private static ItemNode Worn(Apparel apparel, string name)
+        {
+            var item = NewItem(apparel.ItemID, 1, name);
+            if (apparel.Style >= 0 && apparel.Style < 256)
+            {
+                item.Colour = apparel.Style;
+            }
+            return item;
+        }
+
+        /// <summary>
+        /// The trade pack inside the swap pack, or null.
+        /// </summary>
+        public ItemNode TradePack
+        {
+            get
+            {
+                var swapPack = Find(PlayerContainers.SwapPack);
+                return swapPack != null ? swapPack.Children.Find(c => c.StaticID == PlayerContainers.TradePack) : null;
             }
         }
 
@@ -256,7 +288,7 @@ namespace TitansUC.GameServer.World
                 }
 
                 bool movingAll = amount >= item.Amount;
-                var stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                var stack = dest.Children.Find(c => Joins(c, item));
                 var result = new MoveResult { Item = item };
 
                 if (stack != null)
@@ -402,6 +434,106 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// A quest hand-in (0x3E), all or nothing: checks that the offered items (their unique ids) cover every
+        /// required template and amount, takes those amounts, adds the money and puts the reward item in the
+        /// backpack. Null with <paramref name="refusal"/> set when it cannot; otherwise the items used: each
+        /// with the amount taken and whether it is gone.
+        /// </summary>
+        public List<QuestUse> HandIn(IEnumerable<uint> offered, IList<KeyValuePair<int, int>> required, int money, ItemNode reward,
+            out ItemNode rewardContainer, out string refusal)
+        {
+            rewardContainer = null;
+            lock (sync)
+            {
+                var items = new List<ItemNode>();
+                foreach (var uid in offered)
+                {
+                    var item = GetLocked(uid);
+                    if (item != null && !items.Contains(item) && item.Parent != null && CanHoldItems(item.Parent) && !IsVehicle(item))
+                    {
+                        items.Add(item);
+                    }
+                }
+
+                var needs = new Dictionary<int, int>();
+                foreach (var r in required)
+                {
+                    int n;
+                    needs.TryGetValue(r.Key, out n);
+                    needs[r.Key] = n + Math.Max(1, r.Value);
+                }
+                foreach (var need in needs)
+                {
+                    int have = 0;
+                    foreach (var item in items)
+                    {
+                        if (item.StaticID == need.Key)
+                        {
+                            have += Math.Max(1, item.Amount);
+                        }
+                    }
+                    if (have < need.Value)
+                    {
+                        var needed = ItemTemplates.Get(need.Key);
+                        refusal = string.Format("it needs {2} {1}, you handed in {0}", have, needed != null && needed.Name != null ? needed.Name : need.Key.ToString(), need.Value);
+                        return null;
+                    }
+                }
+
+                if (reward != null)
+                {
+                    rewardContainer = Find(PlayerContainers.Backpack);
+                    if (rewardContainer == null || !CanHoldItems(rewardContainer))
+                    {
+                        refusal = "you have no backpack for the reward";
+                        return null;
+                    }
+                }
+
+                var used = new List<QuestUse>();
+                foreach (var need in needs)
+                {
+                    int left = need.Value;
+                    foreach (var item in items)
+                    {
+                        if (left == 0 || item.StaticID != need.Key)
+                        {
+                            continue;
+                        }
+                        int amount = Math.Max(1, item.Amount);
+                        int take = Math.Min(left, amount);
+                        left -= take;
+                        if (take < amount)
+                        {
+                            item.Amount -= take;
+                            Touch(item);
+                            used.Add(new QuestUse(item, take, false));
+                        }
+                        else
+                        {
+                            item.Parent.Remove(item);
+                            UnregisterTree(item);
+                            used.Add(new QuestUse(item, take, true));
+                        }
+                    }
+                }
+
+                if (money != 0 && Money != null)
+                {
+                    Money.Amount += money;
+                }
+                if (reward != null)
+                {
+                    Touch(reward);
+                    rewardContainer.Add(reward);
+                    RegisterTree(reward);
+                }
+                refusal = null;
+                return used;
+            }
+        }
+
+        /// <summary>
         /// Throws an item away (0x15): the piloted vehicle (the player is then on foot) or an item in one of the
         /// containers. Returns what was deleted, or null.
         /// </summary>
@@ -457,7 +589,8 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// Equips a weapon or shield from the piloted vehicle's inventory into armament slot
-        /// <paramref name="slot"/> (0x1B); what was there goes back to the inventory.
+        /// <paramref name="slot"/> (0x1B); what was there goes back to the inventory. Refused when the vehicle
+        /// cannot carry that kind of item in that slot (<see cref="VehicleEquipment"/>).
         /// </summary>
         public bool Equip(uint itemUID, int slot)
         {
@@ -471,7 +604,8 @@ namespace TitansUC.GameServer.World
                 }
                 var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
                 var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
-                if (inventory == null || armaments == null || item.Parent != inventory)
+                if (inventory == null || armaments == null || item.Parent != inventory ||
+                    !VehicleEquipment.CanEquip(vehicle.StaticID, slot, item.StaticID))
                 {
                     return false;
                 }
@@ -513,6 +647,138 @@ namespace TitansUC.GameServer.World
                 }
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Changes clothes (0x1B section 1, the client's RequestDressUp), all or nothing. Each entry is a weared
+        /// slot 1-8: action 1 puts the clothes item into the empty slot, 2 takes off what is in the slot, 3
+        /// swaps it for the item. Clothes come from the player's own item containers and must be of the slot's
+        /// looks slot (<see cref="CharacterData.GetLookSlot"/>); what is taken off goes into the backpack, as the
+        /// client moves it there itself when the reply comes. Null with <paramref name="refusal"/> set when it
+        /// cannot; otherwise the clothes now worn with their colours, by <see cref="ApparelType"/>.
+        /// </summary>
+        public Apparel[] DressUp(IList<DressChange> changes, out string refusal)
+        {
+            lock (sync)
+            {
+                refusal = null;
+                var weared = Find(PlayerContainers.Weared);
+                var backpack = Find(PlayerContainers.Backpack);
+                var slots = new HashSet<int>();
+                var items = new HashSet<ItemNode>();
+                foreach (var change in changes)
+                {
+                    refusal = CheckDressChange(weared, change, slots, items);
+                    if (refusal != null)
+                    {
+                        return null;
+                    }
+                }
+
+                while (weared.Children.Count <= ClothesSlots)
+                {
+                    if (!changes.Any(c => c.Slot >= weared.Children.Count))
+                    {
+                        break;
+                    }
+                    weared.Add(ItemNode.EmptySlot(0));
+                }
+                foreach (var change in changes)
+                {
+                    if (change.Action != DressChange.Wear)
+                    {
+                        var old = weared.SetSlot(change.Slot, ItemNode.EmptySlot(0));
+                        backpack.Add(old);
+                        Touch(old);
+                    }
+                    if (change.Action != DressChange.TakeOff)
+                    {
+                        var item = GetLocked(change.ItemUID);
+                        item.Parent.Remove(item);
+                        weared.SetSlot(change.Slot, item);
+                        Touch(item);
+                    }
+                }
+                // Slot 8 (glasses) is only kept while it holds something, as the official weared had 8 slots.
+                if (weared.Children.Count > ClothesSlots && weared.Children[ClothesSlots].IsEmptySlot)
+                {
+                    weared.Children.RemoveAt(ClothesSlots);
+                }
+                return WornClothes(weared);
+            }
+        }
+
+        /// <summary>
+        /// The last clothes slot of weared (glasses).
+        /// </summary>
+        public const int ClothesSlots = 8;
+
+        private string CheckDressChange(ItemNode weared, DressChange change, HashSet<int> slots, HashSet<ItemNode> items)
+        {
+            if (change.Slot < 1 || change.Slot > ClothesSlots || !slots.Add(change.Slot))
+            {
+                return "bad slot " + change.Slot;
+            }
+            var worn = change.Slot < weared.Children.Count ? weared.Children[change.Slot] : null;
+            bool empty = worn == null || worn.IsEmptySlot;
+            switch (change.Action)
+            {
+                case DressChange.Wear:
+                    if (!empty)
+                    {
+                        return "slot " + change.Slot + " is not empty";
+                    }
+                    break;
+                case DressChange.TakeOff:
+                case DressChange.Swap:
+                    if (empty)
+                    {
+                        return "nothing worn in slot " + change.Slot;
+                    }
+                    break;
+                default:
+                    return "unknown action " + change.Action;
+            }
+            if (change.Action == DressChange.TakeOff)
+            {
+                return null;
+            }
+
+            var item = GetLocked(change.ItemUID);
+            if (item == null || item.Parent == null || !CanHoldItems(item.Parent) || item.Parent.Parent != null ||
+                item.Format != ItemNode.Singleton || !items.Add(item))
+            {
+                return string.Format("item {0:X8} is not in the player's containers", change.ItemUID);
+            }
+            if (item.Amount != 1)
+            {
+                return string.Format("item {0:X8} is a stack of {1}", change.ItemUID, item.Amount);
+            }
+            int lookSlot = CharacterData.GetLookSlot(item.StaticID);
+            if (lookSlot < 0)
+            {
+                return item.StaticID + " is not clothes";
+            }
+            if (lookSlot != change.Slot - 1)
+            {
+                return string.Format("{0} is worn in slot {1}, not {2}", item.StaticID, lookSlot + 1, change.Slot);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The clothes in each clothes slot of weared with their colours, by <see cref="ApparelType"/>.
+        /// </summary>
+        private static Apparel[] WornClothes(ItemNode weared)
+        {
+            var worn = new Apparel[ClothesSlots];
+            for (int i = 0; i < worn.Length; i++)
+            {
+                int slot = i + 1;
+                var item = slot < weared.Children.Count ? weared.Children[slot] : null;
+                worn[i] = item != null && !item.IsEmptySlot ? new Apparel(item.StaticID, Math.Max(0, item.Colour)) : Apparel.None;
+            }
+            return worn;
         }
 
         /// <summary>
@@ -676,6 +942,23 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Sets a vehicle's upgrade levels, in its node and its stats field.
+        /// </summary>
+        public static void SetImprovement(ItemNode vehicle, int packed)
+        {
+            vehicle.Improvement = packed;
+            var stats = vehicle.Options != null && vehicle.Options.Length > 5 ? vehicle.Options[5] : null;
+            int o = 1 + Improvements.StatsIndex * 4;
+            if (stats != null && stats.Length >= o + 4)
+            {
+                stats[o] = (byte)(packed >> 24);
+                stats[o + 1] = (byte)(packed >> 16);
+                stats[o + 2] = (byte)(packed >> 8);
+                stats[o + 3] = (byte)packed;
+            }
+        }
+
+        /// <summary>
         /// Sets a vehicle's health, in its node and its stats field.
         /// </summary>
         public static void SetHealth(ItemNode vehicle, int health)
@@ -737,7 +1020,7 @@ namespace TitansUC.GameServer.World
                     item.Amount -= amount;
                     Touch(item);
                 }
-                var dropped = NewItem(item.StaticID, amount, item.Name);
+                var dropped = CopyState(item, NewItem(item.StaticID, amount, item.Name));
                 dropped.Created = item.Created;
                 return dropped;
             }
@@ -817,7 +1100,7 @@ namespace TitansUC.GameServer.World
                 ItemNode stack = null;
                 if (dest != null && CanHoldItems(dest))
                 {
-                    stack = dest.Children.Find(c => c.StaticID == item.StaticID && c.Format == ItemNode.Singleton);
+                    stack = dest.Children.Find(c => Joins(c, item));
                 }
                 if (stack == null && item.StaticID == PlayerContainers.Money && Money != null)
                 {
@@ -854,8 +1137,10 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// The rows to write back to the container table: every item in the top-level containers except
-        /// weared (clothes are in the garments table). The piloted vehicle has its own row
-        /// (<see cref="PilotingRow"/>); vehicles left on the ground are saved with the world (WorldDatabase).
+        /// weared (clothes are in the garments table), and what is in the trade pack (container_id 110005).
+        /// A worn weapon or shield keeps its durability and loaded rounds in the child column
+        /// (<see cref="StateOf"/>). The piloted vehicle has its own row (<see cref="PilotingRow"/>); vehicles left
+        /// on the ground are saved with the world (WorldDatabase).
         /// </summary>
         public List<CharacterItem> ToRows()
         {
@@ -872,6 +1157,11 @@ namespace TitansUC.GameServer.World
                     {
                         if (item.StaticID == PlayerContainers.TradePack && container.StaticID == PlayerContainers.SwapPack)
                         {
+                            // The trade pack itself is made at login; what is in it has rows of its own.
+                            foreach (var packed in item.Children)
+                            {
+                                rows.Add(ToRow(PlayerContainers.TradePack, packed));
+                            }
                             continue;
                         }
                         rows.Add(ToRow(container.StaticID, item));
@@ -902,7 +1192,7 @@ namespace TitansUC.GameServer.World
                 ItemID = item.StaticID,
                 Name = item.Name,
                 Amount = vehicle ? item.EngineID : item.Amount,
-                Children = vehicle ? VehicleChildren(item) : null,
+                Children = vehicle ? VehicleChildren(item) : StateOf(item),
             };
         }
 
@@ -915,20 +1205,24 @@ namespace TitansUC.GameServer.World
                 ItemID = item.StaticID,
                 Name = item.Name,
                 Amount = vehicle ? item.EngineID : item.Amount,
-                Children = vehicle ? VehicleChildren(item) : null,
+                Children = vehicle ? VehicleChildren(item) : StateOf(item),
             };
         }
 
         /// <summary>
         /// Containers items can be moved in and out of with section 7: the player's own top-level list
         /// containers other than weared and the hangar (those have their own sections), and vehicle
-        /// inventories (saved in container.child). The trade pack is not saved yet, so moves into it are refused.
+        /// inventories (saved in container.child), and the trade pack in the swap pack.
         /// </summary>
         private static bool CanHoldItems(ItemNode container)
         {
             if (container.Format != ItemNode.Multi)
             {
                 return false;
+            }
+            if (container.StaticID == PlayerContainers.TradePack)
+            {
+                return container.Parent != null && container.Parent.StaticID == PlayerContainers.SwapPack && container.Parent.Parent == null;
             }
             if (container.StaticID == VehicleInventory)
             {
@@ -998,7 +1292,7 @@ namespace TitansUC.GameServer.World
         /// there, others come one by one (at most <paramref name="amount"/>); a vehicle is built with
         /// <paramref name="engineID"/> (-1: its template's). Returns the (last) node.
         /// </summary>
-        public ItemNode Produce(ItemNode container, int templateID, int amount, int engineID = -1)
+        public ItemNode Produce(ItemNode container, int templateID, int amount, int engineID = -1, int colour = -1)
         {
             lock (sync)
             {
@@ -1010,6 +1304,16 @@ namespace TitansUC.GameServer.World
                     return vehicle;
                 }
                 string name = template != null ? template.Name : null;
+                if (IsClothes(templateID))
+                {
+                    ItemNode piece = null;
+                    for (int i = 0; i < amount; i++)
+                    {
+                        piece = Register(container.Add(NewItem(templateID, 1, name)));
+                        piece.Colour = Math.Max(0, colour);
+                    }
+                    return piece;
+                }
                 if (template == null || template.Stacks)
                 {
                     var stack = container.Children.Find(c => c.StaticID == templateID && c.Format == ItemNode.Singleton);
@@ -1086,7 +1390,8 @@ namespace TitansUC.GameServer.World
         {
             lock (sync)
             {
-                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Amount = engineID, Children = children });
+                var template = ItemTemplates.Get(templateID);
+                var vehicle = NewVehicle(new CharacterItem { ItemID = templateID, Name = template != null ? template.Name : null, Amount = engineID, Children = children });
                 UnregisterTree(vehicle);
                 return vehicle;
             }
@@ -1108,12 +1413,14 @@ namespace TitansUC.GameServer.World
         {
             var template = VehicleTemplates.Get(item.ItemID);
             int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
-            int engine = item.Amount > 0 ? item.Amount : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
+            // An engine the vehicle cannot have (saved before VehicleEngines was checked) gives way to its own.
+            int saved = item.Amount > 0 && VehicleEngines.Fits(item.ItemID, item.Amount) ? item.Amount : -1;
+            int engine = saved > 0 ? saved : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);
 
             var vehicle = new ItemNode(NewUniqueID(), ItemNode.Multi, item.ItemID)
             {
                 Name = !string.IsNullOrEmpty(item.Name) ? item.Name : (template != null ? template.Name : null),
-                EngineID = item.Amount > 0 ? item.Amount : -1,
+                EngineID = saved,
             };
             vehicle.Created = UnixNow();
             vehicle.Health = health;
@@ -1124,11 +1431,23 @@ namespace TitansUC.GameServer.World
             var inventory = vehicle.Add(new ItemNode(NewUniqueID(), ItemNode.Multi, VehicleInventory) { Name = "inventory", Modified = -1, Created = -1 });
 
             // Java's container.child format: "itemID-amount" separated by spaces; equipped armaments are
-            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle.
+            // written "@slot-itemID"; ours adds "!health" for a damaged vehicle, "^levels" for an upgraded one, and a worn or partly loaded
+            // weapon or shield has its state after the entry ("@0-280000~d450~l30", see StateOf).
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
-            foreach (var entry in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+            foreach (var whole in (item.Children ?? string.Empty).Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
             {
                 int first, second;
+                int tilde = whole.IndexOf('~');
+                string entry = tilde >= 0 ? whole.Substring(0, tilde) : whole;
+                string state = tilde >= 0 ? whole.Substring(tilde) : null;
+                if (entry.StartsWith("^"))
+                {
+                    if (int.TryParse(entry.Substring(1), out first) && Improvements.Total(first) <= Improvements.MaxTotal)
+                    {
+                        vehicle.Improvement = first;
+                    }
+                    continue;
+                }
                 if (entry.StartsWith("!"))
                 {
                     if (int.TryParse(entry.Substring(1), out first) && first >= 0 && first < health)
@@ -1145,15 +1464,24 @@ namespace TitansUC.GameServer.World
                 }
                 if (armament && first >= 0 && first < MaxArmamentSlots && second > 0)
                 {
-                    PadSlots(armaments, first);
-                    armaments.SetSlot(first, NewItem(second, 1, null));
+                    var weapon = ApplyState(NewItem(second, 1, null), state);
+                    if (VehicleEquipment.CanEquip(item.ItemID, first, second))
+                    {
+                        PadSlots(armaments, first);
+                        armaments.SetSlot(first, weapon);
+                    }
+                    else
+                    {
+                        // Saved before the slot rules were checked: it goes in the cargo rather than being lost.
+                        inventory.Add(weapon);
+                    }
                 }
                 else if (!armament && first > 0)
                 {
-                    inventory.Add(NewItem(first, second > 0 ? second : 1, null));
+                    inventory.Add(ApplyState(NewItem(first, second > 0 ? second : 1, null), state));
                 }
             }
-            vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine);
+            vehicle.Options[5] = VehicleStats(vehicle.Health, health, engine, vehicle.Improvement);
             return vehicle;
         }
 
@@ -1166,7 +1494,7 @@ namespace TitansUC.GameServer.World
             var inventory = vehicle.Children.Find(c => c.StaticID == VehicleInventory);
             if (inventory != null)
             {
-                entries.AddRange(inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount));
+                entries.AddRange(inventory.Children.ConvertAll(c => c.StaticID + "-" + c.Amount + StateOf(c)));
             }
             var armaments = vehicle.Children.Find(c => c.StaticID == VehicleArmaments);
             if (armaments != null)
@@ -1175,13 +1503,17 @@ namespace TitansUC.GameServer.World
                 {
                     if (!armaments.Children[i].IsEmptySlot)
                     {
-                        entries.Add("@" + i + "-" + armaments.Children[i].StaticID);
+                        entries.Add("@" + i + "-" + armaments.Children[i].StaticID + StateOf(armaments.Children[i]));
                     }
                 }
             }
             if (vehicle.MaxHealth > 0 && vehicle.Health < vehicle.MaxHealth)
             {
                 entries.Add("!" + Math.Max(0, vehicle.Health));
+            }
+            if (vehicle.Improvement != 0)
+            {
+                entries.Add("^" + vehicle.Improvement);
             }
             return string.Join(" ", entries);
         }
@@ -1191,13 +1523,13 @@ namespace TitansUC.GameServer.World
         /// in the 18th (UCGOZone-Login.pcap); the other values are the Java server's constants
         /// (Vehicle.write), which it had not decoded.
         /// </summary>
-        private static byte[] VehicleStats(int health, int maxHealth, int engineID)
+        private static byte[] VehicleStats(int health, int maxHealth, int engineID, int improvement)
         {
             var values = new[]
             {
                 health, 0x7D0, 0x9C4, 0x9C4, 0xBB8, 0xBB8,
                 maxHealth, 0x7D0, 0x9C4, 0x9C4, 0xBB8, 0xBB8,
-                0x4B, 0x3E8, 0x19, 0x14, 0, engineID, 0,
+                0x4B, 0x3E8, 0x19, 0x14, 0, engineID, improvement,
             };
 
             var bytes = new byte[1 + values.Length * 4];
@@ -1232,6 +1564,102 @@ namespace TitansUC.GameServer.World
                     ? new[] { template.Durability, template.Durability, template.Power, template.Rate, template.Range, 0, 1000 }
                     : new[] { template.Durability, template.Durability, 0, 0, 0, 0, 1000 };
                 item.Loaded = template.IsWeapon ? template.Magazine : 0;
+            }
+            if (IsClothes(templateID))
+            {
+                item.Colour = 0;
+            }
+            return item;
+        }
+
+        /// <summary>
+        /// Whether the item is clothes that can be worn (it has a looks slot). Clothes never stack: each piece is
+        /// an item of its own with its own colour (CLOTHESTEMPLATE marks only the yarns stackable).
+        /// </summary>
+        public static bool IsClothes(int templateID)
+        {
+            return CharacterData.GetLookSlot(templateID) >= 0;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="item"/> may join <paramref name="stack"/>: the same item, and not clothes.
+        /// </summary>
+        private static bool Joins(ItemNode stack, ItemNode item)
+        {
+            return stack != item && stack.StaticID == item.StaticID && stack.Format == ItemNode.Singleton && !IsClothes(item.StaticID);
+        }
+
+        /// <summary>
+        /// A copy of an item's state (durability, rounds, colour) on another node of the same item.
+        /// </summary>
+        public static ItemNode CopyState(ItemNode from, ItemNode to)
+        {
+            return ApplyState(to, StateOf(from));
+        }
+
+        /// <summary>
+        /// What a saved item needs beyond its template and amount: "~d" + durability for a worn weapon or shield,
+        /// "~l" + rounds for a weapon whose magazine is not as bought. Empty for everything else.
+        /// </summary>
+        public static string StateOf(ItemNode item)
+        {
+            if (item.Colour > 0 && IsClothes(item.StaticID))
+            {
+                return "~c" + item.Colour;
+            }
+            if (!item.IsEquipment || item.Stats.Length < 2)
+            {
+                return string.Empty;
+            }
+            var state = string.Empty;
+            if (item.Stats[0] != item.Stats[1])
+            {
+                state += "~d" + item.Stats[0];
+            }
+            var template = ItemTemplates.Get(item.StaticID);
+            if (item.Loaded != (template != null && template.IsWeapon ? template.Magazine : 0))
+            {
+                state += "~l" + item.Loaded;
+            }
+            return state;
+        }
+
+        /// <summary>
+        /// Puts back what <see cref="StateOf"/> saved; anything else in <paramref name="state"/> is ignored.
+        /// </summary>
+        public static ItemNode ApplyState(ItemNode item, string state)
+        {
+            if (!string.IsNullOrEmpty(state) && IsClothes(item.StaticID))
+            {
+                int colour;
+                foreach (var token in state.Split(new[] { '~' }, System.StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (token.Length > 1 && token[0] == 'c' && int.TryParse(token.Substring(1), out colour) && colour >= 0 && colour < 256)
+                    {
+                        item.Colour = colour;
+                    }
+                }
+                return item;
+            }
+            if (string.IsNullOrEmpty(state) || !item.IsEquipment || item.Stats.Length < 2)
+            {
+                return item;
+            }
+            foreach (var token in state.Split(new[] { '~' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                int value;
+                if (token.Length < 2 || !int.TryParse(token.Substring(1), out value) || value < 0)
+                {
+                    continue;
+                }
+                if (token[0] == 'd')
+                {
+                    item.Stats[0] = Math.Min(value, item.Stats[1]);
+                }
+                else if (token[0] == 'l')
+                {
+                    item.Loaded = value;
+                }
             }
             return item;
         }
@@ -1358,5 +1786,19 @@ namespace TitansUC.GameServer.World
 
         /// <summary>The destination stack (Merged, AddedToStack) or the new item (Split).</summary>
         public ItemNode Target { get; set; }
+    }
+
+    /// <summary>
+    /// One entry of a dress-up request (0x1B section 1): the weared slot (1-8), what to do and the clothes item.
+    /// </summary>
+    public class DressChange
+    {
+        public const int Wear = 1;
+        public const int TakeOff = 2;
+        public const int Swap = 3;
+
+        public int Action { get; set; }
+        public int Slot { get; set; }
+        public uint ItemUID { get; set; }
     }
 }

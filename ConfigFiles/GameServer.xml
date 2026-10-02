@@ -13,6 +13,9 @@
   <!-- Chance in percent that a destroyed vehicle (a player's or an NPC's) leaves a wreck; otherwise nothing is left. -->
   <WreckChance>70</WreckChance>
 
+  <!-- Chance in percent that a level 1 vehicle upgrade works; each level above is 5 less (at least 5). -->
+  <UpgradeChance>65</UpgradeChance>
+
   <!-- Skills, in tenths (1000 = 100.0). All skills together stop at SkillTotalCap (the Java server's 800.0;
        0 = no cap); past it a gain takes the same from skills whose arrow in the Status Setting window points down.
        Strength, spirit and luck rise by play up to StatusCap. SkillGainRate scales every growth chance (percent). -->
@@ -27,6 +30,13 @@
   <CrimeExileEarth></CrimeExileEarth>
   <CrimeExileSpace></CrimeExileSpace>
 
+  <!-- Promotions (our rule; the client keeps only the rank): players earn promotion points from the town
+       combat quests (their bonus, 5 to 100) and for each enemy player machine and enemy NPC they destroy.
+       RankPoints: total points for ranks 1 (Seaman Apprentice) to 15 (Admiral). -->
+  <RankPoints>10, 25, 50, 100, 175, 275, 400, 550, 750, 1000, 1300, 1650, 2050, 2500, 3000</RankPoints>
+  <RankPointsPlayerKill>2</RankPointsPlayerKill>
+  <RankPointsNpcKill>1</RankPointsNpcKill>
+
   <!-- Battle towns Richmond and Newman (Earth server only): peace for OccupationPeaceMinutes, then the town is open
        to attack until the other faction hits one of its laser communication towers, which starts a war of
        OccupationWarMinutes. Taking all five ICFs wins the town; otherwise the owner keeps it.
@@ -36,12 +46,28 @@
   <OccupationPeaceMinutes>180</OccupationPeaceMinutes>
   <OccupationMedals>1, 5, 10</OccupationMedals>
 
+  <!-- Database backups: every BackupHours (0 = off) the Earth server writes the whole database to an .sql file in
+       BackupFolder and keeps the newest BackupKeep. "backup" on the console makes one now. Load one back with
+       mariadb -uroot -p titans-server < file.sql -->
+  <BackupHours>6</BackupHours>
+  <BackupFolder>Backups</BackupFolder>
+  <BackupKeep>28</BackupKeep>
+
   <!-- Seconds between position saves while a player is online (also saved on logout). -->
   <SaveInterval>60</SaveInterval>
 
   <!-- Hostile NPCs attack pilots of the other faction who come this close (position units).
        0 = they only fire back when attacked, like on the official server. -->
   <NpcAggroRange>1500</NpcAggroRange>
+
+  <!-- A quest hand-in needs one of the NPCs who give the quest (DB/Npcs/quest_npcs.csv) this close
+       (position units; our rule). 0 = hand in from anywhere. -->
+  <QuestNpcDistance>3000</QuestNpcDistance>
+
+  <!-- A shuttle flight between Earth and Space leaves only this close to the player's faction spaceport
+       (EF: Perth Spaceport / ISAEO 29, Zeon: Darwin Spaceport / ISAEO 28Z; position units, 4000 = one map
+       unit; our rule). 0 = from anywhere. -->
+  <ShuttleDistance>200000</ShuttleDistance>
 
   <!-- Where the client reconnects after a shuttle flight: the other side's server (Earth: Port, Space:
        Port + 1) at this address as the client sees it (like GameServerIP in LobbyServer.xml). -->

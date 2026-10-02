@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -175,7 +175,7 @@ namespace TitansUC.GameServer.World
             return recipe;
         }
 
-        private static List<KeyValuePair<Skill, int>> ReadSkills(Reader r)
+        internal static List<KeyValuePair<Skill, int>> ReadSkills(Reader r)
         {
             var skills = new List<KeyValuePair<Skill, int>>();
             for (int n = r.Size(); n > 0; n--)
@@ -248,6 +248,17 @@ namespace TitansUC.GameServer.World
             public byte Byte()
             {
                 return d[Position++];
+            }
+
+            /// <summary>
+            /// A UC string: size in characters, then UTF-16LE.
+            /// </summary>
+            public string String()
+            {
+                int n = Size();
+                var s = System.Text.Encoding.Unicode.GetString(d, Position, n * 2);
+                Position += n * 2;
+                return s;
             }
 
             public int Size()

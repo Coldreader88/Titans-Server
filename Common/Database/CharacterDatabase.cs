@@ -168,6 +168,25 @@ namespace Common.Database
         }
 
         /// <summary>
+        /// Saves the clothes the character wears (the garments table; a change of clothes in game).
+        /// </summary>
+        public void SaveGarments(Character character)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand(
+                "UPDATE garments SET hat = @hat, glasses = @glasses, coat = @coat, top = @top, bottom = @bottom, " +
+                "gloves = @gloves, dress = @dress, shoes = @shoes WHERE char_id = @id", connection))
+            {
+                foreach (ApparelType type in Enum.GetValues(typeof(ApparelType)))
+                {
+                    cmd.Parameters.AddWithValue("@" + type.ToString().ToLowerInvariant(), character.GetApparel(type).ToString());
+                }
+                cmd.Parameters.AddWithValue("@id", character.ID);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
         /// Saves the character's money.
         /// </summary>
         public void SaveMoney(Character character)
@@ -223,12 +242,19 @@ namespace Common.Database
             {
                 EnsureStateTable(connection);
                 using (var cmd = new MySqlCommand(
-                    "REPLACE INTO character_state (char_id, scores, management, medals) VALUES (@id, @scores, @management, @medals)", connection))
+                    "REPLACE INTO character_state (char_id, scores, management, medals, rank_points) VALUES (@id, @scores, @management, @medals, @points)", connection))
                 {
                     cmd.Parameters.AddWithValue("@id", character.ClientID);
                     cmd.Parameters.AddWithValue("@scores", string.Join(",", character.Scores));
                     cmd.Parameters.AddWithValue("@management", string.Concat(character.Management));
                     cmd.Parameters.AddWithValue("@medals", string.Join(",", character.Medals));
+                    cmd.Parameters.AddWithValue("@points", character.RankPoints);
+                    cmd.ExecuteNonQuery();
+                }
+                using (var cmd = new MySqlCommand("UPDATE appearance SET `rank` = @rank WHERE char_id = @id", connection))
+                {
+                    cmd.Parameters.AddWithValue("@rank", character.Rank);
+                    cmd.Parameters.AddWithValue("@id", character.ID);
                     cmd.ExecuteNonQuery();
                 }
                 using (var cmd = new MySqlCommand("UPDATE characters SET char_score = @score, char_lost = @lost WHERE char_id = @id", connection))
@@ -487,7 +513,8 @@ namespace Common.Database
             " char_id INT UNSIGNED NOT NULL PRIMARY KEY," +
             " scores VARCHAR(255) NOT NULL DEFAULT ''," +
             " management VARCHAR(64) NOT NULL DEFAULT ''," +
-            " medals VARCHAR(64) NOT NULL DEFAULT '')";
+            " medals VARCHAR(64) NOT NULL DEFAULT ''," +
+            " rank_points INT NOT NULL DEFAULT 0)";
 
         private static volatile bool stateTableReady;
 
@@ -504,24 +531,28 @@ namespace Common.Database
             {
                 cmd.ExecuteNonQuery();
             }
-            // Tables made before the medals column.
-            try
+            // Tables made before the medals and rank_points columns.
+            foreach (var column in new[] { "medals VARCHAR(64) NOT NULL DEFAULT ''", "rank_points INT NOT NULL DEFAULT 0" })
             {
-                using (var cmd = new MySqlCommand("ALTER TABLE character_state ADD COLUMN medals VARCHAR(64) NOT NULL DEFAULT ''", connection))
+                try
                 {
-                    cmd.ExecuteNonQuery();
+                    using (var cmd = new MySqlCommand("ALTER TABLE character_state ADD COLUMN " + column, connection))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
                 }
-            }
-            catch (MySqlException)
-            {
-                // It is there already.
+                catch (MySqlException)
+                {
+                    // It is there already.
+                }
             }
             stateTableReady = true;
         }
 
         /// <summary>
         /// Reads the score counters, skill arrows and medal points (character_state, keyed by the client id: scores
-        /// are ten comma separated numbers, management one digit per <see cref="Skill"/>, medals two numbers). A character without a row
+        /// are ten comma separated numbers, management one digit per <see cref="Skill"/>, medals two numbers, rank_points the
+        /// promotion points). A character without a row
         /// starts with its char_score and char_lost as player kills and deaths, and every arrow at 0.
         /// </summary>
         private static void LoadState(MySqlConnection connection, Character character)
@@ -529,7 +560,7 @@ namespace Common.Database
             character.Scores[ScoreSlot.EnemyPlayerKills] = character.Score;
             character.Scores[ScoreSlot.DeathsByEnemyPlayer] = character.Lost;
             EnsureStateTable(connection);
-            using (var cmd = new MySqlCommand("SELECT scores, management, medals FROM character_state WHERE char_id = @id", connection))
+            using (var cmd = new MySqlCommand("SELECT scores, management, medals, rank_points FROM character_state WHERE char_id = @id", connection))
             {
                 cmd.Parameters.AddWithValue("@id", character.ClientID);
                 using (var reader = cmd.ExecuteReader())
@@ -556,6 +587,7 @@ namespace Common.Database
                             character.Medals[i] = n;
                         }
                     }
+                    character.RankPoints = reader.IsDBNull(reader.GetOrdinal("rank_points")) ? 0 : reader.GetInt32("rank_points");
                     var management = GetString(reader, "management");
                     for (int i = 0; i < management.Length && i < character.Management.Length; i++)
                     {

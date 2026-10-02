@@ -132,7 +132,8 @@ namespace TitansUC.GameServer.Network.Client
                 uint accountID = 0;
                 if (Configuration.Instance.CheckSessionKey)
                 {
-                    accountID = LoginSessionDatabase.Instance.Verify(p.SessionKey, p.CharacterID);
+                    accountID = LoginSessionDatabase.Instance.Verify(p.SessionKey, p.CharacterID,
+                        LoginSessionDatabase.AddressOf(this.Network.Socket));
                     if (accountID == 0)
                     {
                         RefuseLogin(string.Format("character {0} has no valid session key from the Lobby", p.CharacterID));
@@ -394,63 +395,131 @@ namespace TitansUC.GameServer.Network.Client
                 return false;
             }
 
-            ItemNode taken;
+            var taken = TakeOut(g, item, p.Amount);
+            if (taken == null)
+            {
+                return false;
+            }
+            if (!Inventory.PickUp(taken, p.DestUniqueID))
+            {
+                PutBack(g, item, taken);
+                RefuseMove(p, "cannot take it out of the vehicle into that container");
+                return true;
+            }
+
+            TookOut(g, taken);
+            this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
+            return true;
+        }
+
+        /// <summary>
+        /// 0x24 with an item that lies in a vehicle or wreck on the ground (opened with 0x26): the client drags
+        /// it out of the "Wreckage Container" window this way. Takes it (or <see cref="CM_SPACE_PICKUP_ITEM.Amount"/>
+        /// of the stack) into the destination, onto a stack there for mini ops 2 and 4. False when the item is not
+        /// in one; true once answered or refused.
+        /// </summary>
+        private bool PickUpFromGroundVehicle(CM_SPACE_PICKUP_ITEM p)
+        {
+            ItemNode item;
+            var g = GameWorld.Instance.FindHolder(p.ItemUniqueID, out item);
+            if (g == null || item == g.Node || !CanOpen(g))
+            {
+                return false;
+            }
+
+            var taken = TakeOut(g, item, p.Amount);
+            if (taken == null)
+            {
+                return false;
+            }
+            if (p.MiniOp != CM_SPACE_PICKUP_ITEM.PickUpItem)
+            {
+                var stack = Inventory.PickUpOntoStack(taken, p.DestUniqueID);
+                if (stack != null)
+                {
+                    TookOut(g, taken);
+                    this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, stack, taken.UniqueID, taken.Format));
+                    return true;
+                }
+            }
+            if (!Inventory.PickUp(taken, p.DestUniqueID))
+            {
+                PutBack(g, item, taken);
+                RefuseGround("pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it out of the wreck");
+                return true;
+            }
+
+            TookOut(g, taken);
+            this.Network.SendPacket(new SM_SPACE_PICKUP_ITEM(p, taken));
+            return true;
+        }
+
+        /// <summary>
+        /// Takes <paramref name="amount"/> of an item (all of it when 0 or more than there is) out of a vehicle or
+        /// wreck on the ground: the item itself, or a new item split off its stack. Null when it is not in there.
+        /// </summary>
+        private static ItemNode TakeOut(GroundItem g, ItemNode item, int amount)
+        {
             lock (g.Node)
             {
                 var parent = item.Parent;
                 if (parent == null)
                 {
-                    return false;
+                    return null;
                 }
-                int amount = p.Amount > 0 ? p.Amount : item.Amount;
+                if (amount <= 0 || amount > item.Amount)
+                {
+                    amount = item.Amount;
+                }
                 if (item.Format == ItemNode.Singleton && amount < item.Amount)
                 {
                     item.Amount -= amount;
-                    taken = PlayerInventory.NewItem(item.StaticID, amount, item.Name);
-                    taken.Created = item.Created;
+                    var split = PlayerInventory.NewItem(item.StaticID, amount, item.Name);
+                    split.Created = item.Created;
+                    return split;
                 }
-                else if (parent.StaticID == PlayerInventory.VehicleArmaments)
+                if (parent.StaticID == PlayerInventory.VehicleArmaments)
                 {
                     parent.SetSlot(parent.Children.IndexOf(item), ItemNode.EmptySlot(0));
-                    taken = item;
                 }
                 else
                 {
                     parent.Remove(item);
-                    taken = item;
                 }
+                return item;
             }
+        }
 
-            if (!Inventory.PickUp(taken, p.DestUniqueID))
+        /// <summary>
+        /// Puts what <see cref="TakeOut"/> took back when it had nowhere to go.
+        /// </summary>
+        private static void PutBack(GroundItem g, ItemNode item, ItemNode taken)
+        {
+            lock (g.Node)
             {
-                // Nowhere to put it: back where it was.
-                lock (g.Node)
+                var cargo = g.Node.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory);
+                if (taken != item)
                 {
-                    var cargo = g.Node.Children.Find(c => c.StaticID == PlayerInventory.VehicleInventory);
-                    if (taken != item)
-                    {
-                        item.Amount += taken.Amount;
-                    }
-                    else if (cargo != null)
-                    {
-                        cargo.Add(taken);
-                    }
+                    item.Amount += taken.Amount;
                 }
-                RefuseMove(p, "cannot take it out of the vehicle into that container");
-                return true;
+                else if (cargo != null)
+                {
+                    cargo.Add(taken);
+                }
             }
+        }
 
+        private void TookOut(GroundItem g, ItemNode taken)
+        {
             GameWorld.Instance.GroundChanged();
             Logger.ShowInfo(string.Format("{0} took {1} x {2} out of {3} {4:X8}.", Character.Name, taken.StaticID, taken.Amount,
                 g.IsWreck ? "the wreck" : "the vehicle", g.UniqueID));
-            this.Network.SendPacket(new SM_MOVE_ITEM(SM_MOVE_ITEM.Moved, p, null, taken.StaticID));
             SaveItems();
             var owner = g.IsWreck ? null : GameWorld.Instance.Get(g.OwnerID);
             if (owner != null && owner != this)
             {
                 owner.SaveItems();
             }
-            return true;
         }
 
         private void RefuseMove(CM_MOVE_ITEM p, string reason)
@@ -523,6 +592,134 @@ namespace TitansUC.GameServer.Network.Client
             {
                 Logger.ShowWarning(string.Format("{0}: battle town request 0x{1:X2} for town {2} (ICF {3}) refused: {4}.", Character.Name,
                     (int)p.Request, p.CityID, p.Flag, refusal));
+                Tell("Refused: " + refusal + ".");
+            }
+        }
+
+        /// <summary>
+        /// 0x3E: a quest hand-in. The client checks nothing itself, so here: the quest exists, the player may take
+        /// it (skills and rank, the client's offer rule) and the listed items cover what it asks for. Then the
+        /// items are taken, the money and the reward item given, and the bonus becomes promotion points. Always
+        /// answered (0x803E), or the client blocks further hand-ins. Our own rule: which NPC the player talks to
+        /// is not checked (the client alone knows who offers what).
+        /// </summary>
+        public void OnCompleteQuest(CM_COMPLETE_QUEST p)
+        {
+            if (!CheckInGame("Quest hand-in"))
+            {
+                return;
+            }
+            var quest = Quests.Get(p.QuestID);
+            string refusal = !p.Valid ? "bad request"
+                : p.CharacterID != CharacterID ? "not their character"
+                : quest == null ? "no such quest"
+                : quest.Refusal(Character) ?? QuestGiverRefusal(quest.ID);
+            ItemNode reward = null, rewardContainer = null;
+            List<QuestUse> used = null;
+            if (refusal == null)
+            {
+                var item = quest.Item;
+                if (item.HasValue)
+                {
+                    var template = ItemTemplates.Get(item.Value.Key);
+                    reward = PlayerInventory.NewItem(item.Value.Key, Math.Max(1, item.Value.Value),
+                        template != null ? template.Name : null);
+                }
+                used = Inventory.HandIn(p.Items, quest.Required, quest.Money, reward, out rewardContainer, out refusal);
+            }
+            if (refusal != null)
+            {
+                Logger.ShowWarning(string.Format("{0}: hand-in of quest {1} refused: {2}.", Character.Name, p.QuestID, refusal));
+                if (quest != null && p.CharacterID == CharacterID)
+                {
+                    Tell("You cannot complete " + quest.Name + ": " + refusal + ".");
+                }
+                this.Network.SendPacket(new SM_COMPLETE_QUEST(CharacterID, p.QuestID, SM_COMPLETE_QUEST.Error));
+                return;
+            }
+
+            Logger.ShowInfo(string.Format("{0} completed quest {1} ({2}): {3} money{4}{5}.", Character.Name, quest.ID, quest.Name, quest.Money,
+                reward != null ? string.Format(", {0} x {1}", reward.StaticID, reward.Amount) : "",
+                quest.Bonus > 0 ? ", " + quest.Bonus + " promotion points" : ""));
+            this.Network.SendPacket(new SM_COMPLETE_QUEST(CharacterID, quest.ID, SM_COMPLETE_QUEST.Done, quest.Money,
+                rewardContainer, reward, used));
+            SaveItems();
+            if (quest.Bonus > 0)
+            {
+                AddRankPoints(quest.Bonus, "quest " + quest.ID);
+            }
+        }
+
+        /// <summary>
+        /// Why the player is too far from every NPC who gives the quest (<see cref="QuestGivers"/>), or null.
+        /// </summary>
+        private string QuestGiverRefusal(int questID)
+        {
+            int distance = Configuration.Instance.QuestNpcDistance;
+            if (distance <= 0)
+            {
+                return null;
+            }
+            int x, y;
+            lock (sync)
+            {
+                x = Coord.X;
+                y = Coord.Y;
+            }
+            QuestGivers.Giver nearest;
+            bool known;
+            if (QuestGivers.IsNear(questID, x, y, distance, out nearest, out known))
+            {
+                return null;
+            }
+            return string.Format("you are not near anyone who gives it (nearest: {1} in {2}, {3:0} away, it must be within {0})", distance, nearest.Name, nearest.Place,
+                Math.Sqrt(Math.Pow((double)nearest.X - x, 2) + Math.Pow((double)nearest.Y - y, 2)));
+        }
+
+        /// <summary>
+        /// Adds promotion points and promotes the player when they reach a new rank (<see cref="Ranks"/>): saved,
+        /// and 0x8034's rank change tells the client ("promoted to ...").
+        /// </summary>
+        public void AddRankPoints(int points, string why)
+        {
+            if (!InGame || points <= 0)
+            {
+                return;
+            }
+            int before, after;
+            lock (Character)
+            {
+                Character.RankPoints += points;
+                before = Character.Rank;
+                after = Math.Max(before, Ranks.ForPoints(Character.RankPoints));
+                Character.Rank = after;
+            }
+            SaveState();
+            if (after != before)
+            {
+                Logger.ShowInfo(string.Format("{0} was promoted from rank {1} to {2} ({3} points, {4}).", Character.Name, before, after,
+                    Character.RankPoints, why));
+                this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, new List<KeyValuePair<Skill, int>>(), false, after - before));
+            }
+        }
+
+        /// <summary>
+        /// A GM's #rank: sets the rank (and the points to where that rank starts). The client shows a promotion
+        /// or a demotion.
+        /// </summary>
+        public void SetRank(int rank)
+        {
+            int before;
+            lock (Character)
+            {
+                before = Character.Rank;
+                Character.Rank = rank;
+                Character.RankPoints = Ranks.PointsFor(rank);
+            }
+            SaveState();
+            if (rank != before)
+            {
+                this.Network.SendPacket(new SM_SKILL_GAIN(CharacterID, new List<KeyValuePair<Skill, int>>(), false, rank - before));
             }
         }
 
@@ -685,6 +882,10 @@ namespace TitansUC.GameServer.Network.Client
             }
 
             bool vehicle = p.MiniOp == CM_SPACE_PICKUP_ITEM.GetIn;
+            if (!vehicle && PickUpFromGroundVehicle(p))
+            {
+                return;
+            }
             var zone = (ushort)Character.Zone;
             // A vehicle of theirs can also be dragged into the factory (mini op 1 with the factory as destination).
             bool toFactory = !vehicle && PlayerInventory.IsFactory(Inventory.Get(p.DestUniqueID));
@@ -768,7 +969,7 @@ namespace TitansUC.GameServer.Network.Client
             }
             else if (p.Action == CM_PRODUCT_ITEM.ActionUpgrade)
             {
-                refusal = "vehicle upgrades are not implemented yet";
+                refusal = Upgrade(p, factory);
             }
             else if (p.Action == CM_PRODUCT_ITEM.ActionDismantle)
             {
@@ -782,9 +983,28 @@ namespace TitansUC.GameServer.Network.Client
             {
                 // Nothing was used: the ingredients keep state 7.
                 Logger.ShowWarning(string.Format("{0} cannot make {1} (action {2}): {3}.", Character.Name, p.ProductID, p.Action, refusal));
+                if (p.CharacterID == CharacterID)
+                {
+                    var made = ItemTemplates.Get(p.ProductID);
+                    string verb = p.Action == CM_PRODUCT_ITEM.ActionUpgrade ? "upgrade" : p.Action == CM_PRODUCT_ITEM.ActionDismantle ? "take apart" : "make";
+                    Tell(string.Format("You cannot {0} {1}: {2}.", verb, made != null && made.Name != null ? made.Name : "that", refusal));
+                }
                 this.Network.SendPacket(new SM_PRODUCT_ITEM(p, SM_PRODUCT_ITEM.Failed, (uint)GameWorld.UnixTime(),
                     new List<uint>(), new List<KeyValuePair<int, int>>()));
             }
+        }
+
+        /// <summary>
+        /// An ingredient's name for the player: the item, or the kind of item any of which will do.
+        /// </summary>
+        private static string IngredientName(Ingredient input)
+        {
+            if (input.TemplateID != -1)
+            {
+                var t = ItemTemplates.Get(input.TemplateID);
+                return t != null && t.Name != null ? t.Name : input.TemplateID.ToString();
+            }
+            return input.Range == 29 ? "engine" : "items of kind " + input.Range;
         }
 
         /// <summary>
@@ -832,8 +1052,15 @@ namespace TitansUC.GameServer.Network.Client
                 }
                 if (needed > 0)
                 {
-                    return string.Format("{0} more of ingredient {1} needed", needed, input.TemplateID != -1 ? input.TemplateID.ToString() : "range " + input.Range);
+                    return string.Format("{0} more {1} needed", needed, IngredientName(input));
                 }
+            }
+
+            int colour;
+            string colourRefusal = CheckColour(p, use, out colour);
+            if (colourRefusal != null)
+            {
+                return colourRefusal;
             }
 
             var states = new List<uint>();
@@ -871,7 +1098,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     productID = recipe.ExID;
                 }
-                Inventory.Produce(factory, productID, made, engine);
+                Inventory.Produce(factory, productID, made, engine, colour);
                 output.Add(new KeyValuePair<int, int>(productID, made));
                 GainSkill(recipe.Skills);
             }
@@ -899,11 +1126,129 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
+        /// The colour clothes are made in: the slot picked in the dye window when a dye is used, which that dye
+        /// must offer, the clothes must come in and the player's Clothing Manufacturing must allow; colour 0
+        /// without a dye. Returns why the colour cannot be, or null.
+        /// </summary>
+        private string CheckColour(CM_PRODUCT_ITEM p, int[] use, out int colour)
+        {
+            colour = -1;
+            if (!PlayerInventory.IsClothes(p.ProductID))
+            {
+                return null;
+            }
+            ClothesColours.Dye dye = null;
+            for (int i = 0; i < p.Inputs.Count; i++)
+            {
+                if (use[i] > 0 && ClothesColours.IsDye(p.Inputs[i].TemplateID))
+                {
+                    dye = ClothesColours.GetDye(p.Inputs[i].TemplateID);
+                }
+            }
+            int picked = p.ColourIndex < 0 || p.ColourIndex == 0xFF ? 0 : p.ColourIndex;
+            if (dye == null)
+            {
+                colour = 0;
+                return picked == 0 ? null : "colour " + picked + " without a dye";
+            }
+            if (!dye.Offers(picked))
+            {
+                return string.Format("colour {0} is not one of the {1} dye (colours {2}-{3})", picked, dye.ID, dye.First, dye.End - 1);
+            }
+            if (!ClothesColours.Has(p.ProductID, picked))
+            {
+                return string.Format("{0} does not come in colour {1}", p.ProductID, picked);
+            }
+            if (Character.GetSkill(Skill.CLOTHING_MANUFACTURING) < dye.Skill)
+            {
+                return string.Format("the {0} dye needs Clothing Manufacturing {1:0.0}", dye.ID, dye.Skill / 10.0);
+            }
+            colour = picked;
+            return null;
+        }
+
+        /// <summary>
         /// 0x28 action 5: takes the vehicle in the factory apart. It gives back the recipe's share (70%) of what
         /// it was built from, engine aside (a Zaku II F2 of 60 super high tensile steel gave 42,
         /// Zaku_F2A_Dismantle_Success.pcap); a failure gives back 70% of that (an Oggo of 10 gave 5,
         /// Oggo_Dismantle_Fail_(ZSSAEO3).pcap). Returns why it cannot, or null once it answered.
         /// </summary>
+        /// <summary>
+        /// 0x28 action 8: raises one of a vehicle's upgrade levels (see <see cref="Improvements"/>). The vehicle must
+        /// be in the factory and the one ingredient is the next level's material of the type upgraded; every skill
+        /// of that level is needed, as the client checks. The material is used up either way; the reply's improve
+        /// flag says whether it worked. Returns why it cannot, or null once it answered.
+        /// </summary>
+        private string Upgrade(CM_PRODUCT_ITEM p, ItemNode factory)
+        {
+            var vehicle = Inventory.Get(p.VehicleUniqueID);
+            if (vehicle == null || vehicle.Parent != factory || vehicle.Format != ItemNode.Multi || vehicle.StaticID != p.ProductID)
+            {
+                return string.Format("{0:X8} is not their vehicle {1} in the factory", p.VehicleUniqueID, p.ProductID);
+            }
+            var template = VehicleTemplates.Get(vehicle.StaticID);
+            if (template == null || template.ModelIndex < 0)
+            {
+                return "the vehicle cannot be upgraded";
+            }
+            if (p.Inputs.Count != 1 || p.ImproveOffset < 0)
+            {
+                return p.Inputs.Count + " items listed";
+            }
+            var input = p.Inputs[0];
+            int type = 0;
+            Improvements.Level level = null;
+            foreach (int t in new[] { Improvements.Power, Improvements.Hit, Improvements.Defence })
+            {
+                var next = Improvements.Get(template.ModelIndex, Improvements.LevelOf(vehicle.Improvement, t) + 1);
+                if (next != null && Improvements.TypeOf(next, input.TemplateID) == t)
+                {
+                    type = t;
+                    level = next;
+                    break;
+                }
+            }
+            if (level == null)
+            {
+                return string.Format("{0} is not the next upgrade's material for it", input.TemplateID);
+            }
+            if (Improvements.Total(vehicle.Improvement) >= Improvements.MaxTotal)
+            {
+                return "it has all " + Improvements.MaxTotal + " upgrades";
+            }
+            foreach (var skill in level.Skills)
+            {
+                if (Character.GetSkill(skill.Key) < skill.Value)
+                {
+                    return string.Format("{0} {1:0.#} needed", skill.Key, skill.Value / 10.0);
+                }
+            }
+            int amount = level.Materials[type - Improvements.Power].Value;
+            if (!Inventory.CanUse(input.UniqueID, input.ContainerUniqueID, input.TemplateID, amount))
+            {
+                return string.Format("{0:X8} is not {1} x {2} of theirs", input.UniqueID, amount, input.TemplateID);
+            }
+
+            uint state = Inventory.UseUp(input.UniqueID, input.ContainerUniqueID, amount);
+            int chance = (int)((long)Recipe.Chance(Character, level.Skills, level.SuccessRate) * Improvements.Chance(level.Number) / 10000);
+            bool success = Roll() < chance;
+            if (success)
+            {
+                PlayerInventory.SetImprovement(vehicle, Improvements.WithLevel(vehicle.Improvement, type, level.Number));
+                GainSkill(level.Skills);
+            }
+
+            Logger.ShowInfo(string.Format("{0} {1} {2} ({3}) to {4} level {5} at {6:0.#}% (upgrades {7:X3}).", Character.Name,
+                success ? "upgraded" : "failed to upgrade", vehicle.Name, vehicle.StaticID,
+                type == Improvements.Power ? "power" : type == Improvements.Hit ? "hit" : "defence", level.Number,
+                chance / 100.0, vehicle.Improvement));
+            p.Body[p.ImproveOffset] = (byte)(success ? 1 : 0);
+            this.Network.SendPacket(new SM_PRODUCT_ITEM(p, success ? SM_PRODUCT_ITEM.Done : SM_PRODUCT_ITEM.Failed,
+                (uint)GameWorld.UnixTime(), new List<uint> { state }, new List<KeyValuePair<int, int>>()));
+            SaveItems();
+            return null;
+        }
+
         private string Dismantle(CM_PRODUCT_ITEM p, ItemNode factory)
         {
             if (p.Inputs.Count != 1)
@@ -1057,8 +1402,9 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x21: buy from a shop. The price comes from the item templates; the shop lists are the client's, so
-        /// anything the templates sell can be bought. Nothing is sent back when it is refused.
+        /// 0x21: buy from a shop. Shops sell only their goods lists for the player's faction, at the template price
+        /// times the shop's rates (see <see cref="Shops"/>). The shuttles and cars of services 3 and 4 come from no
+        /// shop and cost the template price. Nothing is sent back when it is refused.
         /// </summary>
         public void OnBuyItem(CM_BUY_ITEM p)
         {
@@ -1074,8 +1420,29 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            long total = (long)template.Price * p.Amount;
-            if (total > int.MaxValue)
+            long unitPrice = template.Price;
+            if (p.Service == CM_BUY_ITEM.ServiceShuttle || p.Service == CM_BUY_ITEM.ServiceCar)
+            {
+                if (!template.IsVehicle)
+                {
+                    RefuseShop("buy", p.StaticID, "service " + p.Service + " is for vehicles");
+                    return;
+                }
+            }
+            else
+            {
+                var shop = Shops.Get(p.Shop);
+                if (shop == null || !shop.Sells(Character.Faction, template.ID))
+                {
+                    RefuseShop("buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction,
+                        "This shop does not sell " + template.Name + " to you.");
+                    return;
+                }
+                unitPrice = shop.BuyPrice(Character.Faction, Character.Rank, template.Price);
+            }
+
+            long total = unitPrice * p.Amount;
+            if (total > int.MaxValue || p.Amount <= 0)
             {
                 RefuseShop("buy", p.StaticID, "amount " + p.Amount);
                 return;
@@ -1084,13 +1451,27 @@ namespace TitansUC.GameServer.Network.Client
             var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total);
             if (result == null)
             {
-                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money");
+                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money",
+                    string.Format("You cannot buy {0}: it costs {1}, or there is no room for it there.", template.Name, total));
                 return;
             }
             if (result.Item == Inventory.Piloting)
             {
                 SetVehicle(result.Item);
                 lastTransport = p.Transport;
+                if (lastTransport != null && p.Service == CM_BUY_ITEM.ServiceShuttle && reservedCluster != 0)
+                {
+                    // The client takes the destination from its LAUNCH/REENTRY lists; keep it to the faction's route.
+                    ShuttleRoutes.Port from, to;
+                    ShuttleRoutes.Route(Character.Faction, (Common.Characters.Zone)reservedCluster, out from, out to);
+                    if (lastTransport.Town != to.Town || lastTransport.Launch != (reservedCluster == 2 ? 1 : 0))
+                    {
+                        Logger.ShowWarning(string.Format("{0}: shuttle bought for town {1} (launch {2}); their route goes to {3} ({4}).",
+                            Character.Name, lastTransport.Town, lastTransport.Launch, to.Name, to.Town));
+                    }
+                    lastTransport.Town = to.Town;
+                    lastTransport.Launch = reservedCluster == 2 ? 1 : 0;
+                }
             }
 
             Logger.ShowInfo(string.Format("{0} bought {1} x {2} for {3}.", Character.Name, template.Name, p.Amount, total));
@@ -1099,8 +1480,8 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// 0x22: sell to a shop, for half the shop price (the official prices varied between about half and
-        /// all of it).
+        /// 0x22: sell to a shop that buys that kind of item back, for the template's sell price times the shop's
+        /// rate (exactly the template's sell price at 100%, as every official sale in the captures).
         /// </summary>
         public void OnSellItem(CM_SELL_ITEM p)
         {
@@ -1112,14 +1493,26 @@ namespace TitansUC.GameServer.Network.Client
             var template = ItemTemplates.Get(p.StaticID);
             var item = Inventory.Get(p.ItemUniqueID);
             if (p.CharacterID != CharacterID || template == null || item == null || item.StaticID != p.StaticID ||
-                template.Price <= 0 || template.Price >= ItemTemplates.NotForSale)
+                template.SellPrice <= 0)
             {
                 RefuseShop("sell", p.StaticID, template == null ? "unknown item" : "no price");
                 return;
             }
+            var shop = Shops.Get(p.Shop);
+            if (shop == null || !shop.BuysBack(Character.Faction, template.ID))
+            {
+                RefuseShop("sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction,
+                    "This shop does not buy " + template.Name + ".");
+                return;
+            }
 
-            int unitPrice = template.Price / 2;
+            int unitPrice = (int)Math.Min(int.MaxValue, shop.SellPrice(Character.Faction, template.SellPrice));
             int amount = template.IsVehicle ? 1 : p.Amount;
+            if ((long)unitPrice * amount > int.MaxValue)
+            {
+                RefuseShop("sell", p.StaticID, "amount " + amount);
+                return;
+            }
             var soldAll = Inventory.Sell(p.ItemUniqueID, p.ContainerUniqueID, amount, unitPrice);
             if (soldAll == null)
             {
@@ -1173,7 +1566,8 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || (!toBank && p.Direction != CM_UPDATE_DEPOSIT.FromBank) ||
                 !Inventory.TransferMoney(toBank, p.Amount))
             {
-                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money");
+                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money",
+                    toBank ? "You do not have that much money with you." : "You do not have that much money in the bank.");
                 return;
             }
 
@@ -1204,7 +1598,7 @@ namespace TitansUC.GameServer.Network.Client
             int price = (int)((long)shopPrice * (vehicle.MaxHealth - vehicle.Health) / vehicle.MaxHealth / 10);
             if (!Inventory.Repair(p.VehicleUniqueID, price))
             {
-                RefuseShop("repair", vehicle.StaticID, "not enough money");
+                RefuseShop("repair", vehicle.StaticID, "not enough money", string.Format("The repair costs {0}, and you do not have that much.", price));
                 return;
             }
 
@@ -1480,6 +1874,23 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || (p.Cluster != 1 && p.Cluster != 2) || p.Cluster == (ushort)Character.Zone)
             {
                 Logger.ShowWarning(string.Format("{0}: flight to cluster {1} refused (in cluster {2}).", Character.Name, p.Cluster, Character.Zone));
+                Tell("That flight is not possible from here.");
+                return;
+            }
+            ShuttleRoutes.Port from, to;
+            ShuttleRoutes.Route(Character.Faction, (Common.Characters.Zone)p.Cluster, out from, out to);
+            int shuttleDistance = Configuration.Instance.ShuttleDistance;
+            int x, y;
+            lock (sync)
+            {
+                x = Coord.X;
+                y = Coord.Y;
+            }
+            if (shuttleDistance > 0 && ShuttleRoutes.Distance(from, x, y) > shuttleDistance)
+            {
+                Logger.ShowWarning(string.Format("{0}: flight to cluster {1} refused: {2:0} from {3}.", Character.Name, p.Cluster,
+                    ShuttleRoutes.Distance(from, x, y), from.Name));
+                Tell(string.Format("Shuttles to {0} leave from {1}.", p.Cluster == 2 ? "Space" : "Earth", from.Name));
                 return;
             }
 
@@ -1511,13 +1922,22 @@ namespace TitansUC.GameServer.Network.Client
             try
             {
                 WorldDatabase.SaveFlight(CharacterID, reservedCluster, Inventory.Piloting != null ? Inventory.Piloting.UniqueID : 0,
-                    lastTransport ?? new Common.Characters.Transport { A = -1, B = -1 });
+                    lastTransport ?? new Common.Characters.Transport { Launch = -1, Town = -1 });
             }
             catch (Exception ex)
             {
                 Logger.ShowError(ex);
             }
             Character.Zone = (Common.Characters.Zone)reservedCluster;
+            // Saved at the destination spaceport, so a player who drops during the flight still lands there.
+            ShuttleRoutes.Port from, to;
+            ShuttleRoutes.Route(Character.Faction, Character.Zone, out from, out to);
+            lock (sync)
+            {
+                Coord.X = to.X;
+                Coord.Y = to.Y;
+                Coord.Z = to.Z;
+            }
             if (Configuration.Instance.CheckSessionKey)
             {
                 LoginSessionDatabase.Instance.Refresh(sessionKey, CharacterID);
@@ -1577,7 +1997,7 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            var r = target.TakeHit(weapon, p.Distance);
+            var r = target.TakeHit(weapon, p.Distance, Character);
             if (r == null)
             {
                 return;
@@ -1630,7 +2050,7 @@ namespace TitansUC.GameServer.Network.Client
                     Character.Name, ground.CityID));
                 return;
             }
-            var r = Combat.Attack(weapon, ground.Node, null, 0);
+            var r = Combat.Attack(weapon, ground.Node, null, 0, Character);
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
@@ -1692,7 +2112,7 @@ namespace TitansUC.GameServer.Network.Client
                 Logger.ShowWarning(string.Format("{0}: attack on an NPC refused: no weapon or no such NPC.", Character.Name));
                 return;
             }
-            var r = NpcManager.Instance.Attack(npc, weapon, distance);
+            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character);
             if (r == null)
             {
                 return;
@@ -1718,6 +2138,10 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 AddScore(r.Friendly ? ScoreSlot.FriendlyNpcKills : ScoreSlot.EnemyNpcKills);
+                if (!r.Friendly)
+                {
+                    AddRankPoints(Ranks.NpcKillPoints, "an enemy NPC destroyed");
+                }
             }
         }
 
@@ -1747,7 +2171,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     var npc = NpcManager.Instance.Get(t.TargetID);
                     var hit = npc != null && npc.Zone == Coord.ClusterID && !npcHits.Any(h => h.Key == npc)
-                        ? NpcManager.Instance.Attack(npc, weapon, t.Distance) : null;
+                        ? NpcManager.Instance.Attack(npc, weapon, t.Distance, Character) : null;
                     if (hit != null)
                     {
                         hit.Friendly = npc.Faction == (byte)Character.Faction;
@@ -1761,7 +2185,7 @@ namespace TitansUC.GameServer.Network.Client
                 {
                     continue;
                 }
-                var r = target.TakeHit(weapon, t.Distance);
+                var r = target.TakeHit(weapon, t.Distance, Character);
                 if (r != null)
                 {
                     MarkRelation(target, r);
@@ -1816,10 +2240,11 @@ namespace TitansUC.GameServer.Network.Client
         }
 
         /// <summary>
-        /// Applies an attack on this player's piloted vehicle; null when they are on foot (or have no vehicle
-        /// any more). Sets the damage and attack number of the position record, as the official server did.
+        /// Applies an attack by <paramref name="attacker"/> (null for an NPC) on this player's piloted vehicle; null
+        /// when they are on foot (or have no vehicle any more). Sets the damage and attack number of the position
+        /// record, as the official server did.
         /// </summary>
-        public HitResult TakeHit(ItemNode weapon, int distance)
+        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null)
         {
             var vehicle = Inventory.Piloting;
             if (vehicle == null || vehicle.Health <= 0)
@@ -1828,7 +2253,8 @@ namespace TitansUC.GameServer.Network.Client
             }
             var shield = Inventory.Armament(Combat.ShieldSlot);
             var shieldTemplate = shield != null ? ItemTemplates.Get(shield.StaticID) : null;
-            var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance);
+            var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance,
+                attacker, Character);
             if (r.Result != Combat.ResultMiss)
             {
                 lock (sync)
@@ -1852,6 +2278,10 @@ namespace TitansUC.GameServer.Network.Client
                 if (target != this)
                 {
                     AddScore(r.Friendly ? ScoreSlot.FriendlyPlayerKills : ScoreSlot.EnemyPlayerKills);
+                    if (!r.Friendly)
+                    {
+                        AddRankPoints(Ranks.PlayerKillPoints, "an enemy destroyed");
+                    }
                     target.AddScore(r.Friendly ? ScoreSlot.DeathsByFriendlyPlayer : ScoreSlot.DeathsByEnemyPlayer);
                 }
             }
@@ -1953,7 +2383,7 @@ namespace TitansUC.GameServer.Network.Client
                 int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
                 suit = suit ?? ItemTemplates.Get(template);
                 string weapons = "its default guns";
-                int[] armaments = suit != null && Loadouts.Applies(suit) ? Loadouts.RandomArmaments(suit, out weapons) : null;
+                int[] armaments = suit != null && VehicleEquipment.SlotCount(suit.ID) > 0 ? Loadouts.RandomArmaments(suit, out weapons) : null;
                 var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments,
                     friendly ? "Friendly" : "Spawned");
                 Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}.", Character.Name, friendly ? "friendly" : "hostile",
@@ -1981,10 +2411,17 @@ namespace TitansUC.GameServer.Network.Client
             else if (type == "ideng" && args.Length > 2 && int.TryParse(args[1], out n))
             {
                 item = ItemTemplates.Get(n);
-                engine = EngineTemplates.Find(string.Join(" ", args.Skip(2)));
+                engine = VehicleEngines.Find(n, string.Join(" ", args.Skip(2)));
                 if (engine == 0)
                 {
                     return "No engine \"" + args[2] + "\" (an id like 290033 or a name like jet engine typeA lv.3).";
+                }
+                if (item != null && item.IsVehicle && !VehicleEngines.Fits(item.ID, engine))
+                {
+                    // The client builds a vehicle only with an engine of the kinds its recipe accepts.
+                    return string.Format("{0} cannot have the {1}: it takes a {2} engine (for example the {3}).", item.Name,
+                        EngineTemplates.Name(engine) ?? engine.ToString(), VehicleEngines.Describe(item.ID),
+                        EngineTemplates.Name(VehicleEngines.ForLoadout(item.ID, c.ClusterID)) ?? "its own");
                 }
             }
             else
@@ -2000,8 +2437,8 @@ namespace TitansUC.GameServer.Network.Client
             string loadout = null;
             if (item.IsVehicle && engine < 0 && Loadouts.Applies(item))
             {
-                // No engine named: a random loadout and a lv.3 engine, ready to fight.
-                engine = Loadouts.Engine(c.ClusterID);
+                // No engine named: a random loadout and a lv.3 engine it can have, ready to fight.
+                engine = VehicleEngines.ForLoadout(item.ID, c.ClusterID);
                 node = Inventory.CreateVehicle(item.ID, engine, Loadouts.Random(item, out loadout));
             }
             else if (item.IsVehicle)
@@ -2091,6 +2528,11 @@ namespace TitansUC.GameServer.Network.Client
             {
                 return;
             }
+            if (p.SubOp == CM_EQUIP_ITEM.Clothes && p.Entries.Count > 0)
+            {
+                DressUp(p);
+                return;
+            }
             if (p.SubOp != CM_EQUIP_ITEM.Armaments || p.Entries.Count == 0)
             {
                 this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
@@ -2112,6 +2554,53 @@ namespace TitansUC.GameServer.Network.Client
             this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
             RaiseUpdateCounter();
             SaveItems();
+        }
+
+        /// <summary>
+        /// Code of the 0x801B that refuses a change of clothes (the client only accepts 2; the official code for
+        /// a refusal is unknown).
+        /// </summary>
+        private const ushort DressUpRefused = 0x0C;
+
+        /// <summary>
+        /// 0x1B section 1: puts on and takes off clothes, saves them in the garments table and lets the players
+        /// around see the new looks (the looks sum changes with the clothes).
+        /// </summary>
+        private void DressUp(CM_EQUIP_ITEM p)
+        {
+            string refusal = "not their character";
+            Apparel[] worn = null;
+            if (p.CharacterID == CharacterID)
+            {
+                var changes = p.Entries.Select(e => new DressChange { Action = e.Action, Slot = e.Slot, ItemUID = e.ItemUniqueID }).ToList();
+                worn = Inventory.DressUp(changes, out refusal);
+            }
+            if (worn == null)
+            {
+                Logger.ShowWarning(string.Format("{0}: change of clothes refused: {1}.", Character.Name, refusal));
+                Tell("You cannot change clothes: " + refusal + ".");
+                this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body, DressUpRefused));
+                return;
+            }
+
+            lock (sync)
+            {
+                for (int i = 0; i < worn.Length; i++)
+                {
+                    Character.SetApparel((ApparelType)i, worn[i]);
+                }
+            }
+            this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body));
+            RaiseUpdateCounter();
+            SaveItems();
+            try
+            {
+                CharacterDatabase.Instance.SaveGarments(Character);
+            }
+            catch (Exception ex)
+            {
+                Logger.ShowError(ex);
+            }
         }
 
         /// <summary>
@@ -2156,9 +2645,26 @@ namespace TitansUC.GameServer.Network.Client
             }
         }
 
-        private void RefuseShop(string what, int id, string reason)
+        private void RefuseShop(string what, int id, string reason, string tell = null)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2} refused: {3}.", Character.Name, what, id, reason));
+            if (tell != null)
+            {
+                Tell(tell);
+            }
+        }
+
+        /// <summary>
+        /// Tells the player why something was refused, as a system line in their chat window. The client has
+        /// no text of its own for most refusal codes: its handlers only log "Error [ code ]" (uc.exe strings
+        /// "UCC_Eternal::Notify... Error [ %d ]"), so without this a refusal looks like nothing happened.
+        /// </summary>
+        public void Tell(string message)
+        {
+            if (CharacterID != 0 && !string.IsNullOrEmpty(message))
+            {
+                TitansUC.GameServer.Network.Link.CmsLink.SystemMessage(CharacterID, message);
+            }
         }
 
         /// <summary>
@@ -2526,6 +3032,27 @@ namespace TitansUC.GameServer.Network.Client
             }
         }
 
+        /// <summary>
+        /// The player's team changed on the CMS server: nearby players see the new team id in their position record.
+        /// </summary>
+        public void SetTeam(int teamID)
+        {
+            if (Character == null)
+            {
+                return;
+            }
+            Character.TeamID = teamID;
+            lock (sync)
+            {
+                if (Coord != null)
+                {
+                    Coord.TeamID = teamID;
+                    Coord.UpdateCounter++;
+                }
+            }
+            Logger.ShowInfo(string.Format("{0} is now in team {1}.", Character.Name, teamID));
+        }
+
         private void UpdateCoord(CoordData coord)
         {
             if (coord == null)
@@ -2539,8 +3066,10 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            // Fields the server owns: the client sends 0xFFFF for the machine id and cannot promote itself.
+            // Fields the server owns: the client sends 0xFFFF for the machine id and cannot promote itself, or put
+            // itself in a team (the CMS server says which it is in).
             coord.MachineID = MachineID;
+            coord.TeamID = Character.TeamID;
             coord.AccountLevel = AccountLevel;
             coord.ClusterID = (ushort)Character.Zone;
             coord.Faction = CoordData.StateAndNationality(Character);
@@ -2594,6 +3123,22 @@ namespace TitansUC.GameServer.Network.Client
             Save();
             this.Network.SendPacket(new SM_FORCE_LOGOUT(CharacterID));
         }
+
+        /// <summary>
+        /// Saves the player, tells the client to log out and closes the connection a moment later, whether the
+        /// client leaves by itself or not (game server console "kick" and "ban").
+        /// </summary>
+        public void Kick()
+        {
+            var network = this.Network;
+            ForceLogout();
+            System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ => network.Disconnect());
+        }
+
+        /// <summary>
+        /// The address the player is connected from.
+        /// </summary>
+        public string Address { get { return LoginSessionDatabase.AddressOf(this.Network.Socket); } }
 
         private void SaveIfDue()
         {

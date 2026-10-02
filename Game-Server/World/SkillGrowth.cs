@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Common.Characters;
@@ -185,11 +185,21 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The operation skill of a vehicle (what 0x0D may raise): mobile suit, mobile armour or fighter; null for
-        /// the others.
+        /// The operation skill of a vehicle (what 0x0D may raise): its first required skill in the client's vehicle
+        /// template (mobile suit, mobile armour, or fighter for tanks, the hover truck and planes); by kind of
+        /// vehicle when the template names none; null for cars, which require nothing.
         /// </summary>
         public static Skill? Operation(ItemNode vehicle)
         {
+            var vt = vehicle != null ? VehicleTemplates.Get(vehicle.StaticID) : null;
+            if (vt != null)
+            {
+                var required = vt.RequiredSkills.Select(r => r.Skill).FirstOrDefault(r => r != null);
+                if (required != null)
+                {
+                    return required;
+                }
+            }
             var t = vehicle != null ? ItemTemplates.Get(vehicle.StaticID) : null;
             switch (t != null ? t.Category : null)
             {

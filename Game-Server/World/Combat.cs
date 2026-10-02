@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Threading;
+using Common.Characters;
 
 namespace TitansUC.GameServer.World
 {
     /// <summary>
-    /// Hit, damage and destruction rules. The official server decided them; the captures show the results
-    /// (see the attack result packets) but not the formulas, so the numbers here are this server's own:
-    /// 15% misses (and every shot beyond the weapon's range), 5% critical hits for double damage, 20% of hits on
-    /// a vehicle with a shield in slot 1 hit the shield, and a hit does the weapon's power times the rounds it
-    /// fires (at least 1), times 0.6 to 1.0.
+    /// Hit, damage and destruction rules. The official server decided them and the captures only show the
+    /// results, so the formulas are ours, built on the values the client's battle info lists as the server's
+    /// inputs (weapon hit rate, damage and hit ratios by distance, shield guard probability, engine avoid rate,
+    /// the weapon's operation and type skills) and fitted to the 135 attack results in the captures: about 18%
+    /// misses, 8% of hits critical, a shield taking 20 to 30% of hits, and a gun doing about 0.5 to 2.8 times
+    /// its power per attack whatever the rounds it fires (a melee weapon about 0.3 to 1.1 times).
+    /// See <see cref="Attack"/>.
     /// </summary>
     public static class Combat
     {
@@ -57,8 +60,8 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// Rounds one attack with this weapon fires: none for melee weapons (no magazine); for the others a
-        /// share of the magazine (the official 100mm machine gun, 150 rounds, fired 6 per burst).
+        /// Rounds one attack with this weapon uses: the template's rounds per shot (the official 100mm machine
+        /// gun fired 6, beam rifles 8); none for melee weapons.
         /// </summary>
         public static int RoundsPerAttack(ItemTemplate weapon)
         {
@@ -66,8 +69,110 @@ namespace TitansUC.GameServer.World
             {
                 return 0;
             }
-            return Math.Max(1, Math.Min(15, weapon.Magazine / 25));
+            return Math.Max(1, weapon.AmmoPerShot);
         }
+
+        /// <summary>
+        /// The distance band (0 nearest to 6) a target at <paramref name="distance"/> is in: the weapon's range
+        /// cut into seven equal bands (ours; the client has the seven ratios but not the bands).
+        /// </summary>
+        public static int Band(ItemTemplate weapon, int distance)
+        {
+            if (weapon == null || weapon.Range <= 0)
+            {
+                return 0;
+            }
+            return Math.Max(0, Math.Min(6, (int)((long)Math.Max(0, distance) * 7 / weapon.Range)));
+        }
+
+        private static double Ratio(float[] ratios, int band)
+        {
+            return ratios != null && band < ratios.Length && ratios[band] > 0 ? ratios[band] : 1.0;
+        }
+
+        /// <summary>
+        /// The chance that an attack hits: the weapon's hit rate times its hit ratio at that distance, up to 10
+        /// points more for the attacker's skill with the weapon (the average of its operation and type skill;
+        /// 100.0 gives all 10), up to 10 points less for the defender's evasion skill, and less by a quarter of
+        /// the target engine's avoid rate (a level 3 engine's 20 is 5 points); at least 5%, at most 95%.
+        /// </summary>
+        public static double HitChance(ItemTemplate weapon, int band, Character attacker, Character defender, ItemNode vehicle)
+        {
+            double chance = (weapon != null && weapon.HitRate > 0 ? weapon.HitRate : 7000) / 10000.0;
+            chance *= Ratio(weapon != null ? weapon.HitRatios : null, band);
+            chance += 0.10 * WeaponSkill(weapon, attacker) / 1000.0;
+            if (defender != null)
+            {
+                chance -= 0.10 * Math.Min(1000, defender.GetSkill(Skill.EVASION)) / 1000.0;
+            }
+            var engine = vehicle != null ? ItemTemplates.Get(vehicle.EngineID > 0 ? vehicle.EngineID : ItemTemplates.EngineOf(vehicle.StaticID)) : null;
+            if (engine != null)
+            {
+                chance -= engine.AvoidRate / 400.0;
+            }
+            return Math.Max(0.05, Math.Min(0.95, chance));
+        }
+
+        /// <summary>
+        /// The chance that a hit lands on the defender's shield: its guard probability (20 or 30%), up to 5 points
+        /// more for their defence skill.
+        /// </summary>
+        public static double GuardChance(ItemNode shield, Character defender)
+        {
+            var t = ItemTemplates.Get(shield.StaticID);
+            double chance = (t != null && t.GuardProbability > 0 ? t.GuardProbability : 2000) / 10000.0;
+            if (defender != null)
+            {
+                chance += 0.05 * Math.Min(1000, defender.GetSkill(Skill.DEFENCE)) / 1000.0;
+            }
+            return chance;
+        }
+
+        /// <summary>
+        /// The attacker's skill with the weapon in tenths (0 to 1000): the average of the operation and type
+        /// skills it names.
+        /// </summary>
+        private static int WeaponSkill(ItemTemplate weapon, Character attacker)
+        {
+            if (weapon == null || attacker == null)
+            {
+                return 0;
+            }
+            int total = 0, count = 0;
+            foreach (var skill in new[] { weapon.OperationSkill, weapon.TypeSkill })
+            {
+                if (skill.HasValue)
+                {
+                    total += Math.Min(1000, attacker.GetSkill(skill.Value));
+                    count++;
+                }
+            }
+            return count == 0 ? 0 : total / count;
+        }
+
+        /// <summary>
+        /// The damage of a hit before a critical: power times the damage ratio at that distance, times a random
+        /// factor. Guns: 0.5 up to 0.5 + variation / 15 (a beam rifle's 30 gives up to 2.5, the beam bazooka's
+        /// 15 up to 1.5, as in the captures). Melee weapons: 0.3 up to 0.3 + variation / 45 (the claw's 35 gives
+        /// up to 1.08; the captures had 0.29 to 1.11).
+        /// </summary>
+        public static int Damage(ItemTemplate weapon, int band, double roll)
+        {
+            int power = weapon != null && weapon.Power > 0 ? weapon.Power : 50;
+            int variation = weapon != null && weapon.Rate > 0 ? weapon.Rate : 20;
+            bool melee = weapon == null || weapon.Magazine <= 0;
+            double low = melee ? 0.3 : 0.5;
+            double high = low + variation / (melee ? 45.0 : 15.0);
+            double factor = low + roll * (high - low);
+            return Math.Max(1, (int)(power * Ratio(weapon != null ? weapon.AttackRatios : null, band) * factor));
+        }
+
+        /// <summary>
+        /// The share of hits that are critical (9 of the 111 hits in the captures), and what a critical multiplies
+        /// the damage by (ours; the captured criticals were 0.5 to 3 times the power).
+        /// </summary>
+        public const double CriticalChance = 0.08;
+        public const double CriticalFactor = 1.5;
 
         /// <summary>
         /// Damage %: how much of the maximum health is gone, rounded up (checked against the official values:
@@ -85,9 +190,13 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// Resolves one attack of <paramref name="weapon"/> on <paramref name="vehicle"/> and applies it (health,
-        /// shield durability, the weapon's rounds and durability). The caller takes a destroyed vehicle away.
+        /// shield durability, the weapon's rounds and durability). <paramref name="attacker"/> and
+        /// <paramref name="defender"/> are the pilots (null for an NPC or an empty vehicle). A shot beyond the
+        /// weapon's range, from an empty gun or at a destroyed vehicle misses. The caller takes a destroyed
+        /// vehicle away.
         /// </summary>
-        public static HitResult Attack(ItemNode weapon, ItemNode vehicle, ItemNode shield, int distance)
+        public static HitResult Attack(ItemNode weapon, ItemNode vehicle, ItemNode shield, int distance,
+            Character attacker = null, Character defender = null)
         {
             var template = ItemTemplates.Get(weapon.StaticID);
             var r = new HitResult
@@ -107,31 +216,41 @@ namespace TitansUC.GameServer.World
                 }
                 r.RoundsUsed = rounds;
 
-                double roll;
+                int band = Band(template, distance);
+                double hitRoll, damageRoll, criticalRoll, shieldRoll;
                 lock (random)
                 {
-                    roll = random.NextDouble();
+                    hitRoll = random.NextDouble();
+                    damageRoll = random.NextDouble();
+                    criticalRoll = random.NextDouble();
+                    shieldRoll = random.NextDouble();
                 }
+
+                // Upgrades (ours; the captures show none in use): each power level adds 5% damage, each hit level 2
+                // points of hit chance, each defence level takes 5% off the damage taken.
+                var attackerVehicle = weapon.Parent != null ? weapon.Parent.Parent : null;
+                int power = attackerVehicle != null ? Improvements.LevelOf(attackerVehicle.Improvement, Improvements.Power) : 0;
+                int hit = attackerVehicle != null ? Improvements.LevelOf(attackerVehicle.Improvement, Improvements.Hit) : 0;
+                int defence = Improvements.LevelOf(vehicle.Improvement, Improvements.Defence);
 
                 bool outOfRange = template != null && template.Range > 0 && distance > template.Range;
                 bool emptyGun = template != null && template.Magazine > 0 && rounds == 0;
-                if (vehicle.Health <= 0 || outOfRange || emptyGun || roll < 0.15)
+                if (vehicle.Health <= 0 || outOfRange || emptyGun ||
+                    hitRoll >= Math.Min(0.95, HitChance(template, band, attacker, defender, vehicle) + 0.02 * hit))
                 {
                     r.Result = ResultMiss;
                     r.Explosion = ExplosionMiss;
                     return r;
                 }
 
-                double factor;
-                bool critical, shieldHit;
-                lock (random)
+                bool critical = criticalRoll < CriticalChance;
+                bool shieldHit = shield != null && shieldRoll < GuardChance(shield, defender);
+                int damage = Damage(template, band, damageRoll);
+                damage = damage * (100 + 5 * power) * (100 - 5 * defence) / 10000;
+                if (critical)
                 {
-                    factor = 0.6 + random.NextDouble() * 0.4;
-                    critical = random.NextDouble() < 0.05;
-                    shieldHit = shield != null && random.NextDouble() < 0.2;
+                    damage = (int)(damage * CriticalFactor);
                 }
-                int power = template != null && template.Power > 0 ? template.Power : 50;
-                int damage = (int)(power * Math.Max(1, rounds) * factor * (critical ? 2 : 1));
                 r.Damage = Math.Max(1, damage);
                 r.Result = critical ? ResultCritical : ResultHit;
                 r.DurabilityUsed = 1;

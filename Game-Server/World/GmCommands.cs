@@ -40,6 +40,10 @@ namespace TitansUC.GameServer.World
                     return TeleportTo(gm, args);
                 case "crime":
                     return CrimeCommand(gm, args);
+                case "town":
+                    return Occupation.GmCommand(gm, args);
+                case "rank":
+                    return RankCommand(gm, args);
                 case "npcs":
                     return Npcs(gm, args);
                 default:
@@ -409,6 +413,31 @@ namespace TitansUC.GameServer.World
         /// #crime: shows the GM's criminal count and previous offenses; #crime 10 sets the count (0 clears it).
         /// The client is told with 0x8008.
         /// </summary>
+/// <summary>
+        /// #rank: shows the GM's rank and promotion points; #rank 8 sets the rank; #rank points 50 adds points
+        /// (and promotes as play would).
+        /// </summary>
+        public static List<string> RankCommand(UCGameSession gm, IList<string> args)
+        {
+            var c = gm.Character;
+            int n;
+            if (args.Count >= 2 && args[0].ToLowerInvariant() == "points" && int.TryParse(args[1], out n) && n > 0)
+            {
+                gm.AddRankPoints(n, "#rank");
+            }
+            else if (args.Count == 1 && int.TryParse(args[0], out n) && n >= 0 && n <= Ranks.MaxRank)
+            {
+                gm.SetRank(n);
+                Logger.ShowInfo(string.Format("{0} set their rank to {1} with #rank.", c.Name, n));
+            }
+            else if (args.Count > 0)
+            {
+                return new List<string> { "Usage: #rank [0-15] | #rank points n" };
+            }
+            string next = c.Rank < Ranks.MaxRank ? string.Format(", {0} needed for {1}", Ranks.PointsFor(c.Rank + 1), Ranks.Name(c.Rank + 1)) : "";
+            return new List<string> { string.Format("Rank {0} ({1}), {2} promotion points{3}.", c.Rank, Ranks.Name(c.Rank), c.RankPoints, next) };
+        }
+
         public static List<string> CrimeCommand(UCGameSession gm, IList<string> args)
         {
             var c = gm.Character;

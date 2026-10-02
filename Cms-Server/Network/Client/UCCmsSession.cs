@@ -7,6 +7,7 @@ using SmartEngine.Core;
 using SmartEngine.Network;
 using TitansUC.CmsServer.Commands;
 using TitansUC.CmsServer.Database;
+using TitansUC.CmsServer.Manager;
 using TitansUC.CmsServer.Network.Packets;
 using TitansUC.CmsServer.Network.Packets.Client;
 using TitansUC.CmsServer.Network.Packets.Server;
@@ -126,9 +127,10 @@ namespace TitansUC.CmsServer.Network.Client
                     Refuse(string.Format("character {0} does not exist", p.CharacterID));
                     return;
                 }
-                if (Configuration.Instance.CheckLoginSession && !LoginSessionDatabase.Instance.IsSelected(p.CharacterID))
+                if (Configuration.Instance.CheckLoginSession && !LoginSessionDatabase.Instance.IsSelected(p.CharacterID,
+                    LoginSessionDatabase.AddressOf(this.Network.Socket)))
                 {
-                    Refuse(string.Format("{0} (character {1}) was not taken to the game through the Lobby", member.Name, p.CharacterID));
+                    Refuse(string.Format("{0} (character {1}) was not taken to the game through the Lobby from this address", member.Name, p.CharacterID));
                     return;
                 }
                 if (!string.Equals(member.Name, p.Name, StringComparison.Ordinal))
@@ -180,13 +182,36 @@ namespace TitansUC.CmsServer.Network.Client
         }
 
         /// <summary>
-        /// 0x13: send the player's chat card to them and their team, then the welcome message.
+        /// 0x13: send the player's chat card to them and their team, then the welcome message. The client sends
+        /// it again after a promotion with its new rank; the game server has saved that rank before telling the
+        /// client, so the rank is read again from the database (a client cannot give itself a rank).
         /// </summary>
         public void OnChatInfo(CM_CHAT_INFO p)
         {
             if (!CheckLoggedIn("Chat info"))
             {
                 return;
+            }
+
+            if (p.CharacterID == CharacterID)
+            {
+                try
+                {
+                    var saved = CmsDatabase.Instance.LoadMember(CharacterID);
+                    if (saved != null)
+                    {
+                        Member.Rank = saved.Rank;
+                        Member.Gender = saved.Gender;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.ShowError(ex);
+                }
+                if (p.Rank != 0 && p.Rank != Member.Rank)
+                {
+                    Logger.ShowWarning(string.Format("{0}: chat card rank {1} is not their saved rank {2}.", Member.Name, p.Rank, Member.Rank));
+                }
             }
 
             var card = Member.Copy();
@@ -275,6 +300,17 @@ namespace TitansUC.CmsServer.Network.Client
             {
                 Logger.ShowWarning(string.Format("{0} tried to send a system message, ignoring it.", Name));
                 return;
+            }
+
+            if (!Common.CharacterFilter.IsChatText(message))
+            {
+                // The real client never sends these (CHARAFILTER_CHAT.LST); drop them so others' clients do not have to show them.
+                Logger.ShowWarning(string.Format("{0} sent chat characters the client does not allow; removing them.", Name));
+                message = Common.CharacterFilter.CleanChat(message);
+                if (message.Length == 0)
+                {
+                    return;
+                }
             }
 
             Logger.ShowTrace(string.Format("[chat {0}] {1}: {2}", type, Name, message));
@@ -437,6 +473,10 @@ namespace TitansUC.CmsServer.Network.Client
                 {
                     problem = "the name is empty or too long";
                 }
+                else if (!Common.CharacterFilter.IsChatText(name))
+                {
+                    problem = "the name has characters the client does not allow";
+                }
                 else if (Member.TeamID != -1 && CmsDatabase.Instance.LoadTeam(Member.TeamID) != null)
                 {
                     problem = "they are already in a team";
@@ -455,6 +495,7 @@ namespace TitansUC.CmsServer.Network.Client
 
                 var team = CmsDatabase.Instance.CreateTeam(name, Member, CmsServer.UnixTime());
                 Member.TeamID = team.ID;
+                GameLinkManager.Instance.Team(CharacterID, team.ID);
                 Logger.ShowInfo(string.Format("{0} created team {1} ({2}).", Name, team.Name, team.ID));
                 Send(new SM_CREATE_TEAM(CmsPacket.ResultYes, team.ID, team.Created, team.Name));
             }
@@ -627,6 +668,7 @@ namespace TitansUC.CmsServer.Network.Client
 
         private static void SetOnlineTeam(uint characterID, int teamID)
         {
+            GameLinkManager.Instance.Team(characterID, teamID);
             var session = CmsWorld.Instance.Get(characterID);
             if (session != null && session.Member != null)
             {
