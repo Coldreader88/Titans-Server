@@ -250,7 +250,8 @@ namespace TitansUC.GameServer.Network.Client
 
         /// <summary>
         /// 0x17: move an item between containers, or get in or out of a vehicle at the hangar.
-        /// Nothing is sent back when the move is refused (as the Java server).
+        /// A refusal is answered too (<see cref="SM_MOVE_ITEM.Refused"/>): the client counts its item requests in
+        /// flight and sends no more moves, drops, repairs, buys or sells until each one is answered.
         /// </summary>
         public void OnMoveItem(CM_MOVE_ITEM p)
         {
@@ -313,6 +314,21 @@ namespace TitansUC.GameServer.Network.Client
                     SaveItems();
                     return;
                 }
+                case CM_MOVE_ITEM.SectionIntoMoney:
+                case CM_MOVE_ITEM.SectionIntoStack:
+                {
+                    // Official (money out of the trade pack): 0x0301 with the money item as the target.
+                    var result = Inventory.MergeInto(p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, p.Amount);
+                    if (result == null)
+                    {
+                        RefuseMove(p, "cannot add it to that item");
+                        return;
+                    }
+                    this.Network.SendPacket(new SM_MOVE_ITEM(result.Kind == MoveKind.Merged ? SM_MOVE_ITEM.Merged : SM_MOVE_ITEM.AddedToStack,
+                        p, result.Target, result.Item.StaticID));
+                    SaveItems();
+                    return;
+                }
                 default:
                     RefuseMove(p, "section " + p.Section + " is not implemented");
                     return;
@@ -349,7 +365,7 @@ namespace TitansUC.GameServer.Network.Client
             bool allowed = CanOpen(g) || Inventory.Get(p.VehicleUniqueID) != null;
             var body = (byte[])p.Body.Clone();
             body[2] = 0;
-            body[3] = allowed ? (byte)2 : (byte)1;
+            body[3] = allowed ? (byte)2 : (byte)Refused;
             this.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_SPACE_ITEM_LOCK, body));
             if (!allowed)
             {
@@ -371,6 +387,11 @@ namespace TitansUC.GameServer.Network.Client
             if (vehicle == null)
             {
                 Logger.ShowWarning(string.Format("{0} listed {1:X8}, which they cannot open.", Character.Name, p.VehicleUniqueID));
+                // Refused: the request's first 16 bytes with 0x000C, and an empty list.
+                var refused = new byte[17];
+                Array.Copy(p.Body, refused, Math.Min(16, p.Body.Length));
+                refused[0] = 0; refused[1] = 1; refused[2] = 0; refused[3] = 0x0C;
+                this.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_SPACE_ITEM_LIST, refused));
                 return;
             }
             List<ItemNode> items;
@@ -445,7 +466,7 @@ namespace TitansUC.GameServer.Network.Client
             if (!Inventory.PickUp(taken, p.DestUniqueID))
             {
                 PutBack(g, item, taken);
-                RefuseGround("pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it out of the wreck");
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PICKUP_ITEM, p.Body, Refused), "pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it out of the wreck");
                 return true;
             }
 
@@ -526,6 +547,7 @@ namespace TitansUC.GameServer.Network.Client
         {
             Logger.ShowWarning(string.Format("{0}: move of {1:X8} from {2:X8} to {3:X8} refused: {4}.",
                 Character.Name, p.ItemUniqueID, p.SourceUniqueID, p.DestUniqueID, reason));
+            this.Network.SendPacket(SM_MOVE_ITEM.Refused(p));
         }
 
         /// <summary>
@@ -815,7 +837,7 @@ namespace TitansUC.GameServer.Network.Client
 
         /// <summary>
         /// 0x23: drop an item on the ground, or get out of the vehicle and leave it there.
-        /// Nothing is sent back when it is refused.
+        /// A refusal echoes the request with 0x000C.
         /// </summary>
         public void OnSpacePlacedItem(CM_SPACE_PLACED_ITEM p)
         {
@@ -828,7 +850,7 @@ namespace TitansUC.GameServer.Network.Client
             uint action = 0;
             if (p.CharacterID != CharacterID)
             {
-                RefuseGround("drop", p.ItemUniqueID, "not their character");
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PLACED_ITEM, p.Body, Refused), "drop", p.ItemUniqueID, "not their character");
                 return;
             }
             if (p.MiniOp == CM_SPACE_PLACED_ITEM.GetOff)
@@ -838,12 +860,33 @@ namespace TitansUC.GameServer.Network.Client
             }
             else if (p.MiniOp == CM_SPACE_PLACED_ITEM.DropItem)
             {
+                var held = Inventory.Get(p.ItemUniqueID);
+                string camp = held != null && Camps.IsCamp(held.StaticID) ? CampRefusal(held.StaticID, p.Amount) : null;
+                if (camp != null)
+                {
+                    RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PLACED_ITEM, p.Body, Refused), "camp", p.ItemUniqueID, camp);
+                    Tell("You cannot set up this camp: " + camp + ".");
+                    return;
+                }
                 placed = Inventory.TakeForDrop(p.ItemUniqueID, p.ContainerUniqueID, p.Amount);
                 action = SM_UPDATE_ITEM_INFO.ItemDropped;
+                if (placed != null && Camps.IsCamp(placed.StaticID))
+                {
+                    // Set up: it stands with its health like a tower (keeping the item's unique id), see Camps.
+                    int now = GameWorld.UnixTime();
+                    placed = new ItemNode(placed.UniqueID, ItemNode.Multi, placed.StaticID)
+                    {
+                        Name = placed.Name,
+                        Health = Camps.Health,
+                        MaxHealth = Camps.Health,
+                        Created = now,
+                        Modified = now,
+                    };
+                }
             }
             if (placed == null)
             {
-                RefuseGround("drop", p.ItemUniqueID, "mini op " + p.MiniOp + ", invalid item, container or amount");
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PLACED_ITEM, p.Body, Refused), "drop", p.ItemUniqueID, "mini op " + p.MiniOp + ", invalid item, container or amount");
                 return;
             }
 
@@ -866,7 +909,7 @@ namespace TitansUC.GameServer.Network.Client
 
         /// <summary>
         /// 0x24: pick an item up from the ground, or get in one of the player's vehicles standing there.
-        /// Anyone can pick up items; only the owner can take a vehicle. Nothing is sent back when it is refused.
+        /// Anyone can pick up items; only the owner can take a vehicle. A refusal echoes the request with 0x000C.
         /// </summary>
         public void OnSpacePickupItem(CM_SPACE_PICKUP_ITEM p)
         {
@@ -877,7 +920,7 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || p.MiniOp < CM_SPACE_PICKUP_ITEM.PickUpItem ||
                 p.MiniOp > CM_SPACE_PICKUP_ITEM.PickUpOntoStack)
             {
-                RefuseGround("pick up", p.ItemUniqueID, "mini op " + p.MiniOp + " for character " + p.CharacterID);
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PICKUP_ITEM, p.Body, Refused), "pick up", p.ItemUniqueID, "mini op " + p.MiniOp + " for character " + p.CharacterID);
                 return;
             }
 
@@ -890,10 +933,10 @@ namespace TitansUC.GameServer.Network.Client
             // A vehicle of theirs can also be dragged into the factory (mini op 1 with the factory as destination).
             bool toFactory = !vehicle && PlayerInventory.IsFactory(Inventory.Get(p.DestUniqueID));
             var ground = GameWorld.Instance.Take(p.ItemUniqueID, g => g.ClusterID == zone &&
-                (vehicle || (toFactory && g.IsVehicle) ? g.IsVehicle && !g.IsWreck && g.OwnerID == CharacterID : !g.IsVehicle));
+                (vehicle || (toFactory && g.IsVehicle) ? g.IsVehicle && !g.IsWreck && !g.IsCamp && g.OwnerID == CharacterID : !g.IsVehicle));
             if (ground == null)
             {
-                RefuseGround("pick up", p.ItemUniqueID, "nothing there they can take");
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PICKUP_ITEM, p.Body, Refused), "pick up", p.ItemUniqueID, "nothing there they can take");
                 return;
             }
 
@@ -916,7 +959,7 @@ namespace TitansUC.GameServer.Network.Client
             if (!ok)
             {
                 GameWorld.Instance.Place(ground);
-                RefuseGround("pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it");
+                RefuseGround(new SM_ECHO(GSOpcode.SM_SPACE_PICKUP_ITEM, p.Body, Refused), "pick up", p.ItemUniqueID, "destination " + p.DestUniqueID.ToString("X8") + " cannot take it");
                 return;
             }
 
@@ -967,6 +1010,9 @@ namespace TitansUC.GameServer.Network.Client
             {
                 refusal = string.Format("{0:X8} is not their productive container", p.FactoryUniqueID);
             }
+            else if ((refusal = FactoryRefusal(p)) != null)
+            {
+            }
             else if (p.Action == CM_PRODUCT_ITEM.ActionUpgrade)
             {
                 refusal = Upgrade(p, factory);
@@ -992,6 +1038,66 @@ namespace TitansUC.GameServer.Network.Client
                 this.Network.SendPacket(new SM_PRODUCT_ITEM(p, SM_PRODUCT_ITEM.Failed, (uint)GameWorld.UnixTime(),
                     new List<uint>(), new List<KeyValuePair<int, int>>()));
             }
+        }
+
+        /// <summary>
+        /// Whether the factory the client names (town, factory id, facility index) is one this player may use and
+        /// makes that product for their side (the client builds its menu from the same tables); null when it does.
+        /// Upgrades follow VEHICLEIMPROVEMENTLEVELINFO instead of a product list.
+        /// </summary>
+        private string FactoryRefusal(CM_PRODUCT_ITEM p)
+        {
+            if (Facilities.Count == 0)
+            {
+                return null;
+            }
+            var f = Facilities.Get(p.Town, p.FacilityIndex);
+            if (f == null || f.Category != Facilities.CategoryFactory || f.SubCategory != p.FactoryID)
+            {
+                return string.Format("there is no factory {0} at facility {1} of town {2}", p.FactoryID, p.FacilityIndex, p.Town);
+            }
+            string refusal = Facilities.Refusal(f, Character.Faction, Character.IsCriminal);
+            if (refusal != null)
+            {
+                return refusal;
+            }
+            if (p.Action == CM_PRODUCT_ITEM.ActionDismantle)
+            {
+                return Facilities.Makes(p.FactoryID, Facilities.DismantleSlot, p.ProductID) ? null : "this factory cannot take it apart";
+            }
+            if (p.Action == CM_PRODUCT_ITEM.ActionUpgrade)
+            {
+                return null;
+            }
+            return Facilities.Makes(p.FactoryID, (int)Character.Faction, p.ProductID) ? null : "this factory does not make it for your side";
+        }
+
+        /// <summary>
+        /// Why a player may not use that town's shop, or null (the client checks the same before it opens it).
+        /// </summary>
+        private string ShopFacilityRefusal(int town, int shop)
+        {
+            if (Facilities.Count == 0)
+            {
+                return null;
+            }
+            var f = Facilities.FindShop(town, shop);
+            string refusal = f == null ? "there is no such shop in that town" : Facilities.Refusal(f, Character.Faction, Character.IsCriminal);
+            return refusal ?? CampFacilityRefusal(town, f.Index);
+        }
+
+        /// <summary>
+        /// A camp town's facility (towns 37, 38, 60, 61) is opened by a camp, base building or vendor truck in the field:
+        /// one of them must be near the player (<see cref="Camps.FarRefusal"/>). Null for other towns.
+        /// </summary>
+        private string CampFacilityRefusal(int town, int index)
+        {
+            var c = Coord;
+            if (!Camps.IsObjectTown(town))
+            {
+                return null;
+            }
+            return c == null ? "you are nowhere" : Camps.FarRefusal(town, index, c.ClusterID, c.X, c.Y);
         }
 
         /// <summary>
@@ -1404,7 +1510,7 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// 0x21: buy from a shop. Shops sell only their goods lists for the player's faction, at the template price
         /// times the shop's rates (see <see cref="Shops"/>). The shuttles and cars of services 3 and 4 come from no
-        /// shop and cost the template price. Nothing is sent back when it is refused.
+        /// shop and cost the template price. A refusal is answered (the client greys the shop out until it is).
         /// </summary>
         public void OnBuyItem(CM_BUY_ITEM p)
         {
@@ -1416,7 +1522,7 @@ namespace TitansUC.GameServer.Network.Client
             var template = ItemTemplates.Get(p.StaticID);
             if (p.CharacterID != CharacterID || template == null || !template.ForSale)
             {
-                RefuseShop("buy", p.StaticID, template == null ? "unknown item" : "not for sale");
+                RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, template == null ? "unknown item" : "not for sale");
                 return;
             }
 
@@ -1425,16 +1531,23 @@ namespace TitansUC.GameServer.Network.Client
             {
                 if (!template.IsVehicle)
                 {
-                    RefuseShop("buy", p.StaticID, "service " + p.Service + " is for vehicles");
+                    RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, "service " + p.Service + " is for vehicles");
                     return;
                 }
             }
             else
             {
+                string facility = ShopFacilityRefusal(p.Town, p.Shop);
+                if (facility != null)
+                {
+                    RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, "town " + p.Town + " shop " + p.Shop + ": " + facility,
+                        "You cannot use this shop: " + facility + ".");
+                    return;
+                }
                 var shop = Shops.Get(p.Shop);
                 if (shop == null || !shop.Sells(Character.Faction, template.ID))
                 {
-                    RefuseShop("buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction,
+                    RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not sell it to " + Character.Faction,
                         "This shop does not sell " + template.Name + " to you.");
                     return;
                 }
@@ -1444,15 +1557,17 @@ namespace TitansUC.GameServer.Network.Client
             long total = unitPrice * p.Amount;
             if (total > int.MaxValue || p.Amount <= 0)
             {
-                RefuseShop("buy", p.StaticID, "amount " + p.Amount);
+                RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, "amount " + p.Amount);
                 return;
             }
 
-            var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total);
+            bool fromBank = p.Service == CM_BUY_ITEM.ServiceBank;
+            var result = Inventory.Buy(template, p.DestUniqueID, p.Amount, (int)total, fromBank);
             if (result == null)
             {
-                RefuseShop("buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money",
-                    string.Format("You cannot buy {0}: it costs {1}, or there is no room for it there.", template.Name, total));
+                RefuseShop(new SM_BUY_ITEM(p), "buy", p.StaticID, "container " + p.DestUniqueID.ToString("X8") + " cannot take it, or not enough money",
+                    string.Format("You cannot buy {0}: it costs {1}{2}, or there is no room for it there.", template.Name, total,
+                        fromBank ? " from the bank" : ""));
                 return;
             }
             if (result.Item == Inventory.Piloting)
@@ -1495,13 +1610,20 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || template == null || item == null || item.StaticID != p.StaticID ||
                 template.SellPrice <= 0)
             {
-                RefuseShop("sell", p.StaticID, template == null ? "unknown item" : "no price");
+                RefuseShop(new SM_ECHO(GSOpcode.SM_SELL_ITEM, p.Body, Refused), "sell", p.StaticID, template == null ? "unknown item" : "no price");
+                return;
+            }
+            string facility = ShopFacilityRefusal(p.Town, p.Shop);
+            if (facility != null)
+            {
+                RefuseShop(new SM_ECHO(GSOpcode.SM_SELL_ITEM, p.Body, Refused), "sell", p.StaticID, "town " + p.Town + " shop " + p.Shop + ": " + facility,
+                    "You cannot use this shop: " + facility + ".");
                 return;
             }
             var shop = Shops.Get(p.Shop);
             if (shop == null || !shop.BuysBack(Character.Faction, template.ID))
             {
-                RefuseShop("sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction,
+                RefuseShop(new SM_ECHO(GSOpcode.SM_SELL_ITEM, p.Body, Refused), "sell", p.StaticID, shop == null ? "unknown shop " + p.Shop : "shop " + p.Shop + " does not buy it from " + Character.Faction,
                     "This shop does not buy " + template.Name + ".");
                 return;
             }
@@ -1510,13 +1632,13 @@ namespace TitansUC.GameServer.Network.Client
             int amount = template.IsVehicle ? 1 : p.Amount;
             if ((long)unitPrice * amount > int.MaxValue)
             {
-                RefuseShop("sell", p.StaticID, "amount " + amount);
+                RefuseShop(new SM_ECHO(GSOpcode.SM_SELL_ITEM, p.Body, Refused), "sell", p.StaticID, "amount " + amount);
                 return;
             }
             var soldAll = Inventory.Sell(p.ItemUniqueID, p.ContainerUniqueID, amount, unitPrice);
             if (soldAll == null)
             {
-                RefuseShop("sell", p.StaticID, "not in that container, or not that many");
+                RefuseShop(new SM_ECHO(GSOpcode.SM_SELL_ITEM, p.Body, Refused), "sell", p.StaticID, "not in that container, or not that many");
                 return;
             }
 
@@ -1539,7 +1661,7 @@ namespace TitansUC.GameServer.Network.Client
             var deleted = p.CharacterID == CharacterID ? Inventory.Delete(p.ItemUniqueID, p.ContainerUniqueID) : null;
             if (deleted == null)
             {
-                RefuseShop("delete", (int)p.ItemUniqueID, "not theirs");
+                RefuseShop(new SM_ECHO(GSOpcode.SM_DELETE_ITEM, p.Body, Refused), "delete", (int)p.ItemUniqueID, "not theirs");
                 return;
             }
             if (wasPiloting)
@@ -1566,7 +1688,7 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || (!toBank && p.Direction != CM_UPDATE_DEPOSIT.FromBank) ||
                 !Inventory.TransferMoney(toBank, p.Amount))
             {
-                RefuseShop(toBank ? "deposit" : "withdrawal", p.Amount, "not enough money",
+                RefuseShop(new SM_ECHO(GSOpcode.SM_UPDATE_DEPOSIT, p.Body, Refused), toBank ? "deposit" : "withdrawal", p.Amount, "not enough money",
                     toBank ? "You do not have that much money with you." : "You do not have that much money in the bank.");
                 return;
             }
@@ -1589,7 +1711,7 @@ namespace TitansUC.GameServer.Network.Client
             var vehicle = Inventory.Get(p.VehicleUniqueID);
             if (p.CharacterID != CharacterID || vehicle == null || vehicle.MaxHealth <= 0)
             {
-                RefuseShop("repair", (int)p.VehicleUniqueID, "not their vehicle");
+                RefuseShop(new SM_PAY_REPAIR(p, 0, Refused), "repair", (int)p.VehicleUniqueID, "not their vehicle");
                 return;
             }
 
@@ -1598,7 +1720,7 @@ namespace TitansUC.GameServer.Network.Client
             int price = (int)((long)shopPrice * (vehicle.MaxHealth - vehicle.Health) / vehicle.MaxHealth / 10);
             if (!Inventory.Repair(p.VehicleUniqueID, price))
             {
-                RefuseShop("repair", vehicle.StaticID, "not enough money", string.Format("The repair costs {0}, and you do not have that much.", price));
+                RefuseShop(new SM_PAY_REPAIR(p, 0, Refused), "repair", vehicle.StaticID, "not enough money", string.Format("The repair costs {0}, and you do not have that much.", price));
                 return;
             }
 
@@ -1724,7 +1846,7 @@ namespace TitansUC.GameServer.Network.Client
                 null;
             if (refusal != null)
             {
-                RefuseGround("repair of character " + p.TargetID, p.VehicleUniqueID, refusal);
+                RefuseGround(null, "repair of character " + p.TargetID, p.VehicleUniqueID, refusal);
                 return;
             }
 
@@ -1790,7 +1912,7 @@ namespace TitansUC.GameServer.Network.Client
             var vehicle = Inventory.Piloting;
             if (p.CharacterID != CharacterID || vehicle == null || vehicle.UniqueID != p.VehicleUniqueID || vehicle.Health <= 0)
             {
-                RefuseGround("chain explosion", p.VehicleUniqueID, "not the vehicle they are piloting");
+                RefuseGround(null, "chain explosion", p.VehicleUniqueID, "not the vehicle they are piloting");
                 return;
             }
 
@@ -1838,6 +1960,7 @@ namespace TitansUC.GameServer.Network.Client
                 g == null || !g.IsVehicle ? "no vehicle there" :
                 g.IsWreck ? "it is a wreck" :
                 g.IsTower ? "it is a battle town's tower" :
+                g.IsTarget ? "it is a rock or plant" :
                 c == null || g.ClusterID != c.ClusterID || Math.Abs((long)g.X - c.X) > OpenDistance ||
                     Math.Abs((long)g.Y - c.Y) > OpenDistance ? "too far away" :
                 g.OwnerID != CharacterID && !(unowned && p.NewOwnerID == CharacterID) ? "not theirs" :
@@ -1845,7 +1968,7 @@ namespace TitansUC.GameServer.Network.Client
                 null;
             if (refusal != null)
             {
-                RefuseGround("owner change to " + p.NewOwnerID, p.VehicleUniqueID, refusal);
+                RefuseGround(new SM_RAW((uint)GSOpcode.SM_CHANGE_MACHINE_OWNER, new byte[] { 0, 0, 0, 1, 0, 0, 0, 0x0C, 0, 0, 0, 0 }), "owner change to " + p.NewOwnerID, p.VehicleUniqueID, refusal);
                 return;
             }
 
@@ -1983,9 +2106,15 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
             var weapon = Inventory.Armament(p.Slot);
+            var special = SpecialAttacks.Resolve(p.SpecialAttackID, weapon, Character);
+            if (p.SpecialAttackID != SpecialAttacks.None && special == null)
+            {
+                Logger.ShowWarning(string.Format("{0}: special attack {1} not possible with that weapon or skill; a normal attack.",
+                    Character.Name, p.SpecialAttackID));
+            }
             if (Npc.IsNpcID(p.TargetID))
             {
-                AttackNpc(weapon, NpcManager.Instance.Get(p.TargetID), p.Distance);
+                AttackNpc(weapon, NpcManager.Instance.Get(p.TargetID), p.Distance, special);
                 return;
             }
             var target = GameWorld.Instance.Get(p.TargetID);
@@ -1997,7 +2126,7 @@ namespace TitansUC.GameServer.Network.Client
                 return;
             }
 
-            var r = target.TakeHit(weapon, p.Distance, Character);
+            var r = target.TakeHit(weapon, p.Distance, Character, special);
             if (r == null)
             {
                 return;
@@ -2037,7 +2166,7 @@ namespace TitansUC.GameServer.Network.Client
             var weapon = Inventory.Armament(p.Slot);
             var ground = GameWorld.Instance.GetGround(p.ItemUniqueID);
             if (weapon == null || ground == null || !ground.IsVehicle || ground.IsWreck || ground.ClusterID != Coord.ClusterID ||
-                ground.Node.MaxHealth <= 0)
+                ground.Node.MaxHealth <= 0 || ground.Node.Health <= 0)
             {
                 Logger.ShowWarning(string.Format("{0}: attack on ground item {1:X8} refused: no weapon, or not a vehicle.",
                     Character.Name, p.ItemUniqueID));
@@ -2050,14 +2179,17 @@ namespace TitansUC.GameServer.Network.Client
                     Character.Name, ground.CityID));
                 return;
             }
-            var r = Combat.Attack(weapon, ground.Node, null, 0, Character);
+            var r = Combat.Attack(weapon, ground.Node, null, 0, Character, null, SpecialAttacks.Resolve(p.SpecialAttackID, weapon, Character));
             // A crime when the vehicle is another player's of the same faction (the client says so itself when it
             // knows the owner; the server checks owners who are online).
             var owner = GameWorld.Instance.Get(ground.OwnerID);
+            var targetTemplate = ground.IsTarget ? ItemTemplates.Get(ground.Node.StaticID) : null;
+            bool ownSideStructure = (ground.IsCamp || ground.IsBaseBuilding) && Camps.FactionOf(ground.Node.StaticID) == Character.Faction;
             r.Crime = Criminal.Counts(AccountLevel) && ground.OwnerID != CharacterID &&
-                (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction));
+                (p.CrimeFlag || (owner != null && owner.InGame && owner.Character.Faction == Character.Faction) ||
+                 (targetTemplate != null && targetTemplate.TargetFaction == (int)Character.Faction) || ownSideStructure);
             uint attacker = CharacterID;
-            this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, p.Echo, r, ground));
+            this.Network.SendPacket(new SM_ATTACK_ITEM(attacker, r, ground));
             if (r.Crime)
             {
                 CommitCrime(Criminal.TypeAttack, 1);
@@ -2070,8 +2202,8 @@ namespace TitansUC.GameServer.Network.Client
             if (r.Destroyed)
             {
                 uint formerOwner = ground.OwnerID;
-                // A tower falls and is gone until the war is over.
-                gone = ground.IsTower || !Combat.LeavesWreck();
+                // A tower falls and is gone until the war is over; rocks and plants leave nothing (no wreck template).
+                gone = ground.IsTower || ground.IsTarget || ground.IsCamp || ground.IsBaseBuilding || !Combat.LeavesWreck();
                 if (gone)
                 {
                     GameWorld.Instance.Take(ground.UniqueID, g => true);
@@ -2091,7 +2223,7 @@ namespace TitansUC.GameServer.Network.Client
             {
                 GameWorld.Instance.Place(ground);
             }
-            ushort echo = p.Echo;
+            ushort echo = r.SpecialAttackID;
             uint action = gone ? SM_UPDATE_ITEM_INFO.ItemPickedUp : r.Destroyed ? SM_UPDATE_ITEM_INFO.ItemDropped : SM_UPDATE_ITEM_INFO.Damaged;
             GameWorld.Instance.SendNear(ground.ClusterID, ground.X, ground.Y, BroadcastDistance, () =>
                 new SM_UPDATE_ITEM_INFO(action, ground, attacker, echo));
@@ -2105,14 +2237,14 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// An attack on an NPC: 0x800F to the attacker only (an NPC has no client), 0x8036 to everyone near it.
         /// </summary>
-        private void AttackNpc(ItemNode weapon, Npc npc, int distance)
+        private void AttackNpc(ItemNode weapon, Npc npc, int distance, SpecialAttack special = null)
         {
             if (weapon == null || npc == null || npc.Zone != Coord.ClusterID)
             {
                 Logger.ShowWarning(string.Format("{0}: attack on an NPC refused: no weapon or no such NPC.", Character.Name));
                 return;
             }
-            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character);
+            var r = NpcManager.Instance.Attack(npc, weapon, distance, Character, special);
             if (r == null)
             {
                 return;
@@ -2244,7 +2376,7 @@ namespace TitansUC.GameServer.Network.Client
         /// when they are on foot (or have no vehicle any more). Sets the damage and attack number of the position
         /// record, as the official server did.
         /// </summary>
-        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null)
+        public HitResult TakeHit(ItemNode weapon, int distance, Character attacker = null, SpecialAttack special = null)
         {
             var vehicle = Inventory.Piloting;
             if (vehicle == null || vehicle.Health <= 0)
@@ -2254,7 +2386,7 @@ namespace TitansUC.GameServer.Network.Client
             var shield = Inventory.Armament(Combat.ShieldSlot);
             var shieldTemplate = shield != null ? ItemTemplates.Get(shield.StaticID) : null;
             var r = Combat.Attack(weapon, vehicle, shieldTemplate != null && shieldTemplate.IsShield ? shield : null, distance,
-                attacker, Character);
+                attacker, Character, special);
             if (r.Result != Combat.ResultMiss)
             {
                 lock (sync)
@@ -2435,6 +2567,24 @@ namespace TitansUC.GameServer.Network.Client
 
             ItemNode node;
             string loadout = null;
+            if (item.IsTarget)
+            {
+                // A breakable rock or temporary plant, 300 in front, at full health; nobody owns it.
+                node = new ItemNode(PlayerInventory.NewUniqueID(), ItemNode.Multi, item.ID)
+                {
+                    Name = item.Name,
+                    Health = Math.Max(1, item.TargetHealth),
+                    MaxHealth = Math.Max(1, item.TargetHealth),
+                    Created = GameWorld.UnixTime(),
+                    Modified = GameWorld.UnixTime(),
+                };
+                var target = new GroundItem(node, c.ClusterID, c.X, c.Y + 300, c.Z, new byte[6], 0xFFFFFFFF);
+                GameWorld.Instance.Place(target);
+                BroadcastGround(SM_UPDATE_ITEM_INFO.ItemDropped, target);
+                Logger.ShowInfo(string.Format("{0} placed {1} ({2}, {3} health) at {4}, {5}.", Character.Name, item.Name, item.ID,
+                    node.MaxHealth, c.X, c.Y + 300));
+                return string.Format("You are placing a {0} ({1} health).", item.Name, node.MaxHealth);
+            }
             if (item.IsVehicle && engine < 0 && Loadouts.Applies(item))
             {
                 // No engine named: a random loadout and a lv.3 engine it can have, ready to fight.
@@ -2540,6 +2690,7 @@ namespace TitansUC.GameServer.Network.Client
             }
             if (p.CharacterID != CharacterID)
             {
+                this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body, Refused));
                 return;
             }
             foreach (var e in p.Entries)
@@ -2548,6 +2699,7 @@ namespace TitansUC.GameServer.Network.Client
                 if (!ok)
                 {
                     Logger.ShowWarning(string.Format("{0}: equip of {1:X8} in slot {2} refused.", Character.Name, e.ItemUniqueID, e.Slot));
+                    this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_EQUIP_ITEM, p.Body, Refused));
                     return;
                 }
             }
@@ -2560,7 +2712,7 @@ namespace TitansUC.GameServer.Network.Client
         /// Code of the 0x801B that refuses a change of clothes (the client only accepts 2; the official code for
         /// a refusal is unknown).
         /// </summary>
-        private const ushort DressUpRefused = 0x0C;
+        private const ushort DressUpRefused = Refused;
 
         /// <summary>
         /// 0x1B section 1: puts on and takes off clothes, saves them in the garments table and lets the players
@@ -2615,6 +2767,7 @@ namespace TitansUC.GameServer.Network.Client
             if (p.CharacterID != CharacterID || !Inventory.Reload(p.AmmoUID, p.ContainerUID, p.WeaponUID, p.Rounds))
             {
                 Logger.ShowWarning(string.Format("{0}: reload of {1:X8} refused.", Character.Name, p.WeaponUID));
+                this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_USE_ITEM_WITH_TARGET, p.Body, Refused));
                 return;
             }
             this.Network.SendPacket(new SM_ECHO(GSOpcode.SM_USE_ITEM_WITH_TARGET, p.Body));
@@ -2645,9 +2798,22 @@ namespace TitansUC.GameServer.Network.Client
             }
         }
 
-        private void RefuseShop(string what, int id, string reason, string tell = null)
+        /// <summary>
+        /// Result code of a refusal: the client only accepts 2, and 0x0C is the failure seen in the captures.
+        /// </summary>
+        public const ushort Refused = 0x0C;
+
+        /// <summary>
+        /// Logs a refused shop, bank or item request, answers it with <paramref name="reply"/> (the refusal
+        /// packet; the client waits for one) and tells the player why when <paramref name="tell"/> is given.
+        /// </summary>
+        private void RefuseShop(Packet<GSOpcode> reply, string what, int id, string reason, string tell = null)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2} refused: {3}.", Character.Name, what, id, reason));
+            if (reply != null)
+            {
+                this.Network.SendPacket(reply);
+            }
             if (tell != null)
             {
                 Tell(tell);
@@ -2682,9 +2848,30 @@ namespace TitansUC.GameServer.Network.Client
                 () => new SM_UPDATE_ITEM_INFO(action, ground, actor));
         }
 
-        private void RefuseGround(string what, uint uniqueID, string reason)
+        /// <summary>
+        /// Why this player cannot set up that camp, or null: the rank the client checks too (CAMPTEMPLATE
+        /// required_rank), their own side's camp, one at a time.
+        /// </summary>
+        private string CampRefusal(int templateID, int amount)
+        {
+            if (Character.Rank < Camps.RequiredRank)
+            {
+                return "it needs the rank of " + Ranks.Name(Camps.RequiredRank) + " or higher";
+            }
+            if (Camps.FactionOf(templateID) != Character.Faction)
+            {
+                return "it is the other side's camp";
+            }
+            return amount != 1 ? "set up one camp at a time" : null;
+        }
+
+        private void RefuseGround(Packet<GSOpcode> reply, string what, uint uniqueID, string reason)
         {
             Logger.ShowWarning(string.Format("{0}: {1} of {2:X8} refused: {3}.", Character.Name, what, uniqueID, reason));
+            if (reply != null)
+            {
+                this.Network.SendPacket(reply);
+            }
         }
 
         /// <summary>
@@ -2773,6 +2960,32 @@ namespace TitansUC.GameServer.Network.Client
                 }
             }
             this.Network.SendPacket(new SM_LOGOUT_GAME_FE());
+        }
+
+        /// <summary>
+        /// 0x3F: the client quits (after 0x42 / 0x8042). Save if still in the world and confirm; the client
+        /// disconnects when 0x803F arrives and ignores its contents.
+        /// </summary>
+        public void OnSystemLogout(CM_SYSTEM_LOGOUT p)
+        {
+            if (InGame && GameWorld.Instance.Remove(this) && !departed)
+            {
+                Save();
+            }
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_SYSTEM_LOGOUT, 1, SM_RESULT_MSG.Done));
+        }
+
+        /// <summary>
+        /// 0x43: the client gives up the flight it reserved with 0x40.
+        /// </summary>
+        public void OnCancelAnotherGameFE(CM_CANCEL_ANOTHER_GAME_FE p)
+        {
+            if (reservedCluster != 0 && InGame)
+            {
+                Logger.ShowInfo(string.Format("{0} cancels the flight to cluster {1}.", Character.Name, reservedCluster));
+            }
+            reservedCluster = 0;
+            this.Network.SendPacket(new SM_RESULT_MSG(GSOpcode.SM_CANCEL_ANOTHER_GAME_FE, 1, SM_RESULT_MSG.Done));
         }
 
         /// <summary>

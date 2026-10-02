@@ -84,7 +84,10 @@
     <Compile Include="Network\Packets\Client\SM_ECHO.cs" />
     <Compile Include="World\ItemTemplates.cs" />
     <Compile Include="World\Mining.cs" />
+    <Compile Include="World\Camps.cs" />
+    <Compile Include="World\Facilities.cs" />
     <Compile Include="World\Shops.cs" />
+    <Compile Include="World\SpecialAttacks.cs" />
     <Compile Include="World\ShuttleRoutes.cs" />
     <Compile Include="World\SkillGrowth.cs" />
     <Compile Include="World\Criminal.cs" />
@@ -130,6 +133,8 @@
     <Compile Include="Network\Packets\Client\CM_LOGIN_GAME.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GAME_FE.cs" />
     <Compile Include="Network\Packets\Client\CM_LOGOUT_GS.cs" />
+    <Compile Include="Network\Packets\Client\CM_SYSTEM_LOGOUT.cs" />
+    <Compile Include="Network\Packets\Client\CM_CANCEL_ANOTHER_GAME_FE.cs" />
     <Compile Include="Network\Packets\Client\CM_OCCUPATION_CITY_INFO_LIST.cs" />
     <Compile Include="Network\Packets\Client\CM_PAPER_DOLL_INFO.cs" />
     <Compile Include="Network\Packets\Client\CM_PLAYER_COORD_DATA_LIST.cs" />

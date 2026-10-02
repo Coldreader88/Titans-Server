@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using TitansUC.GameServer.World;
 
 namespace TitansUC.GameServer.Network.Packets.Client
@@ -19,7 +19,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             this.PutIntBE(r.Weapon.StaticID);
             this.PutByte(r.Result);
             this.PutByte(0);
-            this.PutUShortBE(0xFFFF);
+            this.PutUShortBE(r.SpecialAttackID);
             this.PutByte(r.Explosion);
             this.PutUIntBE(r.AttackNumber);
             this.PutByte(r.Percent);

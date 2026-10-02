@@ -24,7 +24,10 @@ namespace TitansUC.GameServer.Network.Packets.Client
 
         public uint AttackerID { get; private set; }
         public int Slot { get; private set; }
-        public ushort Echo { get; private set; }
+        /// <summary>
+        /// The melee special attack (SPECIALATTACKTEMPLATE id), FFFF none.
+        /// </summary>
+        public ushort SpecialAttackID { get; private set; }
         public bool CrimeFlag { get; private set; }
         public uint ItemUniqueID { get; private set; }
 
@@ -37,7 +40,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             AttackerID = this.GetUIntBE();
             Slot = this.GetByte();
             CrimeFlag = this.GetByte() == 1;
-            Echo = this.GetUShortBE();
+            SpecialAttackID = this.GetUShortBE();
             ItemUniqueID = this.GetUIntBE();
 
             ((UCGameSession)client).OnAttackItem(this);

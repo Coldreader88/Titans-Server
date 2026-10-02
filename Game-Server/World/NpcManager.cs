@@ -182,14 +182,26 @@ namespace TitansUC.GameServer.World
 
         private void Load()
         {
+            Load("npcs.csv");
+            Load("quest_squads.csv");
+            Logger.ShowInfo(string.Format("Loaded {0} NPCs.", npcs.Count));
+            npcs = new Dictionary<uint, Npc>(npcs);
+        }
+
+        /// <summary>
+        /// Reads one NPC file of DB/Npcs: npcs.csv (the captured NPCs) or quest_squads.csv (the combat quests'
+        /// squads, which add the quest item the leader drops).
+        /// </summary>
+        private void Load(string file)
+        {
             string path;
             try
             {
-                path = CharacterData.FindFile("Npcs", "npcs.csv");
+                path = CharacterData.FindFile("Npcs", file);
             }
             catch (FileNotFoundException ex)
             {
-                Logger.ShowWarning(ex.Message + " No NPCs.");
+                Logger.ShowWarning(ex.Message + " No NPCs from " + file + ".");
                 return;
             }
 
@@ -210,11 +222,9 @@ namespace TitansUC.GameServer.World
                 }
                 catch (Exception ex)
                 {
-                    Logger.ShowWarning(string.Format("npcs.csv: cannot read \"{0}\": {1}", line, ex.Message));
+                    Logger.ShowWarning(string.Format("{0}: cannot read \"{1}\": {2}", file, line, ex.Message));
                 }
             }
-            Logger.ShowInfo(string.Format("Loaded {0} NPCs.", npcs.Count));
-            npcs = new Dictionary<uint, Npc>(npcs);
         }
 
         private static Npc Parse(string[] f)
@@ -237,6 +247,7 @@ namespace TitansUC.GameServer.World
                 Action = byte.Parse(f[13]),
                 Armaments = PadArmaments(f[14].Split('/').Select(int.Parse).ToArray()),
                 MaxHealth = int.Parse(f[15]),
+                QuestItem = f.Length > 16 && f[16].Length > 0 ? int.Parse(f[16]) : 0,
                 Alive = true,
             };
             npc.SpawnX = npc.X;
@@ -277,7 +288,7 @@ namespace TitansUC.GameServer.World
         /// A player's attack on an NPC (0x0F, 0x67); null when it cannot be attacked (a vendor, or dead).
         /// The caller sends the results, then calls <see cref="AfterAttack"/>.
         /// </summary>
-        public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null)
+        public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null, SpecialAttack special = null)
         {
             if (npc.IsVendor)
             {
@@ -289,7 +300,7 @@ namespace TitansUC.GameServer.World
                 {
                     return null;
                 }
-                var r = Combat.Attack(weapon, npc.Vehicle, null, distance, attacker);
+                var r = Combat.Attack(weapon, npc.Vehicle, null, distance, attacker, null, special);
                 if (r.Result != Combat.ResultMiss)
                 {
                     npc.AttackNumber = (int)r.AttackNumber;
@@ -400,6 +411,17 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Quest items with no stated source (QUESTLIST quests 37-39): the Northern Song bottle, the vintage
+        /// television and the special 1:144 Gundam.
+        /// </summary>
+        private static readonly int[] RareFinds = { 550088, 550255, 550312 };
+
+        /// <summary>
+        /// Chance (in 10000) that a destroyed enemy mobile suit drops one of <see cref="RareFinds"/>. OUR rule.
+        /// </summary>
+        public const int RareFindChance = 100;
+
+        /// <summary>
         /// What a destroyed NPC drops, scattered within 200 of it (or put in its wreck); anyone can take it. Warships drop what
         /// the official Magellans dropped (fine lunatitanium alloy 510020, lunatitanium alloy, MR tool kit 280174,
         /// emergency tool kit 310013, MS junk parts); mobile suits, armours and fighters drop MS junk parts,
@@ -424,6 +446,16 @@ namespace TitansUC.GameServer.World
                     drops.Add(new KeyValuePair<int, int>(510019, random.Next(1, 4)));
                     if (random.Next(2) == 0) drops.Add(new KeyValuePair<int, int>(540000, random.Next(20, 61)));
                     if (npc.Weapon != null && random.Next(10) == 0) drops.Add(new KeyValuePair<int, int>(npc.Weapon.StaticID, 1));
+                    // The finds three town quests ask for ("if you come across one"); no text says where. OUR rule:
+                    // any destroyed enemy mobile suit drops one now and then.
+                    if (random.Next(10000) < RareFindChance)
+                    {
+                        drops.Add(new KeyValuePair<int, int>(RareFinds[random.Next(RareFinds.Length)], 1));
+                    }
+                }
+                if (npc.QuestItem > 0)
+                {
+                    drops.Add(new KeyValuePair<int, int>(npc.QuestItem, 1));
                 }
             }
 

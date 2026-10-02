@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Builds the servers with mono's mcs and runs the scripted client tests (Tests/TestClient.cs) against MariaDB.
 #
 #   Tests/run-tests.sh [all|full|spawn]
@@ -75,9 +75,10 @@ patch(sys.argv[1] + '/LobbyServer.xml', {'AutoCreateAccounts': 'true'})
 patch(sys.argv[1] + '/LoginServer.xml', {'Seconds': '1'})
 EOF
 
-# Three test NPCs next to Char's spot: a target with 300 health, a shooter that fires back, and a vendor.
+# Three test NPCs next to Char's spot: a target with 300 health (which drops quest item 550029 like a quest squad's
+# leader), a shooter that fires back, and a vendor.
 cat >> "$BIN/DB/Npcs/npcs.csv" <<'EOF'
-900001,Target,2,410007,9001,1,30000,30000,30,0,0,0,6,48,280006/-1/280006/280006,300
+900001,Target,2,410007,9001,1,30000,30000,30,0,0,0,6,48,280006/-1/280006/280006,300,550029
 900002,Shooter,2,410007,9001,1,30100,30000,30,0,0,0,6,48,280006/-1/280006/280006,100000
 900003,MachineVender,2,1000003,9002,1,30200,30000,30,0,0,0,5,0,-1/-1/-1/-1,0
 EOF
@@ -113,7 +114,7 @@ fi
 reset_db() {
   sql titans-server -e "DELETE FROM characters; DELETE FROM appearance; DELETE FROM container; DELETE FROM garments;
     DELETE FROM skills; DELETE FROM login_sessions; DELETE FROM ground_items; DELETE FROM team;
-    DROP TABLE IF EXISTS flights; DROP TABLE IF EXISTS character_state; DROP TABLE IF EXISTS occupation_city;" 2>/dev/null
+    DROP TABLE IF EXISTS flights; DROP TABLE IF EXISTS team_created; DROP TABLE IF EXISTS character_state; DROP TABLE IF EXISTS occupation_city;" 2>/dev/null
 }
 
 # ---- servers ---------------------------------------------------------------------------------------------------
@@ -154,7 +155,7 @@ run_spawn() {
   echo "== Spawn test"
   reset_db
   local fifo=$WORK/game.fifo ready=$WORK/ready
-  rm -f "$fifo" "$ready" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
+  rm -f "$fifo" "$ready" "${ready}t" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
   mkfifo "$fifo"
   start lobby.log Lobby-Server.exe
   start cms.log Cms-Server.exe
@@ -175,6 +176,8 @@ run_spawn() {
     "gm Gmtest skill" "gm Gmtest npcs" "gm Gmtest npcs zeon space 2" "gm Gmtest npcs all vender" \
     "spawn Gmtest id 410000" "spawn Gmtest id 410057" "spawn Gmtest id 420000" "spawn Gmtest id 410007" \
     "spawn Gmtest ideng 400000 jet engine typeA lv.3"
+  for _ in $(seq 1 90); do [ -f "${ready}t" ] && break; sleep 1; done
+  say "spawn Gmtest id 330002"
   for _ in $(seq 1 60); do [ -f "${ready}2" ] && break; sleep 1; done
   say "spawn Gmtest npc 410007" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000" "gm Gmtest near" \
     "gm Gmtest near 20000" "gm Gmtest tp 1000000005" "gm Gmtest tp nobody" "gm Gmtest tp burchard" "gm Gmtest tp 1090000000"

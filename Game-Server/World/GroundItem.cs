@@ -77,6 +77,24 @@ namespace TitansUC.GameServer.World
         public bool IsTower { get { return CityID != 0; } }
 
         /// <summary>
+        /// A breakable rock or temporary plant (33xxxx): it can be shot, and is gone (no wreck) at 0 health.
+        /// </summary>
+        public bool IsTarget { get { return Node.StaticID / 10000 == 33; } }
+
+        /// <summary>
+        /// A camp a player placed (<see cref="Camps"/>): it stands for <see cref="Camps.LifetimeSeconds"/> or until destroyed.
+        /// </summary>
+        public bool IsCamp { get { return Camps.IsCamp(Node.StaticID); } }
+
+        /// <summary>
+        /// For a battle town's base building (hangar, bank, shops; <see cref="Occupation"/> puts up the owner's): the
+        /// city; 0 for everything else. Like the towers, they belong to nobody and are not saved with the ground.
+        /// </summary>
+        public int BaseCityID { get; set; }
+
+        public bool IsBaseBuilding { get { return BaseCityID != 0; } }
+
+        /// <summary>
         /// Gives it to another player (0x25), or to nobody (FFFFFFFF).
         /// </summary>
         public void ChangeOwner(uint ownerID)
@@ -108,6 +126,10 @@ namespace TitansUC.GameServer.World
                 {
                     return Placed + Combat.WreckLifetime;
                 }
+                if (IsCamp)
+                {
+                    return Placed + Camps.LifetimeSeconds;
+                }
                 return IsVehicle ? GameWorld.UnixTime() + Lifetime : Placed + Lifetime;
             }
         }
@@ -115,7 +137,7 @@ namespace TitansUC.GameServer.World
         /// <summary>
         /// Whether it can still lie on the ground: vehicles (not wrecks) never expire.
         /// </summary>
-        public bool CanExpire { get { return !IsVehicle || IsWreck; } }
+        public bool CanExpire { get { return !IsVehicle || IsWreck || IsCamp; } }
 
         public byte List
         {

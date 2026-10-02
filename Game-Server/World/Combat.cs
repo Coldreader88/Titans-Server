@@ -196,14 +196,16 @@ namespace TitansUC.GameServer.World
         /// vehicle away.
         /// </summary>
         public static HitResult Attack(ItemNode weapon, ItemNode vehicle, ItemNode shield, int distance,
-            Character attacker = null, Character defender = null)
+            Character attacker = null, Character defender = null, SpecialAttack special = null)
         {
             var template = ItemTemplates.Get(weapon.StaticID);
             var r = new HitResult
             {
                 AttackNumber = NextAttackNumber(),
                 Weapon = weapon,
+                SpecialAttackID = special != null ? special.ID : SpecialAttacks.None,
             };
+            double specialHit = special != null ? special.HitRate / 10000.0 : 1.0;
             var vehicleTemplate = VehicleTemplates.Get(vehicle.StaticID);
 
             lock (vehicle)
@@ -236,7 +238,7 @@ namespace TitansUC.GameServer.World
                 bool outOfRange = template != null && template.Range > 0 && distance > template.Range;
                 bool emptyGun = template != null && template.Magazine > 0 && rounds == 0;
                 if (vehicle.Health <= 0 || outOfRange || emptyGun ||
-                    hitRoll >= Math.Min(0.95, HitChance(template, band, attacker, defender, vehicle) + 0.02 * hit))
+                    hitRoll >= Math.Min(0.95, HitChance(template, band, attacker, defender, vehicle) * specialHit + 0.02 * hit))
                 {
                     r.Result = ResultMiss;
                     r.Explosion = ExplosionMiss;
@@ -247,14 +249,18 @@ namespace TitansUC.GameServer.World
                 bool shieldHit = shield != null && shieldRoll < GuardChance(shield, defender);
                 int damage = Damage(template, band, damageRoll);
                 damage = damage * (100 + 5 * power) * (100 - 5 * defence) / 10000;
+                if (special != null)
+                {
+                    damage = (int)((long)damage * special.AttackRate / 10000);
+                }
                 if (critical)
                 {
                     damage = (int)(damage * CriticalFactor);
                 }
                 r.Damage = Math.Max(1, damage);
                 r.Result = critical ? ResultCritical : ResultHit;
-                r.DurabilityUsed = 1;
-                UseDurability(weapon, 1);
+                r.DurabilityUsed = special != null ? special.Durability : 1;
+                UseDurability(weapon, r.DurabilityUsed);
                 r.M = vehicleTemplate != null ? vehicleTemplate.CombatValue : 1000;
 
                 if (shieldHit)
@@ -315,6 +321,12 @@ namespace TitansUC.GameServer.World
         public bool ShieldBroken { get; set; }
         public int M { get; set; }
         public int DurabilityUsed { get; set; }
+
+        /// <summary>
+        /// The melee special attack used (SPECIALATTACKTEMPLATE id), <see cref="SpecialAttacks.None"/> for a normal one;
+        /// echoed in 0x800F, 0x8036 and 0x8011.
+        /// </summary>
+        public ushort SpecialAttackID { get; set; } = SpecialAttacks.None;
         public int RoundsUsed { get; set; }
 
         /// <summary>

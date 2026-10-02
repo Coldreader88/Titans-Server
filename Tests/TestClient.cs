@@ -276,6 +276,42 @@ class Test
         r = g.Recv();
         Check(r.Item1 == 0x8017 && new R(r.Item2).U32() == 0x03010002, "and merge back into the backpack stack (0x0301)");
         Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110005") == "0", "the trade pack is empty again");
+
+        // RequestMoneyDivide (section 7 from the main money) and RequestMoneyAddition (section 0x0A into it).
+        uint money = me + 500000;
+        g.Send(0x17, Move(7, me, money, 0x13, 0, tradePack, 0, 110005, 111, 0xFF, 0xFF));
+        r = g.Recv(); rr = new R(r.Item2); kind = rr.U32(); rr.Pos = 32; uint coins = rr.U32();
+        Check(r.Item1 == 0x8017 && kind == 0x02010002 && coins != 0, "111 money split into the trade pack (0x0201)");
+        g.Send(0x17, Move(0x0A, me, coins, 0x13, tradePack, money, 110005, 500000, 111, 0xFF, 0xFF));
+        r = g.Recv(); rr = new R(r.Item2); kind = rr.U32(); rr.Pos = 32;
+        Check(r.Item1 == 0x8017 && kind == 0x03010002 && rr.U32() == money, "and back into the main money with section 0x0A (0x0301, the money as target, as official)");
+        System.Threading.Thread.Sleep(300);
+        Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110005") == "0", "the trade pack holds no money");
+    }
+
+    // Amuro (EF, Lieutenant) sets up an EF camp weapon shop far from everyone and buys at it (camp town 37, shop 201).
+    static void CampTests(Conn g, uint me, uint backpack, Dictionary<uint, uint[]> info)
+    {
+        uint ef = 0, zeon = 0;
+        foreach (var kv in info) { if (kv.Value[1] == 340001) ef = kv.Key; if (kv.Value[1] == 340003) zeon = kv.Key; }
+        Check(ef != 0 && zeon != 0, "found the seeded camps");
+        g.Send(0x21, Buy(1, me, backpack, 10, 540000, town: 37, shop: 201));
+        Check(Refused(g, 0x8021), "no camp near: the camp town's shop is refused");
+        g.Send(0x02, Coord(me, 500000, 500000, 30));
+        g.Send(0x23, Drop(1, me, zeon, 0x13, backpack, 1, 340003, 110001, 0, 500100, 500000, 0xFF));
+        Check(Refused(g, 0x8023), "an EF player cannot set up a Zeon camp (0x8023 refused)");
+        g.Send(0x23, Drop(1, me, ef, 0x13, backpack, 1, 340001, 110001, 0, 500100, 500000, 0xFF));
+        var placed = RecvOp(g, 0x8023);
+        Check(placed.Item1 == 0x8023 && placed.Item2[3] == 2, "a Lieutenant sets up the EF camp weapon shop (0x8023 done)");
+        Drain(g);
+        g.Send(0x21, Buy(1, me, backpack, 10, 540001, town: 37, shop: 201));
+        var bought = RecvOp(g, 0x8021);
+        Check(bought.Item1 == 0x8021 && bought.Item2[3] == 2 && new R(bought.Item2) { Pos = 28 }.U32() == 350, "and buys 10 vulcan cartridges for 350 at the camp (town 37, shop 201)");
+        string saved = "";
+        for (int i = 0; i < 30 && saved != "1,500100"; i++) { System.Threading.Thread.Sleep(500); saved = Sql("SELECT CONCAT(vehicle, ',', x) FROM ground_items WHERE item_id = 340001"); }
+        Check(saved == "1,500100", "the camp is saved with the ground (" + saved + ")");
+        g.Send(0x02, Coord(me, 1000, 2000, 30));
+        Drain(g);
     }
 
     static uint MoveTests(Conn g, uint me, uint backpack, uint bank, uint hangar, uint weared, uint vehicle, uint yarn)
@@ -349,6 +385,19 @@ class Test
         return output;
     }
 
+    // A refused item or shop request is answered with its reply carrying 0x000C (the client counts its requests in
+    // flight and sends no more until each is answered): 0x8021 in full (45 bytes, byte 0 not 0), 0x8025 with a u32
+    // result, the others as an echo. Then nothing else comes.
+    static bool Refused(Conn c, uint op)
+    {
+        var r = c.Recv();
+        while (r != null && (r.Item1 == 0x8076 || r.Item1 == 0x8005)) r = c.Recv();
+        if (r == null || r.Item1 != op) { Console.WriteLine("  expected a refused 0x{0:X}, got {1}", op, r == null ? "nothing" : "0x" + r.Item1.ToString("X")); return false; }
+        bool coded = op == 0x8025 ? r.Item2.Length == 12 && r.Item2[7] == 0x0C : r.Item2[2] == 0 && r.Item2[3] == 0x0C;
+        if (op == 0x8021) coded = coded && r.Item2.Length == 45 && r.Item2[0] != 0;
+        return coded && NoReply(c);
+    }
+
     // Nothing comes back for a refused request: the next reply is the server time.
     // Town war events (0x8076) go to everyone at any time and are skipped.
     static bool NoReply(Conn c)
@@ -388,6 +437,12 @@ class Test
         Check(r.Item1 == 0x8040 && head == 2 && who == me && cluster == 2 && unk == 0x17BF && ip == "127.0.0.1" && port == 42011 && r.Item2.Length == 13 + ip.Length,
             "cleared for Space: 0x8040 (00 02, char, 00 02, 17 BF, as official) sends the Space server, 127.0.0.1:42011");
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "1", "still on Earth until the client leaves");
+        // A failed purchase gives the flight up (0x43), then the client asks again.
+        g.Send(0x43, new B().U32(a.Key).U32(me).Byte(0xFF).Get());
+        var cancel = RecvOp(g, 0x8043);
+        Check(cancel.Item1 == 0x8043 && cancel.Item2.Length == 28 && Conn.Hex(cancel.Item2).StartsWith("00 01 00 02"), "0x43 cancels the flight (0x8043 00 01 00 02, 28 bytes)");
+        g.Send(0x40, new B().U32(a.Key).U32(me).U16(2).Get());
+        Check(RecvOp(g, 0x8040).Item1 == 0x8040, "cleared again");
 
         g.Send(0x21, Buy(3, me, weared, 1, 400020, 1, 0x31));
         r = RecvOp(g, 0x8021); rr = new R(r.Item2); rr.Pos = 8; uint shuttle = rr.U32(); rr.Pos = 28;
@@ -462,7 +517,7 @@ class Test
         g.Send(0x21, Buy(1, me, ginv, 1, 280147));
         r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint drill = rr.U32();
         g.Send(0x1B, new B().U16(2).U16(0).U32(me).Bytes(new byte[8]).Size(1).U16(1).Byte(1).Byte(3).U32(drill).U32(0x13).Get());
-        Check(r.Item1 == 0x8021 && NoReply(g), "the drill does not fit its slot 1 either");
+        Check(r.Item1 == 0x8021 && Refused(g, 0x801B), "the drill does not fit its slot 1 either");
         g.Send(0x1B, new B().U16(2).U16(0).U32(me).Bytes(new byte[8]).Size(1).U16(1).Byte(0).Byte(3).U32(drill).U32(0x13).Get());
         Check(g.Recv().Item1 == 0x801B, "mining drill equipped in slot 0");
         g.Send(0x32, dig(drill, 9999));
@@ -511,7 +566,7 @@ class Test
         r = g2.Recv();
         Check(r.Item1 == 0x801D && r.Item2[3] == 2, "reload 100 rounds (0x801D echo)");
         g2.Send(0x1D, new B().U16(1).U16(0).U32(other).U32(ammo).U32(0x13).U32(cinv).U32(0x14).U32(mg).U32(0x13).U32(0).U32(1).Get());
-        Check(NoReply(g2), "the cartridges are used up");
+        Check(Refused(g2, 0x801D), "the cartridges are used up");
         Check(Sql("SELECT child FROM container WHERE char_id = " + other + " AND container_id = 500002").Contains("@0-280014~l340"),
             "the machine gun's 340 loaded rounds are saved with the hover truck (@0-280014~l340)");
 
@@ -562,7 +617,7 @@ class Test
         g2.Send(0x1B, new B().U16(2).U16(0).U32(other).Bytes(new byte[8]).Size(1).U16(2).Byte(1).Byte(3).U32(0).U32(0).Get());
         g2.Recv();
         g2.Send(0x1B, new B().U16(2).U16(0).U32(other).Bytes(new byte[8]).Size(1).U16(1).Byte(3).Byte(3).U32(mr).U32(0x13).Get());
-        Check(NoReply(g2), "nor does the MR tool kit in slot 3, which the hover truck does not have");
+        Check(Refused(g2, 0x801B), "nor does the MR tool kit in slot 3, which the hover truck does not have");
 
         // Lock on and fire effect.
         g2.Send(0x39, new B().U32(0x8010).Size(1).U32(me).U32(280014).U32(other).Byte(0xFF).Get());
@@ -614,7 +669,7 @@ class Test
         uint action = wr.U32(); uint wuid = wr.U32(); wr.Pos = 4 + 47; int health = wr.I32();
         Check(w1.Item1 == 0x8035 && action == 1 && wuid == fr && health == 0 && w2.Item1 == 0x8035, "the wreck lies on the ground (0x8035 action 1, health 0) for both");
         g.Send(0x24, Pick(3, me, fr, 0x14, weared, 1, 400020, 120001, 0));
-        Check(NoReply(g), "nobody can get in the wreck");
+        Check(Refused(g, 0x8024), "nobody can get in the wreck");
         g.Send(0x1C, new B().U16(6).U16(0).U32(me).U32(kit).U32(0x13).U32(finv).U32(0x14).U32(0).U32(1).Get());
         var fail = g.Recv();
         Check(fail.Item1 == 0x801C && fail.Item2[3] == 0x0C, "no vehicle left to repair (0x801C failure)");
@@ -951,6 +1006,12 @@ class Test
             g2.Send(0x27, new B().U16(1).U16(0x0F98).U32(wuid).U32(0x14).U32(410007).U32(other).Get());
             var lst = RecvOp(g2, 0x8027); var lsr = new R(lst.Item2) { Pos = 16 }; int n = lsr.Size();
             Check(lst.Item1 == 0x8027 && n >= 1 && lst.Item2.Length == 16 + 1 + 62 * n, "the wreck lists its loot (0x8027, " + n + " items of 62 bytes)");
+            bool questItem = false;
+            for (int k = 0; k < n && lst.Item2.Length >= 17 + 62 * (k + 1); k++)
+            {
+                questItem |= new R(lst.Item2) { Pos = 17 + 62 * k + 8 }.I32() == 550029;
+            }
+            Check(questItem, "a quest leader's wreck holds its quest item (550029)");
             if (n >= 1)
             {
                 var it = new R(lst.Item2) { Pos = 17 }; uint iuid = it.U32(); it.U32(); int itpl = it.I32(); it.Pos = 17 + 34; int iamt = it.I32();
@@ -1006,9 +1067,9 @@ class Test
     {
         uint backpack = me + 110001, weared = me + 120001;
         g.Send(0x21, Buy(1, me, backpack, 1, 280048));
-        Check(NoReply(g), "the EF weapon shop does not sell Zeon's 75mm machine gun");
+        Check(Refused(g, 0x8021), "the EF weapon shop does not sell Zeon's 75mm machine gun");
         g.Send(0x21, Buy(1, me, backpack, 1, 280003, town: ZeonTown, shop: ZeonShop));
-        Check(NoReply(g), "the Zeon weapon shop sells nothing to EF (Amuro)");
+        Check(Refused(g, 0x8021), "the Zeon weapon shop sells nothing to EF (Amuro)");
         g.Send(0x21, Buy(1, me, backpack, 1, 280003));
         var r = g.Recv(); var rr = new R(r.Item2); rr.Pos = 4; rr.U32(); uint mg = rr.U32(); rr.Pos = 28; uint price = rr.U32();
         Check(r.Item1 == 0x8021 && r.Item2[0] == 2 && r.Item2[1] == 1 && price == 5000 && r.Item2.Length == 45 + 66, "buy an MS head vulcan for 5000 (new item + description with loaded rounds and stats)");
@@ -1016,12 +1077,14 @@ class Test
         g.Send(0x21, Buy(1, me, backpack, 10, 540000));
         r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint ammo = rr.U32(); rr.Pos = 28;
         Check(r.Item2[0] == 2 && rr.U32() == 400 && r.Item2.Length == 79, "buy 10 cartridges for 400 (79 bytes like the official reply)");
-        g.Send(0x21, Buy(1, me, backpack, 5, 540000, town: 57, shop: 406));
+        g.Send(0x21, Buy(1, me, backpack, 5, 540000, town: 59, shop: 401));
         r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint stack = rr.U32(); rr.Pos = 28;
-        Check(r.Item2[0] == 1 && stack == ammo && rr.U32() == 180 && r.Item2.Length == 45, "5 more at shop 406 (90%) for 180 join the stack (0x01, 45 bytes)");
+        Check(r.Item2[0] == 1 && stack == ammo && rr.U32() == 180 && r.Item2.Length == 45, "5 more at Newman's shop 401 (90%) for 180 join the stack (0x01, 45 bytes)");
 
         g.Send(0x22, Sell(me, 540000, ammo, backpack, 110001, 3, town: 51, shop: 41));
-        Check(NoReply(g), "the material shop does not buy cartridges");
+        Check(Refused(g, 0x8022), "Zeon's material shop at ZSSAEO 3 is not for EF");
+        g.Send(0x22, Sell(me, 540000, ammo, backpack, 110001, 3, town: 50, shop: 40));
+        Check(Refused(g, 0x8022), "the EF material shop does not buy cartridges");
         g.Send(0x22, Sell(me, 540000, ammo, backpack, 110001, 3));
         r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint res = rr.U32(); rr.Pos = 52;
         Check(r.Item1 == 0x8022 && r.Item2.Length == 68 && res == 9 && rr.U32() == 60, "sell 3 cartridges for their sell price 60 (part of the stack: 9)");
@@ -1029,14 +1092,23 @@ class Test
         g.Send(0x19, new B().U16(4).U16(0).U32(me).Bytes(new byte[20]).U32(1000).Get());
         r = g.Recv(); Check(r.Item1 == 0x8019 && Conn.Hex(r.Item2).StartsWith("00 04 00 02"), "deposit 1000");
         g.Send(0x19, new B().U16(5).U16(0).U32(me).Bytes(new byte[20]).U32(5000).Get());
-        Check(NoReply(g), "withdrawing more than the bank holds is refused");
+        Check(Refused(g, 0x8019), "withdrawing more than the bank holds is refused");
         g.Send(0x19, new B().U16(5).U16(0).U32(me).Bytes(new byte[20]).U32(500).Get());
         Check(g.Recv().Item1 == 0x8019, "withdraw 500");
 
+        // Service 2: the client asked "use the bank?" because the money carried is short; the bank pays it all.
+        g.Send(0x21, Buy(2, me, backpack, 10, 540000));
+        r = g.Recv(); rr = new R(r.Item2); rr.Pos = 28;
+        Check(r.Item1 == 0x8021 && r.Item2[1] == 2 && r.Item2[3] == 2 && rr.U32() == 400, "10 cartridges bought with bank money (service 2, 400)");
+        System.Threading.Thread.Sleep(300);
+        Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 500001") == "100", "the bank pays: 500 - 400 = 100 left");
+        g.Send(0x21, Buy(2, me, backpack, 10, 540000));
+        Check(Refused(g, 0x8021), "the bank's 100 cannot pay 400 (the money carried is not used for service 2)");
+
         g.Send(0x21, Buy(1, me, backpack, 1, 410000, town: 25, shop: 100));
-        Check(NoReply(g), "a GM (210000) is refused: not enough money, and not a service 3/4 purchase");
+        Check(Refused(g, 0x8021), "a GM (210000) is refused: not enough money, and not a service 3/4 purchase");
         g.Send(0x21, Buy(4, me, weared, 1, 280003));
-        Check(NoReply(g), "service 4 sells only vehicles");
+        Check(Refused(g, 0x8021), "service 4 sells only vehicles");
 
         g.Send(0x21, Buy(4, me, weared, 1, 400000));
         r = g.Recv(); rr = new R(r.Item2); rr.Pos = 8; uint car = rr.U32(); uint carFmt = rr.U32();
@@ -1059,9 +1131,10 @@ class Test
     }
 
 
-    static byte[] Product(ushort action, uint me, uint kind, uint fmt, uint product, uint amount, uint factory, uint[][] inputs, bool dismantle = false, byte colour = 0)
+    // town (EFFSS 0157, whose factories are EF's), factory id, facility index in the town, then the product.
+    static byte[] Product(ushort action, uint me, uint kind, uint facility, uint product, uint amount, uint factory, uint[][] inputs, bool dismantle = false, byte colour = 0, uint town = 50)
     {
-        var b = new B().U16(action).U16(0).U32(me).U32(0x33).U32(kind).U32(fmt).U32(product).U32(amount).U32(factory).U32(0x14).U32(7).I32(-1)
+        var b = new B().U16(action).U16(0).U32(me).U32(town).U32(kind).U32(facility).U32(product).U32(amount).U32(factory).U32(0x14).U32(7).I32(-1)
             .Byte((byte)(0x80 | inputs.Length));
         foreach (var i in inputs) // template, uid, container, container static, amount
             b.U32(7).U32(i[0]).U32(i[1]).U32(dismantle ? 0x14u : 0x13u).U32(i[2]).U32(0x14).U32(i[3]).U32(1).U32(0).U32(i[4]);
@@ -1080,20 +1153,23 @@ class Test
         return Tuple.Create(code, states, output);
     }
 
-    // Amuro (MS/MA and arms construction 130, seeded) refines iron ore, builds a Zaku II F2, takes it to the
-    // hangar and back, takes it apart, and makes an MS-07 shield. Recipes from the client's production tables.
+    // Amuro (EF; MS/MA and arms construction 130, seeded) refines iron ore at EFFSS 0157, is refused a Zaku (Zeon's),
+    // builds a GM, takes it to the hangar and back, takes it apart, and makes an RX-78 shield. Recipes from the
+    // client's production tables; what each factory makes for each side from FACTORYINFOTEMPLATE.
     static void CraftTests(Conn g, Conn g2, uint me, Dictionary<uint, uint[]> info)
     {
         uint backpack = me + 110001, hangar = me + 110003, factory = me + 110006;
-        uint ore = 0, shts = 0, engine = 0;
+        uint ore = 0, shts = 0, engine = 0, ti = 0, tcc = 0;
         foreach (var kv in info)
         {
             if (kv.Value[2] != backpack) continue;
             if (kv.Value[1] == 530001) ore = kv.Key;
             if (kv.Value[1] == 510001) shts = kv.Key;
             if (kv.Value[1] == 290033) engine = kv.Key;
+            if (kv.Value[1] == 510000) ti = kv.Key;
+            if (kv.Value[1] == 510002) tcc = kv.Key;
         }
-        Check(ore != 0 && shts != 0 && engine != 0, "found the seeded iron ore, super high tensile steel and jet engine");
+        Check(ore != 0 && shts != 0 && engine != 0 && ti != 0 && tcc != 0, "found the seeded iron ore, steel, titanium, ceramic composite and jet engine");
 
         // Refine: 1000 iron ore make 500 steel (2 each), 85% of the time; either way the ore is used up.
         g.Send(0x28, Product(2, me, 5, 0x14, 510006, 500, factory, new[] { new uint[] { 530001, ore, backpack, 110001, 1000 } }));
@@ -1115,14 +1191,23 @@ class Test
         pr = ProductReply(RecvOp(g, 0x8028), 1);
         Check(pr.Item1 == 0x0C && pr.Item2[0] == 7 && pr.Item3.Count == 0, "the ore is gone: refused (0x0C, state 7, nothing out)");
 
-        // A Zaku II F2: an MS/MA rocket or jet engine and 60 super high tensile steel; 100% with the skill.
+        // Amuro (EF) cannot have a Zaku made: the factory's EF list does not have it.
         g.Send(0x28, Product(1, me, 6, 0x0A, 410046, 1, factory, new[] { new uint[] { 290033, engine, backpack, 110001, 1 }, new uint[] { 510001, shts, backpack, 110001, 60 } }));
         pr = ProductReply(RecvOp(g, 0x8028), 2);
-        Check(pr.Item1 == 2 && pr.Item2[0] == 8 && pr.Item2[1] == 9 && pr.Item3.Count == 1 && pr.Item3[0][0] == 410046, "a Zaku II F2 is built (engine used up, some steel left)");
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "a Zaku is not on the EF factory's list: refused");
+        // Nor at a Zeon town's factory (ZSSAEO 3, facility 10).
+        g.Send(0x28, Product(1, me, 6, 0x0A, 410000, 1, factory, new[] { new uint[] { 290033, engine, backpack, 110001, 1 }, new uint[] { 510000, ti, backpack, 110001, 34 } }, false, 0, 51));
+        pr = ProductReply(RecvOp(g, 0x8028), 2);
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "a Zeon town's factory refuses Amuro");
+
+        // A GM: an MS/MA rocket or jet engine and 34 titanium alloy; 100% with the skill.
+        g.Send(0x28, Product(1, me, 6, 0x0A, 410000, 1, factory, new[] { new uint[] { 290033, engine, backpack, 110001, 1 }, new uint[] { 510000, ti, backpack, 110001, 34 } }));
+        pr = ProductReply(RecvOp(g, 0x8028), 2);
+        Check(pr.Item1 == 2 && pr.Item2[0] == 8 && pr.Item2[1] == 9 && pr.Item3.Count == 1 && pr.Item3[0][0] == 410000, "a GM is built (engine used up, some titanium alloy left)");
         uint zaku = 0;
-        foreach (var k in Children(g, me, factory, 0x14, 0, 0, 110006, 0)) if (k[2] == 410046) zaku = k[0];
+        foreach (var k in Children(g, me, factory, 0x14, 0, 0, 110006, 0)) if (k[2] == 410000) zaku = k[0];
         Check(zaku != 0, "the Zaku is in the factory");
-        Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 110006 AND item_id = 410046") == "290033",
+        Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 110006 AND item_id = 410000") == "290033",
             "saved in the factory as a vehicle with its jet engine");
 
         g.Send(0x17, Move(7, me, zaku, 0x14, factory, hangar, 110006, 110003, 1, 0xFF, 0xFF));
@@ -1132,10 +1217,10 @@ class Test
         Check(new R(RecvOp(g, 0x8017).Item2).U32() == 0x01010002, "and back into the factory");
 
         // Drag it out of the factory onto the ground and back in (it keeps its unique id).
-        g.Send(0x23, Drop(1, me, zaku, 0x14, factory, 1, 410046, 110006, 7, 1200, 2200, 0xFF));
+        g.Send(0x23, Drop(1, me, zaku, 0x14, factory, 1, 410000, 110006, 7, 1200, 2200, 0xFF));
         var dr = RecvOp(g, 0x8023);
-        Check(dr.Item2[3] == 2 && new R(dr.Item2) { Pos = 8 }.U32() == zaku, "drag the Zaku out of the factory onto the ground");
-        g.Send(0x24, Pick(1, me, zaku, 0x14, factory, 1, 410046, 110006, 0xFF));
+        Check(dr.Item2[3] == 2 && new R(dr.Item2) { Pos = 8 }.U32() == zaku, "drag the GM out of the factory onto the ground");
+        g.Send(0x24, Pick(1, me, zaku, 0x14, factory, 1, 410000, 110006, 0xFF));
         var pk = RecvOp(g, 0x8024);
         Check(pk.Item2[3] == 2 && Children(g, me, factory, 0x14, 0, 0, 110006, 0).Exists(k => k[0] == zaku), "and drag it back into the factory");
         var seen1 = RecvOp(g2, 0x8035); var seen2 = RecvOp(g2, 0x8035);
@@ -1143,18 +1228,21 @@ class Test
 
         UpgradeTests(g, me, info, zaku, factory);
 
-        // Take it apart: 70% of the 60 steel (42), the engine is lost.
-        g.Send(0x28, Product(5, me, 6, 0x0A, 410046, 1, factory, new[] { new uint[] { 410046, zaku, factory, 110006, 1 } }, true));
+        // Take it apart: 70% of the 34 titanium alloy (23), the engine is lost.
+        g.Send(0x28, Product(5, me, 6, 0x0A, 410000, 1, factory, new[] { new uint[] { 410000, zaku, factory, 110006, 1 } }, true));
         pr = ProductReply(RecvOp(g, 0x8028), 1);
-        Check(pr.Item1 == 2 && pr.Item3.Count == 1 && pr.Item3[0][0] == 510001 && pr.Item3[0][1] == 42, "dismantled: 42 super high tensile steel back");
+        Check(pr.Item1 == 2 && pr.Item3.Count == 1 && pr.Item3[0][0] == 510000 && pr.Item3[0][1] == 23, "dismantled: 23 titanium alloy back (" + (pr.Item3.Count > 0 ? pr.Item3[0][1] + "x" + pr.Item3[0][0] : "nothing") + ")");
         Check(!Children(g, me, factory, 0x14, 0, 0, 110006, 0).Exists(k => k[0] == zaku), "the Zaku is gone");
 
-        // An MS-07 shield from the last 4 steel in the backpack (98%; EX at arms 1.5+, 40%).
+        // An MS-07 shield is Zeon's; an RX-78 shield from 2 titanium ceramic composite is EF's.
         g.Send(0x28, Product(4, me, 3, 0x10, 360005, 1, factory, new[] { new uint[] { 510001, shts, backpack, 110001, 4 } }));
         pr = ProductReply(RecvOp(g, 0x8028), 1);
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "the MS-07 shield is not on the EF weapon factory's list: refused");
+        g.Send(0x28, Product(4, me, 3, 0x10, 360000, 1, factory, new[] { new uint[] { 510002, tcc, backpack, 110001, 2 } }));
+        pr = ProductReply(RecvOp(g, 0x8028), 1);
         Console.WriteLine("  shield: code {0} out {1}", pr.Item1, string.Join(",", pr.Item3.Select(o => o[1] + "x" + o[0])));
-        Check(pr.Item2[0] == 8 && (pr.Item1 == 2 ? pr.Item3[0][0] == 360005 || pr.Item3[0][0] == 360025 : pr.Item3[0][1] == 2),
-            "an MS-07 shield (or its EX), or 2 of the 4 steel back");
+        Check(pr.Item2[0] == 8 && (pr.Item1 == 2 ? pr.Item3[0][0] / 100 == 3600 : pr.Item3[0][0] == 510002),
+            "an RX-78 shield (or its EX), or some of the composite back");
         Check(Sql("SELECT skill_level FROM skills WHERE char_id = " + me + " AND skill_idx = 22") == "1300", "MS/MA construction stays at its 130 cap");
         DyeTests(g, g2, me, info);
     }
@@ -1224,7 +1312,7 @@ class Test
         return result;
     }
 
-    // Zaku II F2 upgrades (UpgradeChance 100 in the tests): level 1 of each type takes 3 of its package; the levels
+    // GM upgrades (UpgradeChance 100 in the tests): level 1 of each type takes 2 of its package; the levels
     // show in the vehicle's stats list (19th int: power bits 0-3, defence 4-7, hit 8-11) and are saved ("^levels").
     static void UpgradeTests(Conn g, uint me, Dictionary<uint, uint[]> info, uint zaku, uint factory)
     {
@@ -1239,37 +1327,37 @@ class Test
         Check(power != 0 && hit != 0 && defence != 0, "found the seeded improvement packages");
         Func<uint, uint, uint, byte[]> upgrade = (template, uid, amount) =>
         {
-            var body = Product(8, me, 6, 0x0A, 410046, 1, factory, new[] { new uint[] { template, uid, backpack, 110001, amount } }, true);
+            var body = Product(8, me, 6, 0x0A, 410000, 1, factory, new[] { new uint[] { template, uid, backpack, 110001, amount } }, true);
             body[body.Length - 9] = 1; // improve flag
             new B().U32(zaku).Get().CopyTo(body, body.Length - 8);
             return body;
         };
         Func<int> levels = () =>
         {
-            g.Send(0x16, new B().U32(0x00020000).U32(me).U32(zaku).U32(0x14).U32(factory).U32(0x14).U32(410046).U32(110006).U32(0xB).Byte(0xFF).Get());
+            g.Send(0x16, new B().U32(0x00020000).U32(me).U32(zaku).U32(0x14).U32(factory).U32(0x14).U32(410000).U32(110006).U32(0xB).Byte(0xFF).Get());
             var d = RecvOp(g, 0x8016).Item2;
             for (int i = 0; i + 77 <= d.Length; i++)
                 if (d[i] == 0x93 && d[i + 1] == 0 && d[i + 2] == 0) return (int)new R(d) { Pos = i + 1 + 18 * 4 }.U32();
             return -1;
         };
-        Check(levels() == 0, "a new Zaku has no upgrades");
+        Check(levels() == 0, "a new GM has no upgrades");
 
-        g.Send(0x28, upgrade(510022, hit, 3));
+        g.Send(0x28, upgrade(510022, hit, 2));
         var r = RecvOp(g, 0x8028); var pr = ProductReply(r, 1);
         Check(pr.Item1 == 2 && pr.Item2[0] == 8 && pr.Item3.Count == 0 && r.Item2[r.Item2.Length - 11] == 1,
-            "hit upgrade 1 works: the 3 accuracy packages are used up, improve flag 1, nothing out");
+            "hit upgrade 1 works: the 2 accuracy packages are used up, improve flag 1, nothing out");
         g.Send(0x28, upgrade(510021, power, 10));
         r = RecvOp(g, 0x8028); pr = ProductReply(r, 1);
-        Check(pr.Item1 == 2 && pr.Item2[0] == 9 && r.Item2[r.Item2.Length - 11] == 1, "power upgrade 1 works: 3 of the 10 enhancement packages used");
+        Check(pr.Item1 == 2 && pr.Item2[0] == 9 && r.Item2[r.Item2.Length - 11] == 1, "power upgrade 1 works: 2 of the 10 enhancement packages used");
         int packed = levels();
         Check(packed == 0x101, "the stats list shows hit 1 and power 1 (" + packed.ToString("X") + ", as the official 0x111 layout)");
         System.Threading.Thread.Sleep(300);
-        Check(Sql("SELECT child FROM container WHERE char_id = " + me + " AND item_id = 410046") == "^257", "saved with the vehicle (^257)");
+        Check(Sql("SELECT child FROM container WHERE char_id = " + me + " AND item_id = 410000") == "^257", "saved with the vehicle (^257)");
 
-        g.Send(0x28, upgrade(510023, defence, 2));
+        g.Send(0x28, upgrade(510023, defence, 1));
         pr = ProductReply(RecvOp(g, 0x8028), 1);
-        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "defence upgrade 1 needs 3 packages, 2 are not enough: refused, nothing used");
-        g.Send(0x28, upgrade(510022, hit, 3));
+        Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "defence upgrade 1 needs 2 packages, 1 is not enough: refused, nothing used");
+        g.Send(0x28, upgrade(510022, hit, 2));
         pr = ProductReply(RecvOp(g, 0x8028), 1);
         Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "the accuracy packages are gone: refused");
     }
@@ -1287,14 +1375,14 @@ class Test
         }
         Check(silk != 0 && basic != 0 && light != 0, "found the seeded silk yarn and dyes");
 
-        g.Send(0x28, Product(3, me, 4, 7, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350001, light, backpack, 110001, 1 } }, false, 40));
+        g.Send(0x28, Product(3, me, 4, 10, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350001, light, backpack, 110001, 1 } }, false, 40, 2));
         var pr = ProductReply(RecvOp(g, 0x8028), 2);
         Check(pr.Item1 == 0x0C && pr.Item2[0] == 7 && pr.Item2[1] == 7, "a light colour needs Clothing Manufacturing 19.0: refused, nothing used");
-        g.Send(0x28, Product(3, me, 4, 7, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350000, basic, backpack, 110001, 1 } }, false, 40));
+        g.Send(0x28, Product(3, me, 4, 10, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350000, basic, backpack, 110001, 1 } }, false, 40, 2));
         pr = ProductReply(RecvOp(g, 0x8028), 2);
         Check(pr.Item1 == 0x0C && pr.Item2[0] == 7, "colour 40 is not one of the basic dye's (0-13): refused");
 
-        g.Send(0x28, Product(3, me, 4, 7, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350000, basic, backpack, 110001, 1 } }, false, 5));
+        g.Send(0x28, Product(3, me, 4, 10, 240082, 1, factory, new[] { new uint[] { 230009, silk, backpack, 110001, 2 }, new uint[] { 350000, basic, backpack, 110001, 1 } }, false, 5, 2));
         pr = ProductReply(RecvOp(g, 0x8028), 2);
         Check(pr.Item1 == 2 && pr.Item2[0] == 9 && pr.Item2[1] == 9 && pr.Item3.Count == 1 && pr.Item3[0][0] == 240082, "a shirt in basic colour 5 is made (yarn and dye used)");
         uint shirt = 0;
@@ -1337,7 +1425,7 @@ class Test
         b2 = g2.Recv(); b1 = g.Recv();
         Check(b2.Item1 == 0x8035 && new R(b2.Item2).U32() == 2 && b1.Item1 == 0x8035, "0x8035 item picked up to both");
         g.Send(0x24, Pick(1, me, gid, 0x13, me + 110001, 3, 240000, 110001, 0xFF));
-        Check(NoReply(g), "picking it up again is refused");
+        Check(Refused(g, 0x8024), "picking it up again is refused");
 
         // Mini op 4: 2 more yarn picked up onto the other player's yarn stack (the one just picked up).
         g.Send(0x23, Drop(1, me, yarnStack, 0x13, me + 110001, 2, 240000, 110001, 1, 1100, 2100, 0xFF));
@@ -1385,11 +1473,11 @@ class Test
         Check(Conn.Hex(g.Recv().Item2).StartsWith("00 03 00 02"), "on foot after getting out");
 
         g2.Send(0x24, Pick(3, other, vehicle, 0x14, other + 120001, 1, vstat, 120001, 0x00));
-        Check(NoReply(g2), "the other player cannot take Amuro's vehicle");
+        Check(Refused(g2, 0x8024), "the other player cannot take Amuro's vehicle");
 
         // Owner changes (0x25): only the owner can give it away.
         g2.Send(0x25, new B().U32(other).U32(other).U32(vstat).U32(vehicle).U32(0x14).U32(0).Get());
-        Check(NoReply(g2), "the other player cannot make Amuro's vehicle theirs");
+        Check(Refused(g2, 0x8025), "the other player cannot make Amuro's vehicle theirs");
         g.Send(0x25, new B().U32(me).U32(other).U32(vstat).U32(vehicle).U32(0x14).U32(0).Get());
         r = g.Recv();
         Check(r.Item1 == 0x8025 && Conn.Hex(r.Item2).Trim() == "00 00 00 01 00 00 00 02 00 00 00 00", "Amuro gives the vehicle to Char (0x8025 1, 2, 0)");
@@ -1418,6 +1506,35 @@ class Test
     }
 
     // GM spawn through the game server console (run with "spawn"; run/spawn.sh types the commands).
+    // A breakable plant of the GM's own side (330002, EF, 15000 health) placed with #spawn id: shooting it changes its
+    // health for everyone near (0x8035 action 5) and is a crime; nobody can make it theirs.
+    static void TargetTests(Conn g, uint me)
+    {
+        System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "t", "ready");
+        Tuple<uint, byte[]> placed = null;
+        var until = DateTime.Now.AddSeconds(15);
+        while (DateTime.Now < until && placed == null) { var r = g.Recv(true); if (r != null && r.Item1 == 0x8035 && new R(r.Item2) { Pos = 12 }.I32() == 330002) placed = r; }
+        if (placed == null) { Check(false, "#spawn id 330002 places a temporary plant"); return; }
+        var pr = new R(placed.Item2) { Pos = 4 }; uint plant = pr.U32(); uint fmt = pr.U32();
+        int hp0 = new R(placed.Item2) { Pos = 4 + 47 }.I32();
+        Check(new R(placed.Item2).U32() == 1 && fmt == 0x14 && hp0 == 15000, "#spawn id 330002 places an EF temporary plant with 15000 health (" + hp0 + ")");
+        g.Send(0x25, new B().U32(me).U32(me).U32(330002).U32(plant).U32(0x14).U32(0).Get());
+        Check(Refused(g, 0x8025), "nobody can make the plant theirs");
+        bool hit = false;
+        for (int i = 0; i < 10 && !hit; i++)
+        {
+            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(0xFFFF).U32(plant).U32(0x14).U32(330002).Get());
+            var r = RecvOp(g, 0x8011);
+            if (r.Item1 != 0x8011) break;
+            if (new R(r.Item2) { Pos = 8 }.U32() == 0) continue;
+            hit = true;
+            Check(r.Item2[13] == 1, "shooting your own side's plant is a crime (0x8011 crime byte " + r.Item2[13] + ")");
+            var u = RecvOp(g, 0x8035); int hp = new R(u.Item2) { Pos = 4 + 47 }.I32();
+            Check(new R(u.Item2).U32() == 5 && hp < 15000 && hp > 0, "the plant's new health goes out (0x8035 action 5, " + hp + ")");
+        }
+        Check(hit, "the plant can be shot");
+    }
+
     static int SpawnTest()
     {
         var a = Lobby("gm1", "secret1", "Gmtest", 1, false);
@@ -1460,9 +1577,11 @@ class Test
         while (!destroyed && shots < 85)
         {
             shots++;
-            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(0xFFFF).U32(msUid).U32(0x14).U32(410000).Get());
+            // The first shot asks for melee special 0, which a machine gun does not have: a normal shot (FFFF back).
+            g.Send(0x11, new B().U32(me).Byte(0).Byte(0).U16(shots == 1 ? (ushort)0 : (ushort)0xFFFF).U32(msUid).U32(0x14).U32(410000).Get());
             var r = RecvOp(g, 0x8011);
             if (r.Item1 != 0x8011 || r.Item2.Length != 42) { Check(false, "0x8011 (42 bytes) for a shot at the parked GM"); break; }
+            if (shots == 1) Check(r.Item2[14] == 0xFF && r.Item2[15] == 0xFF && r.Item2[20] <= 1, "a machine gun cannot do melee special 0: a normal shot (special FFFF, durability 0 or 1)");
             if (new R(r.Item2) { Pos = 8 }.U32() == 0) continue;
             var u = RecvOp(g, 0x8035); uint action = new R(u.Item2).U32(); int hp = new R(u.Item2) { Pos = 4 + 47 }.I32();
             if (action == 5) damaged++;
@@ -1471,6 +1590,8 @@ class Test
         Console.WriteLine("  {0} shots at the parked GM", shots);
         Check(damaged > 0, "hits on the parked GM send its new health (0x8035 action 5)");
         Check(destroyed, "the parked GM is destroyed and becomes a wreck (0x8035 action 1, health 0)");
+
+        TargetTests(g, me);
 
         System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "2", "ready");
         var ready2 = DateTime.Now;
@@ -1759,6 +1880,15 @@ class Test
         }
         Check(mine == team, "the game server's position record of the GM has team " + team + " (" + mine + ")");
 
+        // The help's rule: no new team for 7 days after creating one (CMSServer.xml TeamRecreateDays).
+        cms.Send(0x10, new B().U32(me).U32((uint)team).Get());
+        System.Threading.Thread.Sleep(300);
+        Drain(cms);
+        cms.Send(0x0D, new B().Str("Testers Two").U32(me).Get());
+        var again = RecvOp(cms, 0x800C);
+        Check(again.Item2[3] != 2 && Sql("SELECT COUNT(*) FROM team WHERE name = 'Testers Two'") == "0",
+            "the GM left and cannot create another team within 7 days (0x800C code " + again.Item2[3] + ")");
+
         Func<string, List<string>> say = line =>
         {
             Drain(cms);
@@ -1798,6 +1928,44 @@ class Test
         if (string.IsNullOrEmpty(path)) return "";
         using (var f = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
         using (var r = new System.IO.StreamReader(f)) return r.ReadToEnd();
+    }
+
+    // /allianceall (type 1) and /alliance (3) are the faction's chat: the client lists only its own side, and the chat
+    // server drops anyone else a modified client lists. /all (0) reaches everyone listed.
+    static void AllianceChatTests(uint amuro, uint chr, uint kai)
+    {
+        Console.WriteLine("== Alliance chat");
+        Func<uint, string, Conn> login = (id, name) =>
+        {
+            var c = new Conn("cms:" + name, "127.0.0.1", 42016);
+            c.Send(0x01, new B().U32(id).Str(name).U32(0xFFFFFFFF).Get());
+            RecvOp(c, 0x8001);
+            return c;
+        };
+        var ca = login(amuro, "Amuro"); var cc = login(chr, "Char"); var ck = login(kai, "Kai");
+        System.Threading.Thread.Sleep(500);
+        Func<Conn, List<string>> heard = c =>
+        {
+            var lines = new List<string>();
+            var until = DateTime.Now.AddSeconds(2);
+            while (DateTime.Now < until)
+            {
+                Tuple<uint, byte[]> r;
+                try { r = c.Recv(true); } catch (Exception) { break; }
+                if (r == null) break;
+                if (r.Item1 != 0x8004) continue;
+                var rr = new R(r.Item2); uint from = rr.U32(); string text = rr.Str(); uint type = rr.U32();
+                if (from == kai) lines.Add(type + ":" + text);
+            }
+            return lines;
+        };
+        ca.KeepGains = true;
+        ck.Send(0x03, new B().U32(kai).Str("Sieg Zeon").U32(1).U32(0).Size(2).U32(chr).U32(amuro).Get());
+        ck.Send(0x03, new B().U32(kai).Str("hello all").U32(0).U32(0).Size(2).U32(chr).U32(amuro).Get());
+        var toChar = heard(cc); var toAmuro = heard(ca);
+        Check(toChar.Contains("1:Sieg Zeon") && toChar.Contains("0:hello all"), "Char (Zeon) hears Kai's /allianceall and /all (" + string.Join(" / ", toChar) + ")");
+        Check(!toAmuro.Contains("1:Sieg Zeon") && toAmuro.Contains("0:hello all"), "Amuro (EF) hears only the /all (" + string.Join(" / ", toAmuro) + ")");
+        ca.Close(); cc.Close(); ck.Close();
     }
 
     // The launcher asks the Login-Server (42012) for the status: 0x8000 body = 0, status (0 online, 1 offline,
@@ -1857,9 +2025,12 @@ class Test
             DbArgs() + " titans-server -e \"INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 240000, 'cotton yarn', 10, '')\"") { UseShellExecute = false });
         seed.WaitForExit();
         // Crafting ingredients and skills for CraftTests.
-        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 530001, 'iron ore', 1000, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510001, 'super high tensile steel', 64, ''), (" + a.Chars[0] + ", 110001, 'backpack', 290033, 'jet engine', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510021, 'enhancement package', 10, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510022, 'accuracy improvement package', 3, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510023, 'defensive improvement package', 2, '')");
+        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 530001, 'iron ore', 1000, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510001, 'super high tensile steel', 64, ''), (" + a.Chars[0] + ", 110001, 'backpack', 290033, 'jet engine', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510021, 'enhancement package', 10, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510022, 'accuracy improvement package', 2, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510023, 'defensive improvement package', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510000, 'titanium alloy', 40, ''), (" + a.Chars[0] + ", 110001, 'backpack', 510002, 'titanium ceramic composite', 2, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 240088, 'cap', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 240092, 'glasses', 1, '')");
         Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 230009, 'silk yarn', 6, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350000, 'basic color dyes', 3, ''), (" + a.Chars[0] + ", 110001, 'backpack', 350001, 'light color dyes', 2, '')");
+        // Two camps and the rank to set one up (Lieutenant, 8) for CampTests.
+        Sql("INSERT INTO container (char_id, container_id, container_name, item_id, item_name, item_amount, child) VALUES (" + a.Chars[0] + ", 110001, 'backpack', 340001, 'EF Camp Weapon Shop', 1, ''), (" + a.Chars[0] + ", 110001, 'backpack', 340003, 'ZEON Camp Weapon Shop', 1, '')");
+        Sql("UPDATE appearance SET `rank` = 8 WHERE char_id = " + a.Chars[0].ToString().Substring(1));
         Sql("DELETE FROM skills WHERE char_id = " + a.Chars[0] + " AND skill_idx IN (22, 24); INSERT INTO skills (char_id, skill_idx, skill_level, skill_exp) VALUES (" + a.Chars[0] + ", 22, 1300, 0), (" + a.Chars[0] + ", 24, 1300, 0)");
 
         // Game server: wrong key.
@@ -1945,6 +2116,7 @@ class Test
 
         g.Send(0x00, Coord(me, 1000, 2000, 30));
         Check(g.Recv().Item1 == 0x8000, "register coordinates");
+        CampTests(g, me, backpack, info);
 
         // Second player joins nearby.
         var g2 = GameLogin("Char", b, b.Key);
@@ -1998,6 +2170,9 @@ class Test
         Check(g.Recv().Item1 == 0x8055, "logout");
         g.Send(0x42, new byte[0]);
         Check(g.Recv().Item1 == 0x8042, "leave game server");
+        g.Send(0x3F, new B().U32(me).I32(1).U32(0).Byte(0x80).U16(0).Byte(0x80).Get());
+        var quit = g.Recv();
+        Check(quit != null && quit.Item1 == 0x803F && quit.Item2.Length == 28 && Conn.Hex(quit.Item2).StartsWith("00 01 00 02"), "0x3F quits (0x803F 00 01 00 02)");
         g.Close();
 
         // The second player no longer sees the first.
@@ -2011,22 +2186,23 @@ class Test
         Check(left == 2, "Amuro's vehicle and the freighter's wreck lie on the ground (" + left + ")");
         Check(Sql("SELECT COUNT(*) FROM container WHERE char_id = " + me + " AND container_id = 110003") == "0", "the ground vehicle is not in the hangar");
         System.Threading.Thread.Sleep(11000);
-        var groundRows = Sql("SELECT vehicle, wreck, owner_id, child FROM ground_items WHERE zone = 1 AND vehicle = 1 ORDER BY wreck");
+        var groundRows = Sql("SELECT vehicle, wreck, owner_id, child FROM ground_items WHERE zone = 1 AND vehicle = 1 AND item_id NOT BETWEEN 340000 AND 340003 ORDER BY wreck");
         Console.WriteLine("  ground rows: " + groundRows.Replace("\n", " | "));
         var gr = groundRows.Split('\n');
         Check(gr.Length >= 2 && gr[0].StartsWith("1\t0\t" + me) && gr[0].EndsWith("240000-2"), "the ground vehicle is saved with the world, with its 2 yarn");
         Check(Array.Exists(gr, x => x.StartsWith("1\t1\t" + other)), "the freighter's wreck is saved too, owned by Char who destroyed it");
         Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 110001 AND item_id = 240000") == "3", "3 yarn left in the backpack");
         // 30410 before the mining tests' ThunderGoliath (10000) and drill (2000).
-        Check(Sql("SELECT char_money FROM characters WHERE char_name = 'Amuro'") == "22080", "Amuro's money is saved as 22080");
+        Check(Sql("SELECT char_money FROM characters WHERE char_name = 'Amuro'") == "21730", "Amuro's money is saved as 21730");
         Check(Sql("SELECT zone FROM characters WHERE char_name = 'Amuro'") == "2", "Amuro is saved in Space");
-        Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 500001") == "500", "the bank holds 500");
+        Check(Sql("SELECT item_amount FROM container WHERE char_id = " + me + " AND container_id = 500001") == "100", "the bank holds 100 (500 less the 400 paid from it)");
         Check(Sql("SELECT COUNT(*) FROM flights") == "0", "the flight is over");
         RelogTest(a, me, before);
         if (chr != null) ExileTest(g2, k, other, kai, chr);
         g2.Close();
         k.Close();
 
+        AllianceChatTests(a.Chars[0], b.Chars[0], c.Chars[0]);
         LoginStatusTests();
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;

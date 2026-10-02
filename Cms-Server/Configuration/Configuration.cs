@@ -11,7 +11,7 @@ namespace TitansUC.CmsServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42016, loglevel = 31, gameLinkPort = 10241;
+        int port = 42016, loglevel = 31, gameLinkPort = 10241, teamRecreateDays = 7;
         bool checkLoginSession = true;
         string welcome = string.Empty, gameLinkPassword = string.Empty;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
@@ -45,6 +45,11 @@ namespace TitansUC.CmsServer
         /// </summary>
         public string GameLinkPassword { get { return gameLinkPassword; } }
 
+        /// <summary>
+        /// Days a character must wait after creating a team before creating another (the help: 7); 0 = no wait.
+        /// </summary>
+        public int TeamRecreateDays { get { return teamRecreateDays; } }
+
         public string DBHost { get { return dbHost; } }
         public int DBPort { get { return dbPort; } }
         public string DBName { get { return dbName; } }
@@ -75,6 +80,9 @@ namespace TitansUC.CmsServer
                         case "welcome":
                             welcome = string.Join("\n", i.InnerText.Replace("\r", string.Empty).Split('\n')
                                 .Select(l => l.Trim()).Where(l => l.Length > 0));
+                            break;
+                        case "teamrecreatedays":
+                            teamRecreateDays = int.Parse(i.InnerText.Trim());
                             break;
                         case "gamelinkport":
                             gameLinkPort = int.Parse(i.InnerText.Trim());

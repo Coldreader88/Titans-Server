@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using TitansUC.GameServer.World;
 
 namespace TitansUC.GameServer.Network.Packets.Client
@@ -23,6 +23,30 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_BUY_ITEM : UCPacket<GSOpcode>
     {
+        /// <summary>
+        /// The refusal, 45 bytes in the success layout with 0x000C (the client shows "Buy item error" and
+        /// re-enables the shop). Byte 0 must not be 0: service 3 or 4 there would take the client's ride-away path.
+        /// </summary>
+        public SM_BUY_ITEM(CM_BUY_ITEM request)
+        {
+            this.ID = GSOpcode.SM_BUY_ITEM;
+
+            this.PutByte(2);
+            this.PutByte((byte)request.Service);
+            this.PutUShortBE(0x000C);
+            this.PutUIntBE(request.CharacterID);
+            this.PutUIntBE(0);
+            this.PutIntBE(0);
+            this.PutUIntBE(request.DestUniqueID);
+            this.PutIntBE(request.DestFormat);
+            this.PutIntBE(0);
+            this.PutIntBE(0);
+            this.PutIntBE(request.StaticID);
+            this.PutIntBE(1);
+            this.PutIntBE(request.Amount);
+            this.PutSize(0);
+        }
+
         public SM_BUY_ITEM(CM_BUY_ITEM request, BuyResult result, int price)
         {
             this.ID = GSOpcode.SM_BUY_ITEM;

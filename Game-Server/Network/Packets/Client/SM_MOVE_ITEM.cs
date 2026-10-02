@@ -32,6 +32,17 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public const uint Rode = 0x01020002;
         public const uint PutBack = 0x01030002;
 
+        /// <summary>
+        /// The refusal: the success layout (63 bytes, the client does not parse less and then stays locked, see
+        /// specs/re-refusal-replies.md) with 0x000C instead of 2 in the kind's low half; nothing moves.
+        /// </summary>
+        public static SM_MOVE_ITEM Refused(CM_MOVE_ITEM request)
+        {
+            uint kind = request.Section == CM_MOVE_ITEM.SectionRide ? Rode :
+                request.Section == CM_MOVE_ITEM.SectionPutBack ? PutBack : Moved;
+            return new SM_MOVE_ITEM((kind & 0xFFFF0000) | 0x000C, request, null, 0);
+        }
+
         public SM_MOVE_ITEM(uint kind, CM_MOVE_ITEM request, ItemNode target, int itemStaticID)
         {
             this.ID = GSOpcode.SM_MOVE_ITEM;

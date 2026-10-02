@@ -8,7 +8,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// 0x21: buys from a shop.
     ///
     /// <code>
-    /// uint16 BE   service: 1 = shop (items), 2 = shop (seen once, same layout), 3 = a shuttle,
+    /// uint16 BE   service: 1 = shop (items), 2 = shop, paid from the bank (the player said yes to "use the bank?"), 3 = a shuttle,
     ///             4 = a car; vehicles bought into weared are ridden away at once
     /// uint16 BE   0
     /// uint32 BE   character id
@@ -30,7 +30,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
     public class CM_BUY_ITEM : UCPacket<GSOpcode>
     {
         public const int ServiceItems = 1;
-        public const int ServiceItems2 = 2;
+        public const int ServiceBank = 2;
         public const int ServiceShuttle = 3;
         public const int ServiceCar = 4;
 

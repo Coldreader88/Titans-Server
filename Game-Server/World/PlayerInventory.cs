@@ -280,6 +280,22 @@ namespace TitansUC.GameServer.World
                     dest.Add(item);
                     return new MoveResult { Item = item, Kind = MoveKind.Moved };
                 }
+                if (item != null && item == Money && dest != null && CanHoldItems(dest) && amount > 0 && amount <= item.Amount)
+                {
+                    // RequestMoneyDivide: part of the main money into a container (the trade pack); the main money
+                    // stays, even at 0 (specs/re-unknown-packets.md 3.3).
+                    item.Amount -= amount;
+                    var pile = dest.Children.Find(c => Joins(c, item));
+                    if (pile != null)
+                    {
+                        pile.Amount += amount;
+                        Touch(pile);
+                        return new MoveResult { Item = item, Target = pile, Kind = MoveKind.AddedToStack };
+                    }
+                    var money = NewItem(item.StaticID, amount, "money");
+                    Register(dest.Add(money));
+                    return new MoveResult { Item = item, Target = money, Kind = MoveKind.Split };
+                }
                 if (item == null || source == null || dest == null || item.Parent != source || source == dest ||
                     dest.Format != ItemNode.Multi || !CanHoldItems(source) || !CanHoldItems(dest) ||
                     item.Format != ItemNode.Singleton || amount <= 0 || amount > item.Amount)
@@ -333,18 +349,57 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Adds <paramref name="amount"/> of an item to another item of the same kind (0x17 sections 0x0A / 0x0B:
+        /// money taken out of the trade pack into the main money). <see cref="MoveKind.Merged"/> when the whole item
+        /// joined (it is gone), <see cref="MoveKind.AddedToStack"/> for part of it. Null when it cannot.
+        /// </summary>
+        public MoveResult MergeInto(uint itemUID, uint sourceUID, uint targetUID, int amount)
+        {
+            lock (sync)
+            {
+                var item = GetLocked(itemUID);
+                var source = GetLocked(sourceUID);
+                var target = GetLocked(targetUID);
+                if (item == null || source == null || target == null || item.Parent != source || !CanHoldItems(source) ||
+                    item.Format != ItemNode.Singleton || !Joins(target, item) || amount <= 0 || amount > item.Amount)
+                {
+                    return null;
+                }
+
+                target.Amount += amount;
+                Touch(target);
+                var result = new MoveResult { Item = item, Target = target };
+                if (amount == item.Amount)
+                {
+                    source.Remove(item);
+                    Unregister(item);
+                    result.Kind = MoveKind.Merged;
+                }
+                else
+                {
+                    item.Amount -= amount;
+                    Touch(item);
+                    result.Kind = MoveKind.AddedToStack;
+                }
+                return result;
+            }
+        }
+
+        /// <summary>
         /// Buys <paramref name="amount"/> of an item into a container (0x21), paying <paramref name="price"/>
         /// from the money. Items that stack join a stack of the same item there (<see cref="BuyResult.Added"/>).
         /// Vehicles go in the hangar, or into weared's vehicle slot to ride away at once (cars and shuttles).
-        /// Returns null when the container cannot take it or the money is short.
+        /// Returns null when the container cannot take it or the money is short. <paramref name="fromBank"/>: the
+        /// whole price comes from the bank (the client asks "use the bank?" when the money it carries is short, and
+        /// only when the bank alone can pay; it never splits the price).
         /// </summary>
-        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price)
+        public BuyResult Buy(ItemTemplate template, uint destUID, int amount, int price, bool fromBank = false)
         {
             lock (sync)
             {
                 var dest = GetLocked(destUID);
-                var money = Money;
-                if (dest == null || amount <= 0 || price < 0 || price > money.Amount)
+                var money = fromBank ? Credit : Money;
+                if (dest == null || money == null || amount <= 0 || price < 0 || price > money.Amount)
                 {
                     return null;
                 }
@@ -1054,13 +1109,16 @@ namespace TitansUC.GameServer.World
         {
             lock (sync)
             {
-                if (item.StaticID == PlayerContainers.Money && item.Format == ItemNode.Singleton)
+                var dest = GetLocked(destUID);
+                // Money joins the main money, unless the client put it in the trade pack (loot taken with
+                // RequestPickUpItemToTradeCon, specs/re-unknown-packets.md 3.4).
+                if (item.StaticID == PlayerContainers.Money && item.Format == ItemNode.Singleton &&
+                    (dest == null || dest.StaticID != PlayerContainers.TradePack))
                 {
                     Money.Amount += item.Amount;
                     return true;
                 }
 
-                var dest = GetLocked(destUID);
                 if (IsVehicle(item))
                 {
                     // Dragged from the ground into the factory, to be taken apart (Zaku_F2A_Drag_into_Factory.pcap).
@@ -1412,7 +1470,7 @@ namespace TitansUC.GameServer.World
         public static ItemNode BuildVehicle(CharacterItem item)
         {
             var template = VehicleTemplates.Get(item.ItemID);
-            int health = template != null ? template.Health : VehicleTemplates.DefaultHealth;
+            int health = template != null ? template.Health : Camps.IsCamp(item.ItemID) ? Camps.Health : VehicleTemplates.DefaultHealth;
             // An engine the vehicle cannot have (saved before VehicleEngines was checked) gives way to its own.
             int saved = item.Amount > 0 && VehicleEngines.Fits(item.ItemID, item.Amount) ? item.Amount : -1;
             int engine = saved > 0 ? saved : template != null ? template.EngineID : ItemTemplates.EngineOf(item.ItemID);

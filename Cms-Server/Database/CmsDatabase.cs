@@ -40,7 +40,7 @@ namespace TitansUC.CmsServer.Database
         private readonly object teamLock = new object();
 
         private const string SelectMember =
-            "SELECT c.char_id, c.acc_id, c.char_name, c.char_access, c.team_id, a.gender, a.rank " +
+            "SELECT c.char_id, c.acc_id, c.char_name, c.char_access, c.team_id, a.gender, a.rank, a.faction " +
             "FROM characters c LEFT JOIN appearance a ON a.char_id = c.char_id ";
 
         public void EnsureTables()
@@ -66,6 +66,12 @@ namespace TitansUC.CmsServer.Database
                         Execute(connection, "ALTER TABLE `team` ADD COLUMN `created` int(11) NOT NULL DEFAULT '0'");
                     }
                 }
+
+                Execute(connection,
+                    "CREATE TABLE IF NOT EXISTS `team_created` (" +
+                    "`char_id` int(10) unsigned NOT NULL PRIMARY KEY, " +
+                    "`created` int(11) NOT NULL DEFAULT '0'" +
+                    ") ENGINE=MyISAM DEFAULT CHARSET=utf8");
 
                 Execute(connection,
                     "CREATE TABLE IF NOT EXISTS `friends` (" +
@@ -153,6 +159,7 @@ namespace TitansUC.CmsServer.Database
                 TeamID = GetInt(r, "team_id", -1),
                 Gender = (byte)GetInt(r, "gender", 1),
                 Rank = (byte)GetInt(r, "rank", 1),
+                Faction = (byte)GetInt(r, "faction", 0),
             };
         }
 
@@ -199,6 +206,20 @@ namespace TitansUC.CmsServer.Database
             }
         }
 
+        /// <summary>
+        /// When the character last created a team (unix seconds), 0 for never.
+        /// </summary>
+        public uint LastTeamCreated(uint clientID)
+        {
+            using (var connection = DatabaseConnection.Open())
+            using (var cmd = new MySqlCommand("SELECT created FROM team_created WHERE char_id = @char", connection))
+            {
+                cmd.Parameters.AddWithValue("@char", clientID);
+                var v = cmd.ExecuteScalar();
+                return v == null || v is DBNull ? 0 : Convert.ToUInt32(v);
+            }
+        }
+
         public bool TeamNameExists(string name)
         {
             using (var connection = DatabaseConnection.Open())
@@ -236,6 +257,13 @@ namespace TitansUC.CmsServer.Database
                 }
 
                 SetCharacterTeam(connection, leader.ClientID, id);
+
+                using (var cmd = new MySqlCommand("REPLACE INTO team_created (char_id, created) VALUES (@char, @created)", connection))
+                {
+                    cmd.Parameters.AddWithValue("@char", leader.ClientID);
+                    cmd.Parameters.AddWithValue("@created", now);
+                    cmd.ExecuteNonQuery();
+                }
 
                 return new Team { ID = id, Name = name, LeaderID = leader.ClientID, LeaderName = leader.Name, Created = now };
             }

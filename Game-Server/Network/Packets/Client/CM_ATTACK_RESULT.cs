@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 using SmartEngine.Network;
 using TitansUC.GameServer.Network.Client;
 
@@ -36,7 +36,15 @@ namespace TitansUC.GameServer.Network.Packets.Client
         public uint TargetID { get; private set; }
         public uint TargetVehicleUID { get; private set; }
         public int Slot { get; private set; }
+        /// <summary>
+        /// Distance to the target; the client sends it as uint16 section (0) and uint16 distance.
+        /// </summary>
         public int Distance { get; private set; }
+
+        /// <summary>
+        /// The melee special attack (SPECIALATTACKTEMPLATE id), FFFF none.
+        /// </summary>
+        public ushort SpecialAttackID { get; private set; }
         public int X { get; private set; }
         public int Y { get; private set; }
         public int Z { get; private set; }
@@ -52,7 +60,7 @@ namespace TitansUC.GameServer.Network.Packets.Client
             TargetVehicleUID = this.GetUIntBE();
             Slot = this.GetByte();
             Distance = this.GetIntBE();
-            this.GetUShortBE();
+            SpecialAttackID = this.GetUShortBE();
             X = this.GetIntBE();
             Y = this.GetIntBE();
             Z = this.GetIntBE();

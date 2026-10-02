@@ -1,4 +1,4 @@
-using Common.Network.Packets;
+﻿using Common.Network.Packets;
 
 namespace TitansUC.GameServer.Network.Packets.Client
 {
@@ -9,12 +9,12 @@ namespace TitansUC.GameServer.Network.Packets.Client
     /// </summary>
     public class SM_PAY_REPAIR : UCPacket<GSOpcode>
     {
-        public SM_PAY_REPAIR(CM_PAY_REPAIR request, int price)
+        public SM_PAY_REPAIR(CM_PAY_REPAIR request, int price, ushort code = 2)
         {
             this.ID = GSOpcode.SM_PAY_REPAIR;
 
             this.PutUShortBE((ushort)request.Service);
-            this.PutUShortBE(0x0002);
+            this.PutUShortBE(code);
             this.PutUIntBE(request.CharacterID);
             this.PutUIntBE(request.VehicleUniqueID);
             this.PutIntBE(request.VehicleFormat);

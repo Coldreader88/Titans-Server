@@ -198,6 +198,15 @@ namespace TitansUC.GameServer.World
         private static void ReadEquipmentStats(byte[] d, int afterPrice, ItemTemplate t)
         {
             int range = t.ID / 10000;
+            if (range == 33 && afterPrice + 45 <= d.Length)
+            {
+                // TARGETTEMPLATE (breakable rocks and temporary plants): int32 max health, byte faction (0 none,
+                // 1 EF, 2 Zeon; attacking your own side's plant is a crime).
+                int q = afterPrice + 40;
+                t.TargetHealth = ReadInt(d, ref q);
+                t.TargetFaction = d[afterPrice + 44];
+                return;
+            }
             if (range == 29 && afterPrice + 44 <= d.Length)
             {
                 // Engines: avoid_rate, the engine's evasion bonus ("EngineTempAvoidRate" in the client's battle
@@ -227,6 +236,15 @@ namespace TitansUC.GameServer.World
                 t.AttackRatios = ReadFloats(d, afterPrice + 96, 7);
                 t.HitRatios = ReadFloats(d, afterPrice + 125, 7);
                 p = afterPrice + 153; t.HitRate = ReadInt(d, ref p);
+                // Four aim limits, then the special attacks (UC size 3 + int16 BE SPECIALATTACKTEMPLATE ids, -1 none).
+                if (afterPrice + 168 <= d.Length && d[afterPrice + 161] == 0x83)
+                {
+                    t.SpecialAttackIDs = new short[3];
+                    for (int i = 0; i < 3; i++)
+                    {
+                        t.SpecialAttackIDs[i] = (short)((d[afterPrice + 162 + 2 * i] << 8) | d[afterPrice + 163 + 2 * i]);
+                    }
+                }
             }
             if (range == 36)
             {
@@ -414,6 +432,19 @@ namespace TitansUC.GameServer.World
         /// A weapon's hit rate in 1/10000 (4000 to 8000).
         /// </summary>
         public int HitRate { get; set; }
+
+        /// <summary>
+        /// The melee special attacks the weapon can do (SPECIALATTACKTEMPLATE ids by combo tier, -1 none); null
+        /// for weapons without the list.
+        /// </summary>
+        public short[] SpecialAttackIDs { get; set; }
+
+        /// <summary>
+        /// Breakable targets (33xxxx, TARGETTEMPLATE): full health, and the faction whose plant it is (0 none).
+        /// </summary>
+        public int TargetHealth { get; set; }
+        public int TargetFaction { get; set; }
+        public bool IsTarget { get { return ID / 10000 == 33; } }
 
         /// <summary>
         /// A shield's chance in 1/10000 to take a hit (2000 or 3000).
