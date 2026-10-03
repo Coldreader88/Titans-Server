@@ -2164,6 +2164,7 @@ namespace TitansUC.GameServer.Network.Client
             MarkRelation(target, r);
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, target.CharacterID, r));
+            PayTakenMoney(r);
             if (target != this)
             {
                 target.Network.SendPacket(new SM_ATTACK_RESULT(attacker, target.CharacterID, r));
@@ -2282,6 +2283,7 @@ namespace TitansUC.GameServer.Network.Client
             r.Friendly = npc.Faction == (byte)Character.Faction;
             uint attacker = CharacterID;
             this.Network.SendPacket(new SM_ATTACK_RESULT(attacker, npc.ID, r));
+            PayTakenMoney(r);
             GameWorld.Instance.SendNear(npc.Zone, npc.X, npc.Y, BroadcastDistance,
                 () => new SM_ATTACK_RESULT_NEAR(attacker, npc.ID, r));
             NpcManager.Instance.AfterAttack(npc, r, this);
@@ -2295,6 +2297,20 @@ namespace TitansUC.GameServer.Network.Client
         /// <summary>
         /// Counts an NPC this player destroyed in the score (the client counts it too).
         /// </summary>
+        /// <summary>
+        /// The client names the attack result's money field "taken money" (UC_AttackResult dump uc.exe 0x795c4b) and,
+        /// on the attacker's side, adds it to its own bank on every hit, critical or shield block (0x800F) and for the
+        /// first target of 0x8067. The server credits the same amount so the bank stays in step. The amount is the
+        /// target vehicle template's money reward (VehicleTemplate.CombatValue); misses send 0.
+        /// </summary>
+        private void PayTakenMoney(HitResult r)
+        {
+            if (r != null && r.DamagedItem != null && r.M > 0)
+            {
+                Inventory.AddToBank(r.M);
+            }
+        }
+
         private void AfterNpcHit(HitResult r)
         {
             if (r.Destroyed)
@@ -2364,6 +2380,7 @@ namespace TitansUC.GameServer.Network.Client
             uint attacker = CharacterID;
             uint number = results[0].Value.AttackNumber;
             this.Network.SendPacket(new SM_MULTI_ATTACK_RESULT(attacker, weapon, number, p.X, p.Y, p.Z, results));
+            PayTakenMoney(results[0].Value);
             foreach (var target in targets.Where(t => t != this))
             {
                 target.Network.SendPacket(new SM_MULTI_ATTACK_RESULT(attacker, weapon, number, p.X, p.Y, p.Z, results));

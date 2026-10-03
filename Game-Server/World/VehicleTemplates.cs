@@ -206,8 +206,9 @@ namespace TitansUC.GameServer.World
         public int Health { get; set; }
 
         /// <summary>
-        /// The int32 at 75 bytes after the price: what the official attack results (0x800F) carried as their
-        /// unknown "m" value for this target (GM/ZAKU/ACGUY 1000, ZOGOK/GOGG 1250, DOM 1400, RX-79G 1700).
+        /// The int32 at 75 bytes after the price: the money an attacker earns per hit on this target. The official
+        /// attack results (0x800F off 24, 0x8067 off 15) carried it as "taken money" (UC_AttackResult dump, uc.exe
+        /// 0x795c4b) and the attacker's client adds it to its bank (GM/ZAKU/ACGUY 1000, ZOGOK/GOGG 1250, DOM 1400).
         /// </summary>
         public int CombatValue { get; set; }
 

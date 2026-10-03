@@ -978,6 +978,21 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Adds money to the bank: the "taken money" of an attack result (0x800F off 24 / 0x8067 off 15), which the
+        /// attacker's client adds to its own bank balance (uc.exe 0x7d2379 / 0x7ca476 -> UpdateItemCount 0x7db030).
+        /// </summary>
+        public void AddToBank(int amount)
+        {
+            lock (sync)
+            {
+                if (amount > 0)
+                {
+                    Credit.Amount = (int)Math.Min(int.MaxValue, (long)Credit.Amount + amount);
+                }
+            }
+        }
+
+        /// <summary>
         /// Repairs a vehicle to full health (0x18), paying <paramref name="price"/>. Returns false when the
         /// vehicle is not the player's or the money is short.
         /// </summary>
