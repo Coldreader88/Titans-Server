@@ -182,6 +182,27 @@ namespace TitansUC.GameServer.World
         /// Holds its spot (#spawn attributes): fights from where it stands, never chases or patrols.
         /// </summary>
         public bool Stationary { get; set; }
+
+        /// <summary>
+        /// Spawned from DB/Npcs/captured_players.csv by #spawnfromlist (a player seen in the captures).
+        /// </summary>
+        public bool FromList { get; set; }
+
+        /// <summary>
+        /// Shown in the criminal colours (the criminal bit of its 0x8003 record), like the captured player it copies.
+        /// </summary>
+        public bool Criminal { get; set; }
+
+        /// <summary>
+        /// A player on foot (no vehicle, <see cref="TemplateID"/> -1): it shows <see cref="Looks"/>, cannot be attacked,
+        /// and other NPCs leave it alone, as they do players on foot.
+        /// </summary>
+        public bool OnFoot { get { return TemplateID < 0; } }
+
+        /// <summary>
+        /// How it looks on foot (0x800A), null for a vehicle.
+        /// </summary>
+        public NpcLooks Looks { get; set; }
         public long RespawnAt { get; set; }
         public ushort UpdateCounter { get; set; }
         public int AttackNumber { get; set; }
@@ -223,7 +244,7 @@ namespace TitansUC.GameServer.World
                 AccountLevel = AccountAttribute,
                 Action = Action,
                 State = 0,
-                Faction = Faction,
+                Faction = (ushort)((Criminal ? 0x100 : 0) | Faction),
                 EquipSum = 0,
                 UpdateCounter = UpdateCounter,
                 TeamID = Squad,
@@ -231,5 +252,21 @@ namespace TitansUC.GameServer.World
                 AttackNumber = AttackNumber,
             };
         }
+    }
+
+    /// <summary>
+    /// The looks of a person on foot as 0x800A sends them (see <see cref="Common.Characters.CharacterLooks"/>): gender,
+    /// skin, face, hair style and colour, and for each of the 8 clothes slots (dress, top, coat, bottom, shoes, gloves,
+    /// hat, glasses) the client wear id (-1 = nothing) and style.
+    /// </summary>
+    public class NpcLooks
+    {
+        public byte Gender { get; set; }
+        public byte Skin { get; set; }
+        public byte Face { get; set; }
+        public byte Hair { get; set; }
+        public byte HairColour { get; set; }
+        public short[] Wear { get; set; } = new short[8];
+        public byte[] Styles { get; set; } = new byte[8];
     }
 }

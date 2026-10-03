@@ -42,6 +42,35 @@ namespace TitansUC.GameServer.Network.Packets.Client
         }
 
         /// <summary>
+        /// A person on foot that is an NPC (a captured player spawned by #spawnfromlist): the same layout as a player's,
+        /// from <see cref="World.NpcLooks"/>.
+        /// </summary>
+        public SM_PLAYER_LOOKS(uint characterID, World.NpcLooks looks)
+        {
+            this.ID = GSOpcode.SM_PLAYER_LOOKS;
+
+            this.PutUIntBE(0x00030002);
+            this.PutUIntBE(characterID);
+            this.PutUShortBE(9);
+            this.PutByte(looks.Gender);
+            this.PutSize(20);
+            for (int i = 0; i < 8; i++)
+            {
+                this.PutShortBE(looks.Wear[i]);
+                this.PutByte(looks.Styles[i]);
+            }
+            this.PutShortBE(0);
+            this.PutByte(looks.Skin);
+            this.PutByte(0);
+            this.PutByte(looks.Face);
+            this.PutShortBE(0);
+            this.PutByte(looks.Hair);
+            this.PutByte(looks.HairColour);
+            this.PutByte(0);
+            this.PutBytes(new byte[26]);
+        }
+
+        /// <summary>
         /// The looks counter the official server sent for NPCs most often (6..0x0B seen).
         /// </summary>
         public const ushort NpcCounter = 6;

@@ -188,6 +188,32 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
+        /// Takes NPCs out of the world for good (#spawnfromlist clear); clients stop seeing them with their next position list.
+        /// </summary>
+        public int Remove(Func<Npc, bool> which)
+        {
+            lock (addLock)
+            {
+                var gone = npcs.Values.Where(which).ToList();
+                if (gone.Count == 0)
+                {
+                    return 0;
+                }
+                var copy = new Dictionary<uint, Npc>(npcs);
+                foreach (var npc in gone)
+                {
+                    lock (npc)
+                    {
+                        npc.Alive = false;
+                    }
+                    copy.Remove(npc.ID);
+                }
+                npcs = copy;
+                return gone.Count;
+            }
+        }
+
+        /// <summary>
         /// A new squad id for NPCs a GM spawns together (#spawn npc): they fight as one and the client shows them as
         /// one team.
         /// </summary>
@@ -325,7 +351,7 @@ namespace TitansUC.GameServer.World
         /// </summary>
         public HitResult Attack(Npc npc, ItemNode weapon, int distance, Character attacker = null, SpecialAttack special = null)
         {
-            if (npc.IsVendor)
+            if (npc.IsVendor || npc.OnFoot)
             {
                 return null;
             }
@@ -625,11 +651,11 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// Whether <paramref name="other"/> is an NPC of the other side that <paramref name="npc"/> fights: alive, not a
-        /// vendor, in its zone.
+        /// vendor or a person on foot, in its zone.
         /// </summary>
         private static bool IsEnemyNpc(Npc npc, Npc other)
         {
-            return other != npc && other.Alive && !other.IsVendor && other.Zone == npc.Zone &&
+            return other != npc && other.Alive && !other.IsVendor && !other.OnFoot && other.Zone == npc.Zone &&
                 other.Faction != npc.Faction && other.Faction != 0 && npc.Faction != 0;
         }
 

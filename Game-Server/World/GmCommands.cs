@@ -48,6 +48,8 @@ namespace TitansUC.GameServer.World
                     return Npcs(gm, args);
                 case "height":
                     return HeightCommand(gm, args);
+                case "spawnfromlist":
+                    return CapturedPlayers.GmCommand(gm, args);
                 case "god":
                     return Toggle(gm, args, "god", "God mode", "your vehicle takes no damage", v => gm.GodMode = v, () => gm.GodMode);
                 case "ammo":
@@ -163,6 +165,10 @@ namespace TitansUC.GameServer.World
 
         private static string VehicleName(int templateID)
         {
+            if (templateID < 0)
+            {
+                return "on foot";
+            }
             var t = ItemTemplates.Get(templateID);
             return t != null ? t.Name : templateID.ToString();
         }

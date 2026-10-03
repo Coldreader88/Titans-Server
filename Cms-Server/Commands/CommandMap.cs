@@ -153,6 +153,13 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
+                Name = "spawnfromlist", Usage = "#spawnfromlist [clear]", Level = AccessLevel.GM,
+                Description = "Spawns every player seen in the official packet captures (DB/Npcs/captured_players.csv) where they were seen, with their name, faction, rank, vehicle and weapons, or on foot their clothes. They hold their spots; players of one captured team are one squad. Only this server's world (Earth or space). Using it again replaces the ones spawned before; clear takes them away.",
+                Examples = new[] { "#spawnfromlist", "#spawnfromlist clear" },
+                Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "spawnfromlist", a)),
+            });
+            Add(new Command
+            {
                 Name = "items", Usage = "#items [category [name filter] [page]]", Level = AccessLevel.GM,
                 Description = "Lists the item templates you can #spawn, with their ids, 15 per page. Categories: " + ItemCategories + ".",
                 Examples = new[] { "#items (categories and counts)", "#items weapon", "#items weapon 2 (page 2)",
