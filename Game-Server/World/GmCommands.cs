@@ -47,7 +47,7 @@ namespace TitansUC.GameServer.World
                 case "npcs":
                     return Npcs(gm, args);
                 case "height":
-                    return HeightCommand(gm);
+                    return HeightCommand(gm, args);
                 case "god":
                     return Toggle(gm, args, "god", "God mode", "your vehicle takes no damage", v => gm.GodMode = v, () => gm.GodMode);
                 case "ammo":
@@ -60,13 +60,18 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// #height: the ground under the GM from the terrain (<see cref="Terrain"/>) and their own z.
+        /// #height npc [id]: the same for the nearest NPCs (or one NPC), to check they stand on the ground.
         /// </summary>
-        public static List<string> HeightCommand(UCGameSession gm)
+        public static List<string> HeightCommand(UCGameSession gm, IList<string> args = null)
         {
             var c = gm.Coord;
             if (c == null)
             {
                 return new List<string> { "You have no position yet." };
+            }
+            if (args != null && args.Count > 0 && args[0].Equals("npc", StringComparison.OrdinalIgnoreCase))
+            {
+                return NpcHeights(c, args.Skip(1).FirstOrDefault());
             }
             var m = c.ClusterID == (ushort)Common.Characters.Zone.EARTH ? Terrain.Metres(c.X, c.Y) : null;
             if (!m.HasValue)
@@ -75,6 +80,50 @@ namespace TitansUC.GameServer.World
             }
             return new List<string> { string.Format("Ground at {0}, {1}: {2:0.0} m{3}, z {4}; you are at z {5}.", c.X, c.Y, m.Value,
                 m.Value < 0 ? " (sea)" : "", Terrain.GroundZ(c.X, c.Y), c.Z) };
+        }
+
+        /// <summary>
+        /// #height npc: each NPC's z next to the terrain ground under it, nearest 5 in the GM's zone or the one with the given id.
+        /// </summary>
+        private static List<string> NpcHeights(CoordData me, string id)
+        {
+            uint wanted = 0;
+            if (id != null && !uint.TryParse(id, out wanted))
+            {
+                return new List<string> { "Usage: #height npc [npc id]" };
+            }
+            var list = NpcManager.Instance.All
+                .Where(n => wanted != 0 ? n.ID == wanted : n.Zone == me.ClusterID)
+                .OrderBy(n => n.Zone == me.ClusterID ? Distance(me, n.X, n.Y, n.Z) : double.MaxValue)
+                .Take(5)
+                .ToList();
+            if (list.Count == 0)
+            {
+                return new List<string> { wanted != 0 ? "No NPC " + wanted + " on this server." : "No NPCs in this zone." };
+            }
+            var lines = new List<string>();
+            foreach (var npc in list)
+            {
+                int x, y, z;
+                lock (npc)
+                {
+                    x = npc.X;
+                    y = npc.Y;
+                    z = npc.Z;
+                }
+                var ground = npc.Zone == (ushort)Common.Characters.Zone.EARTH ? Terrain.GroundZ(x, y) : null;
+                string where = npc.Zone == me.ClusterID ? string.Format("{0:0} away", Distance(me, x, y, z)) : "in " + ZoneName(npc.Zone);
+                if (!ground.HasValue)
+                {
+                    lines.Add(string.Format("{0} NPC {1} ({2}): z {3}, no terrain height here, {4}.", npc.Name, npc.ID, VehicleName(npc.TemplateID), z, where));
+                    continue;
+                }
+                // The terrain z is 4 per metre.
+                lines.Add(string.Format("{0} NPC {1} ({2}): z {3}, ground {4}, {5:+0.0;-0.0;0.0} m off the ground{6}, {7}.", npc.Name, npc.ID,
+                    VehicleName(npc.TemplateID), z, ground.Value, (z - ground.Value) / 4.0,
+                    npc.TemplateID / 10000 == 43 ? " (fighter, flies)" : "", where));
+            }
+            return lines;
         }
 
         /// <summary>

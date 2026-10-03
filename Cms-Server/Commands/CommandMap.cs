@@ -91,9 +91,9 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "height", Usage = "#height", Level = AccessLevel.GM,
-                Description = "Shows the ground height under you on Earth from the terrain file (metres and z) and your own z.",
-                Examples = new[] { "#height" },
+                Name = "height", Usage = "#height [npc [id]]", Level = AccessLevel.GM,
+                Description = "Shows the ground height under you on Earth from the terrain file (metres and z) and your own z. #height npc shows the 5 nearest NPCs' z next to the ground under them (how many metres off the ground), or one NPC by id.",
+                Examples = new[] { "#height", "#height npc", "#height npc 1000000005" },
                 Run = (s, a) => ToGame(s, GameLinkManager.Instance.GmCommand(s.CharacterID, "height", a)),
             });
             Add(new Command
