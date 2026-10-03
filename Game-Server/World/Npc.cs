@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace TitansUC.GameServer.World
 {
@@ -76,17 +77,46 @@ namespace TitansUC.GameServer.World
         public ItemNode Weapon { get; set; }
 
         /// <summary>
-        /// Its melee weapon (heat hawk, beam saber...), or null. It closes in and strikes with it now and then,
-        /// and whenever its target is within reach.
+        /// Its melee weapon (heat hawk, beam saber...), or null. It takes it up when its target comes close.
         /// </summary>
         public ItemNode Melee { get; set; }
 
         /// <summary>
-        /// Whether it is closing in to strike with <see cref="Melee"/> rather than keeping its distance and
-        /// firing; chosen again every so often while fighting.
+        /// Whether it holds <see cref="Melee"/> (closing in to strike) rather than its gun: chosen by the distance
+        /// to its target (NpcManager.ChooseWeapon).
         /// </summary>
         public bool MeleeMode { get; set; }
-        public long NextModeChange { get; set; }
+
+        /// <summary>
+        /// The counter at the end of its looks (0x800A), raised whenever it changes weapons (6 as in the captures).
+        /// </summary>
+        public ushort LooksCounter { get; set; } = 6;
+
+        /// <summary>
+        /// When a player last hit it or its squad: it keeps after an attacker who shoots from afar.
+        /// </summary>
+        public long LastAttacked { get; set; }
+
+        /// <summary>
+        /// <see cref="Armaments"/> as its looks show them: the weapon it holds (melee or gun) in slot 0, the main
+        /// hand (0x1B), swapped with whatever was there.
+        /// </summary>
+        public int[] HeldArmaments
+        {
+            get
+            {
+                var held = MeleeMode ? Melee : Weapon;
+                int slot = held != null ? Array.IndexOf(Armaments, held.StaticID) : -1;
+                if (slot <= 0)
+                {
+                    return Armaments;
+                }
+                var result = (int[])Armaments.Clone();
+                result[slot] = result[0];
+                result[0] = held.StaticID;
+                return result;
+            }
+        }
 
         /// <summary>
         /// Which way it circles its target while firing (1 or -1), and when it turns the other way.

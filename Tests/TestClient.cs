@@ -1616,15 +1616,25 @@ class Test
         var tpUntil = ready2.AddSeconds(30);
         while (DateTime.Now < tpUntil && !GameLog().Contains("Gmtest was teleported to")) System.Threading.Thread.Sleep(200);
         System.Threading.Thread.Sleep(500);
-        g.Send(0x00, Coord(me, 7000, 2000, 30)); RecvOp(g, 0x8000);
         int x1 = npcX();
         Check(x1 != int.MinValue, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
+        // 3500 away: beyond where a gun keeps its distance (3000 at most), within NpcChaseRange (4000).
+        g.Send(0x00, Coord(me, x1 + 3500, 2000, 30)); RecvOp(g, 0x8000);
         System.Threading.Thread.Sleep(3000);
         int x2 = npcX();
         Console.WriteLine("  NPC x {0} -> {1}", x1, x2);
         Check(x2 > x1 + 200, "it chases the GM, who moved away");
+        // Far beyond NpcChaseRange, never having hit it: it stops tracking the GM.
+        g.Send(0x00, Coord(me, x2 + 6500, 2000, 30)); RecvOp(g, 0x8000);
+        var giveUpUntil = DateTime.Now.AddSeconds(5);
+        while (DateTime.Now < giveUpUntil && !GameLog().Contains("stopped tracking Gmtest")) System.Threading.Thread.Sleep(200);
+        Check(GameLog().Contains("stopped tracking Gmtest, who is too far away"), "it stops tracking the GM, who went far away");
+        // Back next to it, for the NPCs to attack again.
+        System.Threading.Thread.Sleep(1000);
+        int x3 = npcX();
+        g.Send(0x00, Coord(me, (x3 != int.MinValue ? x3 : x2) + 800, 2000, 30)); RecvOp(g, 0x8000);
 
-        // The random NPCs keep attacking; now and then they close in and strike with their melee weapon.
+        // The NPCs attack again: with the gun from afar, with a melee weapon (if any) when close.
         var templates = new Dictionary<int, int>();
         var until3 = DateTime.Now.AddSeconds(40);
         while (DateTime.Now < until3)

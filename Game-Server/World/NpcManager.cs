@@ -30,8 +30,9 @@ namespace TitansUC.GameServer.World
     /// Movement: the captured NPCs on Earth and the ships stood still, mobile suits in space drifted about
     /// 45-60 units a second around their squad's area. Here space mobile suits patrol around their spawn point at
     /// that speed and Earth ones wander near theirs, pausing at each point; any mobile suit chases its target
-    /// into weapon range (not beyond <see cref="LeashDistance"/> from home), circles it while firing, now and
-    /// then closes in to strike with its melee weapon, and walks back home afterwards. Their new positions reach clients through 0x8003, like the
+    /// into weapon range (not beyond <see cref="LeashDistance"/> from home), circles it while firing, takes up
+    /// its melee weapon when the target comes close (its gun again when it is far), gives up on a target farther
+    /// than NpcChaseRange (GameServer.xml) that stopped hitting it, and walks back home afterwards. Their new positions reach clients through 0x8003, like the
     /// official ones. Hostile NPCs also attack pilots of the other faction within
     /// NpcAggroRange (GameServer.xml) (0 = only fire back). Destroyed NPCs drop loot.
     /// The hit rules are the same as between players (<see cref="Combat"/>).
@@ -64,13 +65,25 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// Melee: the reach in the client's distance units (a quarter of world units) when the weapon names
-        /// none, and the chance an NPC with a gun and a melee weapon picks melee each time it rethinks
-        /// (every <see cref="ModeSeconds"/>).
+        /// none (the templates say 70-80), and the time between strikes.
         /// </summary>
-        public const int DefaultMeleeReach = 12;
-        public const int MeleeChancePercent = 40;
-        public const int ModeSeconds = 12;
+        public const int DefaultMeleeReach = 70;
         public const int MeleeIntervalMs = 2500;
+
+        /// <summary>
+        /// An NPC with a gun and a melee weapon takes up the melee weapon when its target is within this many
+        /// melee reaches, and its gun again once the target is beyond <see cref="MeleeLeaveReaches"/> (our rule;
+        /// the gap keeps it from switching back and forth). Changing weapons takes <see cref="WeaponChangeMs"/>
+        /// (the templates' change time is 500-1000 ms).
+        /// </summary>
+        public const int MeleeEnterReaches = 2;
+        public const int MeleeLeaveReaches = 3;
+        public const int WeaponChangeMs = 1000;
+
+        /// <summary>
+        /// An NPC keeps after a target beyond NpcChaseRange for this long after the last hit it or its squad took.
+        /// </summary>
+        public const int AttackedGraceMs = 10000;
 
         /// <summary>
         /// An NPC gives up the chase this far from its spawn point.
@@ -327,13 +340,14 @@ namespace TitansUC.GameServer.World
                 Destroy(npc, attacker);
                 return;
             }
-            SquadAttack(npc, attacker.CharacterID);
+            SquadAttack(npc, attacker.CharacterID, true);
         }
 
         /// <summary>
-        /// Every member of <paramref name="npc"/>'s squad without a target turns on the player.
+        /// Every member of <paramref name="npc"/>'s squad without a target turns on the player; when the player
+        /// <paramref name="attacked"/> the squad, those after the player keep after them for a while however far.
         /// </summary>
-        private void SquadAttack(Npc npc, uint playerID)
+        private void SquadAttack(Npc npc, uint playerID, bool attacked = false)
         {
             long now = Now;
             foreach (var member in npcs.Values.Where(n => n.Squad == npc.Squad && n.Zone == npc.Zone && n.Armed))
@@ -345,6 +359,10 @@ namespace TitansUC.GameServer.World
                         member.Target = playerID;
                         member.NextShot = now + Next(ShotDelayMs, 3 * ShotDelayMs);
                         SetAction(member, Npc.ActionFighting);
+                    }
+                    if (attacked && member.Target == playerID)
+                    {
+                        member.LastAttacked = now;
                     }
                 }
             }
@@ -712,16 +730,50 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// Chooses between closing in with the melee weapon and firing from a distance.
+        /// Picks the weapon for the target's <paramref name="distance"/> (client units): the melee weapon when it
+        /// is close or the NPC has no gun, else the gun. A change shows in its looks and takes a moment.
         /// </summary>
-        private void ChooseMode(Npc npc, long now)
+        private static void ChooseWeapon(Npc npc, long now, int distance)
         {
-            if (now < npc.NextModeChange)
+            bool melee;
+            if (npc.Melee == null || npc.Weapon == null)
             {
-                return;
+                melee = npc.Melee != null;
             }
-            npc.NextModeChange = now + ModeSeconds * 1000L;
-            npc.MeleeMode = npc.Melee != null && (npc.Weapon == null || Next(0, 100) < MeleeChancePercent);
+            else
+            {
+                int reach = MeleeReach(npc);
+                melee = distance <= reach * (npc.MeleeMode ? MeleeLeaveReaches : MeleeEnterReaches);
+            }
+            if (SetMeleeMode(npc, melee))
+            {
+                npc.NextShot = Math.Max(npc.NextShot, now + WeaponChangeMs);
+            }
+        }
+
+        /// <summary>
+        /// Takes up the melee weapon or the gun; when that changes, raises the looks counter and the update
+        /// counter, so clients ask its looks (0x0A) again and see the new weapon in its hand. True if it changed.
+        /// </summary>
+        private static bool SetMeleeMode(Npc npc, bool melee)
+        {
+            if (npc.MeleeMode == melee)
+            {
+                return false;
+            }
+            npc.MeleeMode = melee;
+            npc.LooksCounter++;
+            npc.UpdateCounter++;
+            return true;
+        }
+
+        /// <summary>
+        /// How far (position units) it keeps tracking a target that has stopped hitting it.
+        /// </summary>
+        private static int ChaseRange()
+        {
+            var config = TitansUC.GameServer.Configuration.Instance;
+            return Math.Max(config.NpcChaseRange, config.NpcAggroRange + 1000);
         }
 
         /// <summary>
@@ -777,6 +829,7 @@ namespace TitansUC.GameServer.World
                 npc.Direction = npc.SpawnDirection;
                 npc.Action = npc.BaseAction;
                 npc.HasWaypoint = false;
+                SetMeleeMode(npc, false);
                 npc.Alive = true;
                 npc.Damage = 0;
                 npc.UpdateCounter++;
@@ -822,24 +875,33 @@ namespace TitansUC.GameServer.World
                 }
             }
 
-            if (npc.Target == 0 || npc.ShotTarget != 0 || now < npc.NextShot)
+            if (npc.Target == 0)
             {
                 return;
             }
             var t = Valid(npc, npc.Target);
-            if (t == null)
+            var c = t != null ? t.Coord : null;
+            // Out of sight, or far away and no longer hitting it: it stops tracking the target.
+            if (t == null || (WorldDistance(npc, c.X, c.Y, c.Z) > ChaseRange() && now - npc.LastAttacked > AttackedGraceMs))
             {
                 lock (npc)
                 {
                     npc.Target = 0;
                     npc.LockedOn.Clear();
                 }
+                if (t != null)
+                {
+                    Logger.ShowInfo(string.Format("NPC {0} stopped tracking {1}, who is too far away.", npc.Name, t.Character.Name));
+                }
                 return;
             }
-            var c = t.Coord;
-            ChooseMode(npc, now);
             int distance = Distance(npc, c);
-            if (npc.Melee != null && distance <= MeleeReach(npc))
+            ChooseWeapon(npc, now, distance);
+            if (npc.ShotTarget != 0 || now < npc.NextShot)
+            {
+                return;
+            }
+            if (npc.MeleeMode && npc.Melee != null && distance <= MeleeReach(npc))
             {
                 // Within reach: strike at once (the official melee had no fire effect, only the lock on and
                 // the result, hand_to_hand_0.1.pcap).
@@ -848,8 +910,9 @@ namespace TitansUC.GameServer.World
                 npc.NextShot = now + MeleeIntervalMs;
                 return;
             }
-            if (npc.Weapon == null)
+            if (npc.MeleeMode || npc.Weapon == null)
             {
+                // Closing in with the melee weapon: no shots from afar.
                 npc.NextShot = now + 500;
                 return;
             }

@@ -10,7 +10,7 @@ namespace TitansUC.GameServer
     /// </summary>
     public class Configuration : Singleton<Configuration>
     {
-        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, questNpcDistance = 3000, shuttleDistance = 200000;
+        int port = 42010, loglevel = 31, viewDistance, saveInterval = 60, npcAggroRange = 1500, npcChaseRange = 4000, questNpcDistance = 3000, shuttleDistance = 200000;
         bool checkSessionKey = true;
         string dbHost = "127.0.0.1", dbName = "titans-server", dbUser = "root", dbPass = "";
         int dbPort = 3306;
@@ -104,6 +104,12 @@ namespace TitansUC.GameServer
         /// fire back when attacked, as the official captures show.
         /// </summary>
         public int NpcAggroRange { get { return npcAggroRange; } }
+
+        /// <summary>
+        /// Hostile NPCs stop tracking a target farther away than this (position units) unless it hit them within
+        /// the last few seconds; never less than NpcAggroRange + 1000 (our rule).
+        /// </summary>
+        public int NpcChaseRange { get { return npcChaseRange; } }
 
         /// <summary>
         /// A quest hand-in needs one of the quest's NPCs this close (position units; our rule, the official
@@ -234,6 +240,9 @@ namespace TitansUC.GameServer
                             break;
                         case "npcaggrorange":
                             npcAggroRange = int.Parse(i.InnerText.Trim());
+                            break;
+                        case "npcchaserange":
+                            npcChaseRange = int.Parse(i.InnerText.Trim());
                             break;
                         case "questnpcdistance":
                             questNpcDistance = int.Parse(i.InnerText.Trim());

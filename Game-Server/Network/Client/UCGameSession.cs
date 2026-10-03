@@ -2908,7 +2908,7 @@ namespace TitansUC.GameServer.Network.Client
             var npc = Npc.IsNpcID(p.CharacterID) ? NpcManager.Instance.Get(p.CharacterID) : null;
             if (npc != null)
             {
-                this.Network.SendPacket(new SM_PLAYER_LOOKS(npc.ID, npc.TemplateID, npc.Armaments, SM_PLAYER_LOOKS.NpcCounter, 0));
+                this.Network.SendPacket(new SM_PLAYER_LOOKS(npc.ID, npc.TemplateID, npc.HeldArmaments, npc.LooksCounter, 0));
                 return;
             }
             var other = GameWorld.Instance.Get(p.CharacterID);
