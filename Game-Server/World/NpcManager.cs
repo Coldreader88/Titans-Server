@@ -164,10 +164,11 @@ namespace TitansUC.GameServer.World
         /// <summary>
         /// A GM's #spawn npc: an NPC of <paramref name="faction"/> at a point (hostile to the other faction). It fights like the others
         /// but does not come back once destroyed. <paramref name="squad"/> (from <see cref="NewSquad"/>) puts it in the squad of
-        /// the NPCs spawned with it; 0 gives it a squad of its own.
+        /// the NPCs spawned with it; 0 gives it a squad of its own. <paramref name="rank"/> is the rank its paper doll shows
+        /// (<see cref="Ranks"/>).
         /// </summary>
         public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null,
-            string name = "Spawned", int squad = 0)
+            string name = "Spawned", int squad = 0, byte rank = 6)
         {
             lock (addLock)
             {
@@ -175,7 +176,7 @@ namespace TitansUC.GameServer.World
                 var npc = Parse(new[]
                 {
                     (nextSpawnedID++).ToString(), name, faction.ToString(), templateID.ToString(), (squad > 0 ? squad : nextSpawnedSquad++).ToString(),
-                    zone.ToString(), x.ToString(), y.ToString(), z.ToString(), "0", "0", direction.ToString(), "6", "48",
+                    zone.ToString(), x.ToString(), y.ToString(), z.ToString(), "0", "0", direction.ToString(), rank.ToString(), "48",
                     string.Join("/", armaments), "0",
                 });
                 npc.Temporary = true;

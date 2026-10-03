@@ -209,8 +209,8 @@ namespace TitansUC.GameServer.World
             var vehicleTemplate = VehicleTemplates.Get(vehicle.StaticID);
 
             // GM toggles: #ammo keeps the attacker's rounds and durability, #god keeps the defender's health and shield.
-            var attackerSession = attacker != null ? GameWorld.Instance.Get(attacker.ID) : null;
-            var defenderSession = defender != null ? GameWorld.Instance.Get(defender.ID) : null;
+            var attackerSession = attacker != null ? GameWorld.Instance.Get(attacker.ClientID) : null;
+            var defenderSession = defender != null ? GameWorld.Instance.Get(defender.ClientID) : null;
             bool unlimitedAmmo = attackerSession != null && attackerSession.UnlimitedAmmo;
             bool invulnerable = defenderSession != null && defenderSession.GodMode;
 

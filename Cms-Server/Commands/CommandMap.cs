@@ -140,13 +140,14 @@ namespace TitansUC.CmsServer.Commands
             });
             Add(new Command
             {
-                Name = "spawn", Usage = "#spawn id itemID [amount] | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count]", Level = AccessLevel.GM, MinArguments = 1,
-                Description = "Spawns an item or vehicle next to you, or hostile NPCs 1000 away: up to 10 at once, as one squad that fights together. NPCs of the same side you spawn near the same spot within a minute join that squad. An MS/MA spawned without an engine gets random weapons, a shield, ammo and a lv.3 engine. #items finds the ids.",
+                Name = "spawn", Usage = "#spawn id itemID [amount] | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count] | #spawn squad [friendly] [vehicleID] [count]", Level = AccessLevel.GM, MinArguments = 1,
+                Description = "Spawns an item or vehicle next to you, or hostile NPCs 1000 away: up to 10 at once, as one squad that fights together. NPCs of the same side you spawn near the same spot within a minute join that squad. #spawn squad makes a new squad (5 unless a count is given) of soldiers with random names and ranks from Seaman Apprentice to Lieutenant, led by the highest. An MS/MA spawned without an engine gets random weapons, a shield, ammo and a lv.3 engine. #items finds the ids.",
                 Examples = new[] { "#spawn id 280048 (75mm machine gun)", "#spawn id 540000 100 (100 cartridges)",
                     "#spawn name elecar aaron", "#spawn id 410000 (a GM with random weapons, ammo and a lv.3 engine)",
                     "#spawn ideng 410000 290033 (a bare GM with that engine)", "#spawn npc", "#spawn npc 410007 (a ZAKU II)",
                     "#spawn npc 410007 3 (a squad of three ZAKU IIs)", "#spawn npc 5 (a squad of five random mobile suits)",
-                    "#spawn npc friendly (one of your own faction, for testing)", "#spawn npc friendly 410000" },
+                    "#spawn npc friendly (one of your own faction, for testing)", "#spawn npc friendly 410000",
+                    "#spawn squad (five random mobile suits with names and ranks)", "#spawn squad 410007 8 (eight ZAKU IIs)", "#spawn squad friendly" },
                 Run = Spawn,
             });
             Add(new Command

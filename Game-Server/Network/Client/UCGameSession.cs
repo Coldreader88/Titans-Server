@@ -86,6 +86,13 @@ namespace TitansUC.GameServer.Network.Client
         public const int SpawnGroupSpacing = 300;
 
         /// <summary>
+        /// #spawn squad: members when no count is given, and the ranks they get (1 Seaman Apprentice to 8 Lieutenant,
+        /// <see cref="Ranks"/>).
+        /// </summary>
+        public const int DefaultSquadSize = 5, SquadMinRank = 1, SquadMaxRank = 8;
+        private static readonly Random squadRandom = new Random();
+
+        /// <summary>
         /// Set once the player took off for the other side's server (0x40).
         /// </summary>
         private bool departed;
@@ -2524,14 +2531,17 @@ namespace TitansUC.GameServer.Network.Client
         /// 1000 away, the first on that spot and the others around it, and form one squad: they fight together and the
         /// client shows them as one team. NPCs of the same faction spawned within <see cref="SpawnGroupSeconds"/> near
         /// the last ones join their squad.
+        /// #spawn squad [friendly] [vehicleID] [count] (<paramref name="squadMode"/>): always a new squad, of
+        /// <see cref="DefaultSquadSize"/> unless a count is given, each with a random name (DB/Npcs/names.txt) and a random
+        /// rank from <see cref="SquadMinRank"/> to <see cref="SquadMaxRank"/>; the highest rank leads, on the spot (our rule).
         /// </summary>
-        private string GmSpawnNpcs(string[] args)
+        private string GmSpawnNpcs(string[] args, bool squadMode = false)
         {
             var c = Coord;
             bool friendly = args.Skip(1).Any(a => IsFriendlyWord(a));
             byte own = Character.Faction == Faction.ZEON ? (byte)2 : (byte)1;
             byte faction = friendly ? own : (byte)(3 - own);
-            int vehicleID = 0, count = 1, n;
+            int vehicleID = 0, count = squadMode ? DefaultSquadSize : 1, n;
             foreach (var a in args.Skip(1).Where(a => !IsFriendlyWord(a)))
             {
                 if (int.TryParse(a.Trim(), out n))
@@ -2550,7 +2560,7 @@ namespace TitansUC.GameServer.Network.Client
             var now = DateTime.UtcNow;
             int spotX = c.X + 1000, spotY = c.Y;
             var group = spawnGroup;
-            bool joined = group != null && group.Faction == faction && group.Zone == c.ClusterID &&
+            bool joined = !squadMode && group != null && group.Faction == faction && group.Zone == c.ClusterID &&
                 (now - group.At).TotalSeconds <= SpawnGroupSeconds &&
                 Math.Sqrt((double)(group.X - spotX) * (group.X - spotX) + (double)(group.Y - spotY) * (group.Y - spotY)) <= SpawnGroupDistance &&
                 NpcManager.Instance.All.Any(m => m.Squad == group.Squad && m.Alive);
@@ -2565,6 +2575,19 @@ namespace TitansUC.GameServer.Network.Client
             group.At = now;
 
             var names = new List<string>();
+            var soldierNames = squadMode ? NpcNames.Pick(count) : null;
+            var ranks = new List<byte>();
+            if (squadMode)
+            {
+                lock (squadRandom)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        ranks.Add((byte)squadRandom.Next(SquadMinRank, SquadMaxRank + 1));
+                    }
+                }
+                ranks.Sort((a, b) => b.CompareTo(a));
+            }
             string weapons = "its default guns";
             for (int i = 0; i < count; i++)
             {
@@ -2583,16 +2606,30 @@ namespace TitansUC.GameServer.Network.Client
                     y += (int)Math.Round(Math.Sin(angle) * SpawnGroupSpacing * ring);
                 }
                 var ground = c.ClusterID == (ushort)Common.Characters.Zone.EARTH && template / 10000 != 43 ? Terrain.GroundZ(x, y) : null;
+                string npcName = squadMode ? soldierNames[i] : friendly ? "Friendly" : "Spawned";
                 var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, x, y, ground ?? group.Z, c.Direction, armaments,
-                    friendly ? "Friendly" : "Spawned", group.Squad);
+                    npcName, group.Squad, squadMode ? ranks[i] : (byte)6);
                 Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}, squad {8}.", Character.Name,
                     friendly ? "friendly" : "hostile", npc.ID, template, weapons, npc.X, npc.Y, npc.Z, group.Squad));
                 var vt = VehicleTemplates.Get(template);
-                names.Add(vt != null ? vt.Name : template.ToString());
+                string vehicleName = vt != null ? vt.Name : template.ToString();
+                if (squadMode)
+                {
+                    Logger.ShowInfo(string.Format("NPC {0} is {1} {2}.", npc.ID, Ranks.Name(npc.Rank), npc.Name));
+                }
+                names.Add(squadMode ? string.Format("{0} {1} ({2})", Ranks.Name(npc.Rank), npc.Name, vehicleName) : vehicleName);
             }
 
             string side = faction == 1 ? "EF" : "Zeon";
             string kind = friendly ? "friendly" : "hostile";
+            if (squadMode)
+            {
+                string peace = friendly ? count == 1 ? "; it will not attack you and fires back only when shot" : "; they will not attack you and fire back only when shot" : "";
+                return count == 1
+                    ? string.Format("Spawned a {0} {1} ({2}) 1000 away{3}.", kind, names[0], side, peace)
+                    : string.Format("Spawned a {0} squad ({1}) 1000 away, led by {2}: {3}{4}.", kind, side, names[0],
+                        string.Join(", ", names.Skip(1)), peace);
+            }
             string what = count == 1
                 ? string.Format("a {0} {1} ({2}) 1000 away with {3}", kind, names[0], side, weapons)
                 : string.Format("{0} {1} NPCs ({2}) 1000 away: {3}, each with random weapons", count, kind, side, string.Join(", ", names));
@@ -2607,7 +2644,7 @@ namespace TitansUC.GameServer.Network.Client
         {
             if (!InGame || Coord == null || args.Length == 0)
             {
-                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count]";
+                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count] | #spawn squad [friendly] [vehicleID] [count]";
             }
             var c = Coord;
             string type = args[0].Trim().ToLowerInvariant();
@@ -2616,6 +2653,10 @@ namespace TitansUC.GameServer.Network.Client
             if (type == "npc")
             {
                 return GmSpawnNpcs(args);
+            }
+            if (type == "squad")
+            {
+                return GmSpawnNpcs(args, true);
             }
 
             ItemTemplate item = null;

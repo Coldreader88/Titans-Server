@@ -16,6 +16,8 @@ class Conn
     // Skill changes (0x8034) arrive at random after attacks and repairs; unless KeepGains, Recv puts them here.
     public List<byte[]> Gains = new List<byte[]>();
     public bool KeepGains;
+    // When set, Recv also copies here every attack result (0x800F) an NPC (1090000000 and up) sends.
+    public List<byte[]> NpcResults;
     public Conn(string name, string host, int port) { Name = name; tcp = new TcpClient(host, port); s = tcp.GetStream(); s.ReadTimeout = 5000; }
     // From another local address (127.0.0.2): a different player's machine as far as the servers can tell.
     public Conn(string name, string host, int port, string from)
@@ -50,6 +52,7 @@ class Conn
                     var body = new byte[xs]; Array.Copy(p, 64, body, 0, xs);
                     if (!quiet) Console.WriteLine("  [{0}] <- 0x{1:X5} ({2} bytes) {3}", Name, op, xs, Hex(body, 48));
                     if (op == 0x8034 && !KeepGains) { Gains.Add(body); continue; }
+                    if (op == 0x800F && NpcResults != null && body.Length >= 14 && new R(body).U32() >= 1090000000) NpcResults.Add(body);
                     return Tuple.Create(op, body);
                 }
             }
@@ -1596,6 +1599,7 @@ class Test
 
         System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "2", "ready");
         var ready2 = DateTime.Now;
+        g.NpcResults = new List<byte[]>();
         // The hostile ZAKU II spawned 1000 away attacks the GM on its own (aggro range 1500): a lock on and a result,
         // after a fire effect if it shot (a melee strike has none; the script teleports the GM next to it meanwhile).
         // The script also turns on #god for the GM, so the NPC fights below cannot destroy the hover truck.
@@ -1683,7 +1687,17 @@ class Test
         }
         Console.WriteLine("  NPC attack weapons: " + string.Join(", ", templates.Select(kv => kv.Key + " x" + kv.Value)));
         Check(templates.Count > 0, "the NPCs keep attacking");
+
+        // #god (on since before the NPCs were spawned): every NPC hit on the GM does 0 damage (0x800F damage at 8,
+        // result at 13, 6 = miss).
+        var hitsOnGm = g.NpcResults.Where(b => new R(b) { Pos = 4 }.U32() == me && b[13] != 6).ToList();
+        g.NpcResults = null;
+        Console.WriteLine("  NPC hits on the GM with #god: {0}, damage {1}", hitsOnGm.Count,
+            string.Join(" ", hitsOnGm.Select(b => new R(b) { Pos = 8 }.I32())));
+        Check(hitsOnGm.Count > 0 && hitsOnGm.All(b => new R(b) { Pos = 8 }.I32() == 0), "with #god on, NPC hits on the GM do no damage");
+
         QuestTests(g, me);
+        SquadTests();
         AdminConsoleTests(g, me);
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;
@@ -1831,6 +1845,36 @@ class Test
     // longest-range gun, the bazooka, from afar and holds it (slot 0 of its looks); with the GM next to it, it takes
     // up the heat hawk, strikes with it and does not shoot; with the GM away again, it takes the bazooka back; with
     // the GM far away (beyond NpcChaseRange 4000), it stops tracking the GM.
+    // The script's "spawn Gmtest squad friendly 410000 3" (after ready3): a new squad of three GMs 1090000004-6, each
+    // with its own random name and a rank from Seaman Apprentice (1) to Lieutenant (8), the highest first.
+    static void SquadTests()
+    {
+        string[] ranks = { "Seaman Apprentice", "Seaman", "Petty Officer", "Chief Petty Officer", "Senior Chief Petty Officer",
+            "Ensign", "Lieutenant Junior Grade", "Lieutenant" };
+        var found = new List<Tuple<int, string>>();
+        var squads = new HashSet<string>();
+        var until = DateTime.Now.AddSeconds(20);
+        while (DateTime.Now < until)
+        {
+            found.Clear(); squads.Clear();
+            var log = GameLog();
+            for (uint id = 1090000004; id <= 1090000006; id++)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(log, "NPC " + id + @" is (.+?) ([A-Za-z]+)\.");
+                if (m.Success) found.Add(Tuple.Create(Array.IndexOf(ranks, m.Groups[1].Value), m.Groups[2].Value));
+                var sq = System.Text.RegularExpressions.Regex.Match(log, "spawned friendly NPC " + id + @" \(410000, .*?, squad (\d+)\.");
+                if (sq.Success) squads.Add(sq.Groups[1].Value);
+            }
+            if (found.Count == 3) break;
+            System.Threading.Thread.Sleep(500);
+        }
+        Console.WriteLine("  squad: " + string.Join(", ", found.Select(f => (f.Item1 >= 0 ? ranks[f.Item1] : "?") + " " + f.Item2)));
+        Check(found.Count == 3 && found.All(f => f.Item1 >= 0) && found.Select(f => f.Item2).Distinct().Count() == 3 &&
+            found[0].Item1 >= found[1].Item1 && found[1].Item1 >= found[2].Item1,
+            "#spawn squad: three NPCs with different names and ranks Seaman Apprentice to Lieutenant, the highest first");
+        Check(squads.Count == 1, "#spawn squad: they are one squad");
+    }
+
     static void NpcWeaponTests(Conn g, Action<int, int> moveGm, Func<uint, int[]> npcAt)
     {
         const uint brawler = 1000900004;
