@@ -300,6 +300,8 @@ namespace TitansUC.GameServer.World
             {
                 npc.Melee = new ItemNode(0, 0, blade.ID) { Name = blade.Name };
             }
+            // It holds its gun until a target comes close; without one, its melee weapon.
+            npc.MeleeMode = npc.Weapon == null && npc.Melee != null;
             return npc;
         }
 
@@ -623,8 +625,7 @@ namespace TitansUC.GameServer.World
             var target = npc.Target != 0 ? Valid(npc, npc.Target) : null;
             if (target != null && fromHome > LeashDistance)
             {
-                npc.Target = 0;
-                npc.LockedOn.Clear();
+                Disengage(npc);
                 target = null;
             }
 
@@ -747,7 +748,8 @@ namespace TitansUC.GameServer.World
             }
             if (SetMeleeMode(npc, melee))
             {
-                npc.NextShot = Math.Max(npc.NextShot, now + WeaponChangeMs);
+                // Taking up the other weapon replaces the wait for the next shot or strike.
+                npc.NextShot = now + WeaponChangeMs;
             }
         }
 
@@ -765,6 +767,16 @@ namespace TitansUC.GameServer.World
             npc.LooksCounter++;
             npc.UpdateCounter++;
             return true;
+        }
+
+        /// <summary>
+        /// Gives up its target and takes up its gun again (the melee weapon if it has nothing else).
+        /// </summary>
+        private static void Disengage(Npc npc)
+        {
+            npc.Target = 0;
+            npc.LockedOn.Clear();
+            SetMeleeMode(npc, npc.Weapon == null && npc.Melee != null);
         }
 
         /// <summary>
@@ -829,7 +841,7 @@ namespace TitansUC.GameServer.World
                 npc.Direction = npc.SpawnDirection;
                 npc.Action = npc.BaseAction;
                 npc.HasWaypoint = false;
-                SetMeleeMode(npc, false);
+                SetMeleeMode(npc, npc.Weapon == null && npc.Melee != null);
                 npc.Alive = true;
                 npc.Damage = 0;
                 npc.UpdateCounter++;
@@ -886,8 +898,7 @@ namespace TitansUC.GameServer.World
             {
                 lock (npc)
                 {
-                    npc.Target = 0;
-                    npc.LockedOn.Clear();
+                    Disengage(npc);
                 }
                 if (t != null)
                 {
@@ -980,8 +991,7 @@ namespace TitansUC.GameServer.World
                 Logger.ShowInfo(string.Format("NPC {0} destroyed {1}'s {2}.", npc.Name, target.Character.Name, r.DamagedItem.Name));
                 lock (npc)
                 {
-                    npc.Target = 0;
-                    npc.LockedOn.Remove(target.CharacterID);
+                    Disengage(npc);
                 }
             }
         }

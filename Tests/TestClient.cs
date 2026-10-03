@@ -1596,51 +1596,67 @@ class Test
 
         System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "2", "ready");
         var ready2 = DateTime.Now;
-        // The hostile ZAKU II spawned 1000 away attacks the GM on its own (aggro range 1500).
+        // The hostile ZAKU II spawned 1000 away attacks the GM on its own (aggro range 1500): a lock on and a result,
+        // after a fire effect if it shot (a melee strike has none; the script teleports the GM next to it meanwhile).
+        // The script also turns on #god for the GM, so the NPC fights below cannot destroy the hover truck.
         var seen = new List<uint>();
         var until2 = DateTime.Now.AddSeconds(15);
-        while (DateTime.Now < until2 && !(seen.Contains(0x803B) && seen.Contains(0x8010) && seen.Contains(0x800F)))
+        while (DateTime.Now < until2 && !(seen.Contains(0x8010) && seen.Contains(0x800F)))
         {
             var r = g.Recv(true); if (r != null) seen.Add(r.Item1);
         }
-        Check(seen.Contains(0x803B) && seen.Contains(0x8010) && seen.Contains(0x800F), "the spawned hostile NPC attacks the GM without being attacked (fire effect, lock on, result)");
-        Func<int> npcX = () =>
-        {
-            g.Send(0x03, new B().U32(a.Acc).U32(me).U16(1).Bytes(new byte[6]).I32(7000).I32(2000).I32(30).U32(0x45FA0000).Get());
-            var list = RecvOp(g, 0x8003); var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
-            for (int i = 0; i < count; i++) { var rr = new R(list.Item2) { Pos = lr.Pos + 53 * i }; int x = rr.I32(); rr.Pos += 14; uint id = rr.U32(); if (id == 1090000000) return x; }
-            return int.MinValue;
-        };
-        // The script teleports the GM to the NPC (#tp) a few seconds after ready2: move away only after that
-        // (the game log says so), or the teleport would put the GM back next to the NPC.
-        var tpUntil = ready2.AddSeconds(30);
-        while (DateTime.Now < tpUntil && !GameLog().Contains("Gmtest was teleported to")) System.Threading.Thread.Sleep(200);
-        System.Threading.Thread.Sleep(500);
-        int x1 = npcX();
-        Check(x1 != int.MinValue, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
-        // 3500 away: beyond where a gun keeps its distance (3000 at most), within NpcChaseRange (4000).
-        g.Send(0x00, Coord(me, x1 + 3500, 2000, 30)); RecvOp(g, 0x8000);
-        System.Threading.Thread.Sleep(3000);
-        int x2 = npcX();
-        Console.WriteLine("  NPC x {0} -> {1}", x1, x2);
-        Check(x2 > x1 + 200, "it chases the GM, who moved away");
-        // Far beyond NpcChaseRange, never having hit it: it stops tracking the GM.
-        g.Send(0x00, Coord(me, x2 + 6500, 2000, 30)); RecvOp(g, 0x8000);
-        var giveUpUntil = DateTime.Now.AddSeconds(5);
-        while (DateTime.Now < giveUpUntil && !GameLog().Contains("stopped tracking Gmtest")) System.Threading.Thread.Sleep(200);
-        Check(GameLog().Contains("stopped tracking Gmtest, who is too far away"), "it stops tracking the GM, who went far away");
-        // Back next to it, for the NPCs to attack again.
-        System.Threading.Thread.Sleep(1000);
-        int x3 = npcX();
-        g.Send(0x00, Coord(me, (x3 != int.MinValue ? x3 : x2) + 800, 2000, 30)); RecvOp(g, 0x8000);
+        Console.WriteLine("  first NPC attack: " + (seen.Contains(0x803B) ? "a shot" : "a melee strike"));
+        Check(seen.Contains(0x8010) && seen.Contains(0x800F), "the spawned hostile NPC attacks the GM without being attacked (lock on, result)");
 
-        // The NPCs attack again: with the gun from afar, with a melee weapon (if any) when close.
+        // The script teleports the GM next to the NPC (#tp 1090000000, the last of its #tp commands) a few seconds
+        // after ready2. From then on the test keeps track of where the GM is: a position list request (0x03) moves the
+        // GM to the point it names, so every request names the GM's own position.
+        var tpUntil = ready2.AddSeconds(30);
+        while (DateTime.Now < tpUntil && !GameLog().Contains("Teleported to NPC Spawned.")) System.Threading.Thread.Sleep(200);
+        var tp = System.Text.RegularExpressions.Regex.Matches(GameLog(), @"Gmtest was teleported to (-?\d+), (-?\d+), (-?\d+)\.");
+        Check(GameLog().Contains("Teleported to NPC Spawned.") && tp.Count > 0, "#tp puts the GM next to the spawned NPC");
+        var last = tp.Count > 0 ? tp[tp.Count - 1].Groups : null;
+        int gmX = last != null ? int.Parse(last[1].Value) : 7000, gmY = last != null ? int.Parse(last[2].Value) : 2000,
+            gmZ = last != null ? int.Parse(last[3].Value) : 30;
+        Action<int, int> moveGm = (x, y) => { gmX = x; gmY = y; g.Send(0x00, Coord(me, x, y, gmZ)); RecvOp(g, 0x8000); };
+        Action askList = () => g.Send(0x03, new B().U32(a.Acc).U32(me).U16(1).Bytes(new byte[6]).I32(gmX).I32(gmY).I32(gmZ).U32(0x45FA0000).Get());
+        Func<uint, int[]> npcAt = id =>
+        {
+            askList();
+            var list = RecvOp(g, 0x8003);
+            if (list.Item1 != 0x8003) return null;
+            var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
+            for (int i = 0; i < count; i++)
+            {
+                var rr = new R(list.Item2) { Pos = lr.Pos + 53 * i }; int x = rr.I32(), y = rr.I32(); rr.Pos += 10;
+                if (rr.U32() == id) return new[] { x, y };
+            }
+            return null;
+        };
+        var p1 = npcAt(1090000000);
+        Check(p1 != null, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
+        p1 = p1 ?? new[] { gmX - 300, gmY };
+        // 3500 away: beyond where a gun keeps its distance (3000 at most), within NpcChaseRange (4000).
+        moveGm(p1[0] + 3500, p1[1]);
+        System.Threading.Thread.Sleep(3000);
+        var p2 = npcAt(1090000000) ?? p1;
+        Console.WriteLine("  NPC x {0} -> {1}", p1[0], p2[0]);
+        Check(p2[0] > p1[0] + 200, "it chases the GM, who moved away");
+
+        NpcWeaponTests(g, moveGm, npcAt);
+
+        // Back where the spawned NPC gave up (it stopped tracking the GM, who went to the Brawler), and next to it,
+        // for it to attack again.
+        moveGm(p2[0], p2[1]);
+        System.Threading.Thread.Sleep(1000);
+        var p3 = npcAt(1090000000) ?? p2;
+        moveGm(p3[0] + 800, p3[1]);
         var templates = new Dictionary<int, int>();
-        var until3 = DateTime.Now.AddSeconds(40);
+        var until3 = DateTime.Now.AddSeconds(15);
         while (DateTime.Now < until3)
         {
             var r = g.Recv(true);
-            if (r == null) { g.Send(0x03, new B().U32(a.Acc).U32(me).U16(1).Bytes(new byte[6]).I32(7000).I32(2000).I32(30).U32(0x45FA0000).Get()); continue; }
+            if (r == null) { askList(); continue; }
             if (r.Item1 == 0x800F && new R(r.Item2).U32() >= 1090000000)
             {
                 int t = new R(r.Item2) { Pos = 42 }.I32();
@@ -1791,6 +1807,63 @@ class Test
             if (stop != null && lines[lines.Count - 1].StartsWith(stop)) break;
         }
         return lines;
+    }
+
+    // The test NPC Brawler (row 900004 at 100000, 100000, Zeon: heat hawk, ZMP-50D, ZAKU bazooka) shoots its
+    // longest-range gun, the bazooka, from afar and holds it (slot 0 of its looks); with the GM next to it, it takes
+    // up the heat hawk, strikes with it and does not shoot; with the GM away again, it takes the bazooka back; with
+    // the GM far away (beyond NpcChaseRange 4000), it stops tracking the GM.
+    static void NpcWeaponTests(Conn g, Action<int, int> moveGm, Func<uint, int[]> npcAt)
+    {
+        const uint brawler = 1000900004;
+        const int hawk = 280037, bazooka = 280041;
+        Func<int> held = () =>
+        {
+            g.Send(0x0A, new B().U32(0).U32(brawler).Byte(5).Get());
+            var looks = RecvOp(g, 0x800A).Item2;
+            return looks.Length >= 17 ? new R(looks) { Pos = 13 }.I32() : 0;
+        };
+        // Waits for a fire effect (0x803B) with that weapon, or the Brawler's attack result (0x800F) with it.
+        Func<uint, int, int, bool> waitFor = (op, weapon, seconds) =>
+        {
+            var until = DateTime.Now.AddSeconds(seconds);
+            while (DateTime.Now < until)
+            {
+                var r = g.Recv(true); if (r == null || r.Item1 != op) continue;
+                if (op == 0x803B && r.Item2.Length >= 24 && new R(r.Item2) { Pos = 20 }.I32() == weapon) return true;
+                if (op == 0x800F && r.Item2.Length >= 46 && new R(r.Item2).U32() == brawler && new R(r.Item2) { Pos = 42 }.I32() == weapon) return true;
+            }
+            return false;
+        };
+
+        // Out of its aggro range (1500) even after it wandered (600 at most), then 1000 from it.
+        moveGm(103000, 100000);
+        var p = npcAt(brawler);
+        Check(p != null, "the Brawler (test NPC 900004) is in the position list");
+        if (p == null) return;
+        moveGm(p[0] + 1000, p[1]);
+        Check(waitFor(0x803B, bazooka, 12), "the Brawler shoots the GM 1000 away with its longest-range gun, the bazooka (0x803B 280041)");
+        Check(held() == bazooka, "and holds it (slot 0 of its looks)");
+
+        p = npcAt(brawler) ?? p;
+        moveGm(p[0] + 150, p[1]);
+        Check(waitFor(0x800F, hawk, 12), "with the GM 150 away, it strikes with its heat hawk (0x800F 280037)");
+        Check(held() == hawk, "and holds the heat hawk");
+        int shots = 0;
+        var quiet = DateTime.Now.AddSeconds(4);
+        while (DateTime.Now < quiet) { var r = g.Recv(true); if (r != null && r.Item1 == 0x803B) shots++; }
+        Check(shots == 0, "and does not shoot while it holds it (" + shots + " fire effects in 4 s)");
+
+        p = npcAt(brawler) ?? p;
+        moveGm(p[0] + 1500, p[1]);
+        Check(waitFor(0x803B, bazooka, 12), "with the GM 1500 away, it shoots the bazooka again");
+        Check(held() == bazooka, "and holds the bazooka again");
+
+        p = npcAt(brawler) ?? p;
+        moveGm(p[0] + 6000, p[1]);
+        var giveUp = DateTime.Now.AddSeconds(5);
+        while (DateTime.Now < giveUp && !GameLog().Contains("NPC Brawler stopped tracking Gmtest")) System.Threading.Thread.Sleep(200);
+        Check(GameLog().Contains("NPC Brawler stopped tracking Gmtest, who is too far away"), "with the GM 6000 away, it stops tracking the GM");
     }
 
     static void QuestTests(Conn g, uint me)
