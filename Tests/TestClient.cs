@@ -1639,24 +1639,6 @@ class Test
         };
         var p1 = npcAt(1090000000);
         Check(p1 != null, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
-        // The friendly NPCs spawned together (#spawn npc friendly, then #spawn npc friendly 410000 2 at the same spot
-        // right after) are one squad, one team id in the position list; the hostile one has a squad of its own.
-        askList();
-        var teamList = RecvOp(g, 0x8003);
-        var teams = new Dictionary<uint, int>();
-        if (teamList.Item1 == 0x8003)
-        {
-            var tl = new R(teamList.Item2); tl.U16(); int tcount = tl.Size();
-            for (int i = 0; i < tcount; i++)
-            {
-                uint id = new R(teamList.Item2) { Pos = tl.Pos + 53 * i + 18 }.U32();
-                teams[id] = new R(teamList.Item2) { Pos = tl.Pos + 53 * i + 44 }.I32();
-            }
-        }
-        Console.WriteLine("  spawned NPC teams: " + string.Join(", ", teams.Where(kv => kv.Key >= 1090000000).Select(kv => kv.Key + " " + kv.Value)));
-        Check(teams.ContainsKey(1090000001) && teams.ContainsKey(1090000002) && teams.ContainsKey(1090000003) && teams.ContainsKey(1090000000) &&
-            teams[1090000001] == teams[1090000002] && teams[1090000002] == teams[1090000003] && teams[1090000000] != teams[1090000001],
-            "the friendly NPCs spawned together are one squad (one team id), the hostile one another");
         p1 = p1 ?? new[] { gmX - 300, gmY };
         // 3500 away: beyond where a gun keeps its distance (3000 at most), within NpcChaseRange (4000).
         moveGm(p1[0] + 3500, p1[1]);
@@ -1697,7 +1679,7 @@ class Test
         Check(hitsOnGm.Count > 0 && hitsOnGm.All(b => new R(b) { Pos = 8 }.I32() == 0), "with #god on, NPC hits on the GM do no damage");
 
         QuestTests(g, me);
-        SquadTests();
+        NpcSideTests(g, a.Acc, me);
         AdminConsoleTests(g, me);
         Console.WriteLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
         return failures;
@@ -1845,34 +1827,72 @@ class Test
     // longest-range gun, the bazooka, from afar and holds it (slot 0 of its looks); with the GM next to it, it takes
     // up the heat hawk, strikes with it and does not shoot; with the GM away again, it takes the bazooka back; with
     // the GM far away (beyond NpcChaseRange 4000), it stops tracking the GM.
-    // The script's "spawn Gmtest squad friendly 410000 3" (after ready3): a new squad of three GMs 1090000004-6, each
-    // with its own random name and a rank from Seaman Apprentice (1) to Lieutenant (8), the highest first.
-    static void SquadTests()
+    // After ready6 the script teleports the GM to the Marker (an EF vendor far from everything, test NPC 900005) and
+    // spawns there "npc friendly", "npc friendly 410000 2" (1090000001-3), "squad friendly 410000 3" (1090000004-6) and
+    // "attributes friendly 410000" (1090000007-25). The Victim (900006, Zeon, 300 health) stands 1200 from them.
+    static void NpcSideTests(Conn g, uint acc, uint me)
     {
+        System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("READY") + "6", "ready");
+        var until = DateTime.Now.AddSeconds(30);
+        while (DateTime.Now < until && !GameLog().Contains("spawned NPC 1090000025 with account attribute 18")) System.Threading.Thread.Sleep(200);
+        Check(GameLog().Contains("Teleported to NPC Marker."), "#tp puts the GM next to the Marker");
+        var tp = System.Text.RegularExpressions.Regex.Matches(GameLog(), @"Gmtest was teleported to (-?\d+), (-?\d+), (-?\d+)\.");
+        var last = tp.Count > 0 ? tp[tp.Count - 1].Groups : null;
+        int gmX = last != null ? int.Parse(last[1].Value) : 200300, gmY = last != null ? int.Parse(last[2].Value) : 100000,
+            gmZ = last != null ? int.Parse(last[3].Value) : 30;
+
+        // Squad: three different names, ranks Seaman Apprentice (1) to Lieutenant (8), the highest first, one squad.
         string[] ranks = { "Seaman Apprentice", "Seaman", "Petty Officer", "Chief Petty Officer", "Senior Chief Petty Officer",
             "Ensign", "Lieutenant Junior Grade", "Lieutenant" };
+        var log = GameLog();
         var found = new List<Tuple<int, string>>();
         var squads = new HashSet<string>();
-        var until = DateTime.Now.AddSeconds(20);
-        while (DateTime.Now < until)
+        for (uint id = 1090000004; id <= 1090000006; id++)
         {
-            found.Clear(); squads.Clear();
-            var log = GameLog();
-            for (uint id = 1090000004; id <= 1090000006; id++)
-            {
-                var m = System.Text.RegularExpressions.Regex.Match(log, "NPC " + id + @" is (.+?) ([A-Za-z]+)\.");
-                if (m.Success) found.Add(Tuple.Create(Array.IndexOf(ranks, m.Groups[1].Value), m.Groups[2].Value));
-                var sq = System.Text.RegularExpressions.Regex.Match(log, "spawned friendly NPC " + id + @" \(410000, .*?, squad (\d+)\.");
-                if (sq.Success) squads.Add(sq.Groups[1].Value);
-            }
-            if (found.Count == 3) break;
-            System.Threading.Thread.Sleep(500);
+            var m = System.Text.RegularExpressions.Regex.Match(log, "NPC " + id + @" is (.+?) ([A-Za-z]+)\.");
+            if (m.Success) found.Add(Tuple.Create(Array.IndexOf(ranks, m.Groups[1].Value), m.Groups[2].Value));
+            var sq = System.Text.RegularExpressions.Regex.Match(log, "spawned friendly NPC " + id + @" \(410000, .*?, squad (\d+)\.");
+            if (sq.Success) squads.Add(sq.Groups[1].Value);
         }
         Console.WriteLine("  squad: " + string.Join(", ", found.Select(f => (f.Item1 >= 0 ? ranks[f.Item1] : "?") + " " + f.Item2)));
         Check(found.Count == 3 && found.All(f => f.Item1 >= 0) && found.Select(f => f.Item2).Distinct().Count() == 3 &&
             found[0].Item1 >= found[1].Item1 && found[1].Item1 >= found[2].Item1,
             "#spawn squad: three NPCs with different names and ranks Seaman Apprentice to Lieutenant, the highest first");
         Check(squads.Count == 1, "#spawn squad: they are one squad");
+
+        // The position list: team ids at 44, account attribute at 35.
+        g.Send(0x03, new B().U32(acc).U32(me).U16(1).Bytes(new byte[6]).I32(gmX).I32(gmY).I32(gmZ).U32(0x45FA0000).Get());
+        var list = RecvOp(g, 0x8003);
+        var teams = new Dictionary<uint, int>();
+        var attributes = new Dictionary<uint, int>();
+        if (list.Item1 == 0x8003)
+        {
+            var lr = new R(list.Item2); lr.U16(); int count = lr.Size();
+            for (int i = 0; i < count; i++)
+            {
+                uint id = new R(list.Item2) { Pos = lr.Pos + 53 * i + 18 }.U32();
+                teams[id] = new R(list.Item2) { Pos = lr.Pos + 53 * i + 44 }.I32();
+                attributes[id] = list.Item2[lr.Pos + 53 * i + 35];
+            }
+        }
+        Console.WriteLine("  spawned NPC teams: " + string.Join(", ", teams.Where(kv => kv.Key >= 1090000001 && kv.Key <= 1090000006).Select(kv => kv.Key + " " + kv.Value)));
+        // The friendly NPCs spawned together (#spawn npc friendly, then #spawn npc friendly 410000 2 at the same spot right
+        // after) are one squad, one team id; #spawn squad right after starts a squad of its own.
+        Check(teams.ContainsKey(1090000001) && teams.ContainsKey(1090000002) && teams.ContainsKey(1090000003) && teams.ContainsKey(1090000004) &&
+            teams[1090000001] == teams[1090000002] && teams[1090000002] == teams[1090000003] && teams[1090000004] != teams[1090000001],
+            "the friendly NPCs spawned together are one squad (one team id), #spawn squad another");
+        var wrong = Enumerable.Range(0, 19).Where(i => !attributes.ContainsKey(1090000007u + (uint)i) || attributes[1090000007u + (uint)i] != i).ToList();
+        Console.WriteLine("  attribute line: " + string.Join(" ", Enumerable.Range(0, 19).Select(i =>
+            attributes.ContainsKey(1090000007u + (uint)i) ? attributes[1090000007u + (uint)i].ToString() : "-")));
+        Check(wrong.Count == 0, "#spawn attributes: 19 NPCs, the first with account attribute 0 in 0x8003, the next 1, up to 18");
+
+        // NPCs of opposing sides fight: the EF NPCs destroy the Zeon Victim on their own.
+        until = DateTime.Now.AddSeconds(60);
+        while (DateTime.Now < until && !System.Text.RegularExpressions.Regex.IsMatch(GameLog(), @"NPC \S.* destroyed NPC Victim \(410007\)\."))
+            System.Threading.Thread.Sleep(500);
+        var kill = System.Text.RegularExpressions.Regex.Match(GameLog(), @"(NPC \S.*) destroyed NPC Victim \(410007\)\.");
+        Console.WriteLine("  " + (kill.Success ? kill.Value : "the Victim still stands"));
+        Check(kill.Success, "NPCs of opposing sides fight each other (the EF NPCs destroy the Zeon Victim)");
     }
 
     static void NpcWeaponTests(Conn g, Action<int, int> moveGm, Func<uint, int[]> npcAt)

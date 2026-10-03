@@ -77,12 +77,15 @@ EOF
 
 # Three test NPCs next to Char's spot: a target with 300 health (which drops quest item 550029 like a quest squad's
 # leader), a shooter that fires back, and a vendor. Far from everything, a Brawler with a heat hawk, a ZMP-50D and a
-# ZAKU bazooka for the spawn test's weapon switching.
+# ZAKU bazooka for the spawn test's weapon switching. Further off, the Marker (an EF vendor the spawn test teleports to
+# before spawning friendly NPCs) and the Victim (Zeon, 300 health), which those NPCs should attack and destroy.
 cat >> "$BIN/DB/Npcs/npcs.csv" <<'EOF'
 900001,Target,2,410007,9001,1,30000,30000,30,0,0,0,6,48,280006/-1/280006/280006,300,550029
 900002,Shooter,2,410007,9001,1,30100,30000,30,0,0,0,6,48,280006/-1/280006/280006,100000
 900003,MachineVender,2,1000003,9002,1,30200,30000,30,0,0,0,5,0,-1/-1/-1/-1,0
 900004,Brawler,2,410007,9003,1,100000,100000,30,0,0,0,6,48,280037/-1/280010/280041,100000
+900005,Marker,1,1000003,9004,1,200000,100000,30,0,0,0,5,0,-1/-1/-1/-1,0
+900006,Victim,2,410007,9005,1,202500,100000,30,0,0,0,6,48,280006/-1/280006/280006,300
 EOF
 
 # ---- database ------------------------------------------------------------------------------------------------
@@ -157,7 +160,7 @@ run_spawn() {
   echo "== Spawn test"
   reset_db
   local fifo=$WORK/game.fifo ready=$WORK/ready
-  rm -f "$fifo" "$ready" "${ready}t" "${ready}2" "${ready}3" "${ready}4" "${ready}5"
+  rm -f "$fifo" "$ready" "${ready}t" "${ready}2" "${ready}3" "${ready}4" "${ready}5" "${ready}6"
   mkfifo "$fifo"
   start lobby.log Lobby-Server.exe
   start cms.log Cms-Server.exe
@@ -165,7 +168,7 @@ run_spawn() {
   PIDS+=($!)
   exec 7>"$fifo"
   sleep 6
-  (cd "$BIN" && GAMELOG=$LOGS/game-spawn.log READY=$ready timeout 300 mono TestClient.exe spawn > "$LOGS/spawn.out" 2>&1; echo "rc=$?" >> "$LOGS/spawn.out") &
+  (cd "$BIN" && GAMELOG=$LOGS/game-spawn.log READY=$ready timeout 420 mono TestClient.exe spawn > "$LOGS/spawn.out" 2>&1; echo "rc=$?" >> "$LOGS/spawn.out") &
   local client=$!
   say() { for c in "$@"; do echo "$c" >&7; sleep 0.3; done; }
   for _ in $(seq 1 30); do [ -f "$ready" ] && break; sleep 1; done
@@ -181,13 +184,16 @@ run_spawn() {
   for _ in $(seq 1 90); do [ -f "${ready}t" ] && break; sleep 1; done
   say "spawn Gmtest id 330002"
   for _ in $(seq 1 60); do [ -f "${ready}2" ] && break; sleep 1; done
-  say "gm Gmtest god on" "spawn Gmtest npc 410007" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000 2" "gm Gmtest near" \
+  say "gm Gmtest god on" "spawn Gmtest npc 410007" "gm Gmtest near" \
     "gm Gmtest near 20000" "gm Gmtest tp 1000000005" "gm Gmtest tp nobody" "gm Gmtest tp burchard" "gm Gmtest tp 1090000000"
   for _ in $(seq 1 150); do [ -f "${ready}3" ] && break; sleep 1; done
-  say "spawn Gmtest id 550410" "spawn Gmtest squad friendly 410000 3"
+  say "spawn Gmtest id 550410"
   sleep 3
   say "gm Gmtest rank points 20" "gm Gmtest rank"
-  for _ in $(seq 1 60); do [ -f "${ready}4" ] && break; sleep 1; done
+  for _ in $(seq 1 90); do [ -f "${ready}6" ] && break; sleep 1; done
+  say "gm Gmtest tp 1000900005" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000 2" \
+    "spawn Gmtest squad friendly 410000 3" "spawn Gmtest attributes friendly 410000"
+  for _ in $(seq 1 150); do [ -f "${ready}4" ] && break; sleep 1; done
   say "players" "backup"
   sleep 2
   say "ban Gmtest 3"

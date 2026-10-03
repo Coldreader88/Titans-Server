@@ -2657,11 +2657,64 @@ namespace TitansUC.GameServer.Network.Client
                 !friendly ? "" : count == 1 ? "; it will not attack you and fires back only when shot" : "; they will not attack you and fire back only when shot");
         }
 
+        /// <summary>
+        /// Account attribute type ids the client knows (ACCOUNTATTRIBUTE.DAT, 0 to 18).
+        /// </summary>
+        public const int AccountAttributeCount = 19;
+
+        /// <summary>
+        /// #spawn attributes [friendly] [vehicleID]: one NPC for each account attribute, in a line from 1000 beside the GM (x + 1000)
+        /// heading north, <see cref="SpawnGroupSpacing"/> apart: the first carries attribute 0 in its 0x8003 record, the
+        /// next 1, and so on, each named after its attribute, to see what the client makes of each. They are one squad,
+        /// hostile unless "friendly", and hold their spots (they fight from where they stand). The vehicle given, else a
+        /// random mobile suit, the same for all.
+        /// </summary>
+        private string GmSpawnAttributeLine(string[] args)
+        {
+            var c = Coord;
+            bool friendly = args.Skip(1).Any(a => IsFriendlyWord(a));
+            byte own = Character.Faction == Faction.ZEON ? (byte)2 : (byte)1;
+            byte faction = friendly ? own : (byte)(3 - own);
+            int n, vehicleID = 0;
+            foreach (var a in args.Skip(1).Where(a => !IsFriendlyWord(a)))
+            {
+                if (int.TryParse(a.Trim(), out n) && n >= 1000)
+                {
+                    vehicleID = n;
+                }
+            }
+            ItemTemplate suit = vehicleID != 0 ? ItemTemplates.Get(vehicleID) : Loadouts.RandomMobileSuit();
+            int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
+            suit = suit ?? ItemTemplates.Get(template);
+            int squad = NpcManager.Instance.NewSquad();
+            spawnGroup = null;
+            uint first = 0;
+            for (int i = 0; i < AccountAttributeCount; i++)
+            {
+                string weapons;
+                int[] armaments = suit != null && VehicleEquipment.SlotCount(suit.ID) > 0 ? Loadouts.RandomArmaments(suit, out weapons) : null;
+                int x = c.X + 1000, y = c.Y + i * SpawnGroupSpacing;
+                var ground = c.ClusterID == (ushort)Common.Characters.Zone.EARTH && template / 10000 != 43 ? Terrain.GroundZ(x, y) : null;
+                var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, x, y, ground ?? c.Z, c.Direction, armaments,
+                    "Attribute " + i, squad);
+                npc.AccountAttribute = (byte)i;
+                npc.Stationary = true;
+                first = i == 0 ? npc.ID : first;
+                Logger.ShowInfo(string.Format("{0} spawned NPC {1} with account attribute {2} at {3}, {4}, {5}, squad {6}.",
+                    Character.Name, npc.ID, i, npc.X, npc.Y, npc.Z, squad));
+            }
+            var vt = VehicleTemplates.Get(template);
+            return string.Format("Spawned {0} {1} {2} ({3}) in a line 1000 away heading north, {4} apart: \"Attribute 0\" ({5}) " +
+                "carries account attribute 0, the next 1, up to {6}. They hold their spots{7}.", AccountAttributeCount,
+                friendly ? "friendly" : "hostile", vt != null ? vt.Name : template.ToString(), faction == 1 ? "EF" : "Zeon",
+                SpawnGroupSpacing, first, AccountAttributeCount - 1, friendly ? " and fire back only when shot" : "");
+        }
+
         public string GmSpawn(string[] args)
         {
             if (!InGame || Coord == null || args.Length == 0)
             {
-                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count] | #spawn squad [friendly] [vehicleID] [count]";
+                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count] | #spawn squad [friendly] [vehicleID] [count] | #spawn attributes [friendly] [vehicleID]";
             }
             var c = Coord;
             string type = args[0].Trim().ToLowerInvariant();
@@ -2674,6 +2727,10 @@ namespace TitansUC.GameServer.Network.Client
             if (type == "squad")
             {
                 return GmSpawnNpcs(args, true);
+            }
+            if (type == "attributes" || type == "attribute" || type == "attr")
+            {
+                return GmSpawnAttributeLine(args);
             }
 
             ItemTemplate item = null;

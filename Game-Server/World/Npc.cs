@@ -171,6 +171,17 @@ namespace TitansUC.GameServer.World
         /// Spawned by a GM: not in npcs.csv, and gone for good once destroyed.
         /// </summary>
         public bool Temporary { get; set; }
+
+        /// <summary>
+        /// The account attribute (ACCOUNTATTRIBUTE type id) its 0x8003 record carries, <see cref="NpcTag"/> unless a GM's
+        /// #spawn attributes gave it another.
+        /// </summary>
+        public byte AccountAttribute { get; set; } = NpcTag;
+
+        /// <summary>
+        /// Holds its spot (#spawn attributes): fights from where it stands, never chases or patrols.
+        /// </summary>
+        public bool Stationary { get; set; }
         public long RespawnAt { get; set; }
         public ushort UpdateCounter { get; set; }
         public int AttackNumber { get; set; }
@@ -209,7 +220,7 @@ namespace TitansUC.GameServer.World
                 VehicleUniqueID = 0,
                 VehicleTemplateID = TemplateID,
                 Rank = Rank,
-                AccountLevel = NpcTag,
+                AccountLevel = AccountAttribute,
                 Action = Action,
                 State = 0,
                 Faction = Faction,

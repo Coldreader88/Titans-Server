@@ -393,7 +393,11 @@ namespace TitansUC.GameServer.World
             }
         }
 
-        private void Destroy(Npc npc, UCGameSession attacker)
+        /// <summary>
+        /// Takes a destroyed NPC away and leaves its loot and (sometimes) its wreck. The wreck belongs to the player who
+        /// destroyed it; destroyed by another NPC (<paramref name="killer"/>), it belongs to nobody.
+        /// </summary>
+        private void Destroy(Npc npc, UCGameSession attacker, Npc killer = null)
         {
             GroundItem wreck;
             lock (npc)
@@ -414,9 +418,11 @@ namespace TitansUC.GameServer.World
                     Health = 0,
                     MaxHealth = npc.MaxHealth,
                 };
-                wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6], attacker.CharacterID) { IsWreck = true };
+                wreck = new GroundItem(node, npc.Zone, npc.X, npc.Y, npc.Z, new byte[6],
+                    attacker != null ? attacker.CharacterID : 0xFFFFFFFF) { IsWreck = true };
             }
-            Logger.ShowInfo(string.Format("{0} destroyed NPC {1} ({2}).", attacker.Character.Name, npc.Name, npc.TemplateID));
+            Logger.ShowInfo(string.Format("{0} destroyed NPC {1} ({2}).",
+                attacker != null ? attacker.Character.Name : "NPC " + (killer != null ? killer.Name : "?"), npc.Name, npc.TemplateID));
             // Warships drop their loot on the ground first, then the wreck, as the official Magellans did. Mobile
             // suits, armours and fighters keep it in the wreck's cargo, for whoever opens it (0x26/0x27).
             var drops = Loot(npc);
@@ -572,7 +578,7 @@ namespace TitansUC.GameServer.World
                     Monitor.Exit(npc);
                     try
                     {
-                        SquadAttack(npc, enemy.CharacterID);
+                        SquadAttack(npc, enemy.ID);
                     }
                     finally
                     {
@@ -584,7 +590,7 @@ namespace TitansUC.GameServer.World
             {
                 Fight(npc, now);
             }
-            if (npc.IsMobile && npc.Alive)
+            if (npc.IsMobile && npc.Alive && !npc.Stationary)
             {
                 Move(npc, seconds);
             }
@@ -595,9 +601,43 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The nearest pilot of the other faction within the aggro range, or null.
+        /// Who an NPC fights: a player in a vehicle or another NPC (an armed one, or a target that cannot shoot back).
         /// </summary>
-        private static UCGameSession FindEnemy(Npc npc)
+        private class Foe
+        {
+            public uint ID;
+            public UCGameSession Player;
+            public Npc Npc;
+            public CoordData Coord;
+
+            public string Name { get { return Player != null ? Player.Character.Name : "NPC " + Npc.Name; } }
+        }
+
+        private static Foe FoeOf(UCGameSession player)
+        {
+            return new Foe { ID = player.CharacterID, Player = player, Coord = player.Coord };
+        }
+
+        private static Foe FoeOf(Npc other)
+        {
+            return new Foe { ID = other.ID, Npc = other, Coord = other.ToCoord() };
+        }
+
+        /// <summary>
+        /// Whether <paramref name="other"/> is an NPC of the other side that <paramref name="npc"/> fights: alive, not a
+        /// vendor, in its zone.
+        /// </summary>
+        private static bool IsEnemyNpc(Npc npc, Npc other)
+        {
+            return other != npc && other.Alive && !other.IsVendor && other.Zone == npc.Zone &&
+                other.Faction != npc.Faction && other.Faction != 0 && npc.Faction != 0;
+        }
+
+        /// <summary>
+        /// The nearest enemy within the aggro range: a pilot of the other faction, or an NPC of the other side
+        /// (NPCs of opposing sides fight each other); null if none.
+        /// </summary>
+        private Foe FindEnemy(Npc npc)
         {
             int range = TitansUC.GameServer.Configuration.Instance.NpcAggroRange;
             if (range <= 0)
@@ -605,6 +645,7 @@ namespace TitansUC.GameServer.World
                 return null;
             }
             UCGameSession best = null;
+            Npc bestNpc = null;
             double bestDistance = double.MaxValue;
             foreach (var player in GameWorld.Instance.Players)
             {
@@ -621,7 +662,21 @@ namespace TitansUC.GameServer.World
                     bestDistance = d;
                 }
             }
-            return best;
+            foreach (var other in npcs.Values)
+            {
+                if (!IsEnemyNpc(npc, other) || Math.Abs((long)other.X - npc.X) > range || Math.Abs((long)other.Y - npc.Y) > range)
+                {
+                    continue;
+                }
+                double d = WorldDistance(npc, other.X, other.Y, other.Z);
+                if (d <= range && d < bestDistance)
+                {
+                    best = null;
+                    bestNpc = other;
+                    bestDistance = d;
+                }
+            }
+            return bestNpc != null ? FoeOf(bestNpc) : best != null ? FoeOf(best) : null;
         }
 
         private static double WorldDistance(Npc npc, int x, int y, int z)
@@ -864,18 +919,33 @@ namespace TitansUC.GameServer.World
         }
 
         /// <summary>
-        /// The target if it can still be fought: in the game, in a vehicle, in the same zone and near.
+        /// The target if it can still be fought: a player in the game, in a vehicle, or an enemy NPC still alive; in
+        /// the same zone and near.
         /// </summary>
-        private static UCGameSession Valid(Npc npc, uint targetID)
+        private Foe Valid(Npc npc, uint targetID)
         {
-            var target = targetID != 0 ? GameWorld.Instance.Get(targetID) : null;
+            if (targetID == 0)
+            {
+                return null;
+            }
+            if (Npc.IsNpcID(targetID))
+            {
+                var other = Get(targetID);
+                if (other == null || !IsEnemyNpc(npc, other) ||
+                    Math.Abs((long)other.X - npc.X) > ChaseDistance || Math.Abs((long)other.Y - npc.Y) > ChaseDistance)
+                {
+                    return null;
+                }
+                return FoeOf(other);
+            }
+            var target = GameWorld.Instance.Get(targetID);
             var coord = target != null && target.InGame ? target.Coord : null;
             if (coord == null || target.Inventory.Piloting == null || coord.ClusterID != npc.Zone ||
                 Math.Abs((long)coord.X - npc.X) > ChaseDistance || Math.Abs((long)coord.Y - npc.Y) > ChaseDistance)
             {
                 return null;
             }
-            return target;
+            return FoeOf(target);
         }
 
         /// <summary>
@@ -916,7 +986,7 @@ namespace TitansUC.GameServer.World
                 }
                 if (t != null)
                 {
-                    Logger.ShowInfo(string.Format("NPC {0} stopped tracking {1}, who is too far away.", npc.Name, t.Character.Name));
+                    Logger.ShowInfo(string.Format("NPC {0} stopped tracking {1}, who is too far away.", npc.Name, t.Name));
                 }
                 return;
             }
@@ -962,31 +1032,40 @@ namespace TitansUC.GameServer.World
             GameWorld.Instance.SendNear(npc.Zone, c.X, c.Y, UCGameSession.BroadcastDistance,
                 () => new SM_RAW((uint)GSOpcode.SM_BROADCAST, effect));
             LockOn(npc, t);
-            npc.ShotTarget = t.CharacterID;
+            npc.ShotTarget = t.ID;
             npc.ShotDue = now + ShotDelayMs;
             npc.NextShot = now + Next(MinShotIntervalMs, MaxShotIntervalMs);
         }
 
-        private static void LockOn(Npc npc, UCGameSession t)
+        /// <summary>
+        /// Tells a player it is locked on the first time (an NPC target has no client to tell).
+        /// </summary>
+        private static void LockOn(Npc npc, Foe t)
         {
-            if (npc.LockedOn.Add(t.CharacterID))
+            if (t.Player != null && npc.LockedOn.Add(t.ID))
             {
                 var lockOn = new byte[9];
                 Bytes.PutU32(lockOn, 4, npc.ID);
                 lockOn[8] = 1;
-                t.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_LOCK_ON, lockOn));
+                t.Player.Network.SendPacket(new SM_RAW((uint)GSOpcode.SM_LOCK_ON, lockOn));
             }
         }
 
-        private void Hit(Npc npc, UCGameSession target)
+        private void Hit(Npc npc, Foe target)
         {
             Hit(npc, target, npc.Weapon);
         }
 
-        private void Hit(Npc npc, UCGameSession target, ItemNode weapon)
+        private void Hit(Npc npc, Foe foe, ItemNode weapon)
         {
             // NPC weapons never run dry or wear out.
             weapon.Loaded = 1 << 20;
+            if (foe.Npc != null)
+            {
+                HitNpc(npc, foe.Npc, weapon);
+                return;
+            }
+            var target = foe.Player;
             var r = target.TakeHit(weapon, Distance(npc, target.Coord));
             if (r == null)
             {
@@ -1008,6 +1087,30 @@ namespace TitansUC.GameServer.World
                     Disengage(npc);
                 }
             }
+        }
+
+        /// <summary>
+        /// An NPC's attack on an NPC of the other side: the result to the players near, the target's squad turns on the
+        /// attacker, and a destroyed target leaves a wreck that belongs to nobody.
+        /// </summary>
+        private void HitNpc(Npc npc, Npc other, ItemNode weapon)
+        {
+            var r = Attack(other, weapon, Distance(npc, other.ToCoord()));
+            if (r == null)
+            {
+                return;
+            }
+            r.DurabilityUsed = 0;
+            r.RoundsUsed = 0;
+            GameWorld.Instance.SendNear(other.Zone, other.X, other.Y, UCGameSession.BroadcastDistance,
+                () => new SM_ATTACK_RESULT_NEAR(npc.ID, other.ID, r));
+            if (r.Destroyed)
+            {
+                Destroy(other, null, npc);
+                Disengage(npc);
+                return;
+            }
+            SquadAttack(other, npc.ID, true);
         }
 
         private int Next(int min, int max)
