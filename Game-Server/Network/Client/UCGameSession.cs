@@ -69,6 +69,23 @@ namespace TitansUC.GameServer.Network.Client
         public bool UnlimitedAmmo { get; set; }
 
         /// <summary>
+        /// The squad of the NPCs this GM spawned last (#spawn npc), its spot and size, and when: NPCs of the same
+        /// faction spawned within <see cref="SpawnGroupSeconds"/> near that spot join it while one of it lives (our rule).
+        /// </summary>
+        private class SpawnGroup
+        {
+            public int Squad, X, Y, Z, Count;
+            public byte Faction;
+            public ushort Zone;
+            public DateTime At;
+        }
+        private SpawnGroup spawnGroup;
+        public const int SpawnGroupSeconds = 60;
+        public const int SpawnGroupDistance = 2000;
+        public const int MaxSpawnGroup = 10;
+        public const int SpawnGroupSpacing = 300;
+
+        /// <summary>
         /// Set once the player took off for the other side's server (0x40).
         /// </summary>
         private bool departed;
@@ -2490,7 +2507,8 @@ namespace TitansUC.GameServer.Network.Client
         /// on the ground next to the GM, or a hostile NPC. Returns the message for the GM.
         /// <code>
         /// id templateID [amount]     name item name        ideng vehicleID engine (id or name)
-        /// npc [friendly] [vehicleID] (default: a random mobile suit; either way a random loadout; "friendly" = the GM's faction)
+        /// npc [friendly] [vehicleID] [count] (default: a random mobile suit; either way a random loadout; "friendly" = the
+        ///     GM's faction; count = up to <see cref="MaxSpawnGroup"/> NPCs in one squad)
         /// </code>
         /// Items and vehicles belong to the GM, so only the GM can get in a spawned vehicle.
         /// </summary>
@@ -2500,11 +2518,96 @@ namespace TitansUC.GameServer.Network.Client
             return w == "friendly" || w == "friend" || w == "ally";
         }
 
+        /// <summary>
+        /// #spawn npc [friendly] [vehicleID] [count]: hostile NPCs by default, "friendly" ones of the GM's own faction;
+        /// a vehicle id (else a random mobile suit each) and a count (1 to <see cref="MaxSpawnGroup"/>). They stand
+        /// 1000 away, the first on that spot and the others around it, and form one squad: they fight together and the
+        /// client shows them as one team. NPCs of the same faction spawned within <see cref="SpawnGroupSeconds"/> near
+        /// the last ones join their squad.
+        /// </summary>
+        private string GmSpawnNpcs(string[] args)
+        {
+            var c = Coord;
+            bool friendly = args.Skip(1).Any(a => IsFriendlyWord(a));
+            byte own = Character.Faction == Faction.ZEON ? (byte)2 : (byte)1;
+            byte faction = friendly ? own : (byte)(3 - own);
+            int vehicleID = 0, count = 1, n;
+            foreach (var a in args.Skip(1).Where(a => !IsFriendlyWord(a)))
+            {
+                if (int.TryParse(a.Trim(), out n))
+                {
+                    if (n > 0 && n < 1000)
+                    {
+                        count = Math.Min(n, MaxSpawnGroup);
+                    }
+                    else if (vehicleID == 0)
+                    {
+                        vehicleID = n;
+                    }
+                }
+            }
+
+            var now = DateTime.UtcNow;
+            int spotX = c.X + 1000, spotY = c.Y;
+            var group = spawnGroup;
+            bool joined = group != null && group.Faction == faction && group.Zone == c.ClusterID &&
+                (now - group.At).TotalSeconds <= SpawnGroupSeconds &&
+                Math.Sqrt((double)(group.X - spotX) * (group.X - spotX) + (double)(group.Y - spotY) * (group.Y - spotY)) <= SpawnGroupDistance &&
+                NpcManager.Instance.All.Any(m => m.Squad == group.Squad && m.Alive);
+            if (!joined)
+            {
+                group = new SpawnGroup
+                {
+                    Squad = NpcManager.Instance.NewSquad(), Faction = faction, Zone = c.ClusterID, X = spotX, Y = spotY, Z = c.Z,
+                };
+                spawnGroup = group;
+            }
+            group.At = now;
+
+            var names = new List<string>();
+            string weapons = "its default guns";
+            for (int i = 0; i < count; i++)
+            {
+                ItemTemplate suit = vehicleID != 0 ? ItemTemplates.Get(vehicleID) : Loadouts.RandomMobileSuit();
+                int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
+                suit = suit ?? ItemTemplates.Get(template);
+                weapons = "its default guns";
+                int[] armaments = suit != null && VehicleEquipment.SlotCount(suit.ID) > 0 ? Loadouts.RandomArmaments(suit, out weapons) : null;
+                // The first on the spot, the others on rings around it, SpawnGroupSpacing apart; on Earth on the ground.
+                int k = group.Count++, x = group.X, y = group.Y;
+                if (k > 0)
+                {
+                    int ring = 1 + (k - 1) / 6;
+                    double angle = ((k - 1) % 6 * 60 + (ring % 2 == 0 ? 30 : 0)) * Math.PI / 180;
+                    x += (int)Math.Round(Math.Cos(angle) * SpawnGroupSpacing * ring);
+                    y += (int)Math.Round(Math.Sin(angle) * SpawnGroupSpacing * ring);
+                }
+                var ground = c.ClusterID == (ushort)Common.Characters.Zone.EARTH && template / 10000 != 43 ? Terrain.GroundZ(x, y) : null;
+                var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, x, y, ground ?? group.Z, c.Direction, armaments,
+                    friendly ? "Friendly" : "Spawned", group.Squad);
+                Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}, squad {8}.", Character.Name,
+                    friendly ? "friendly" : "hostile", npc.ID, template, weapons, npc.X, npc.Y, npc.Z, group.Squad));
+                var vt = VehicleTemplates.Get(template);
+                names.Add(vt != null ? vt.Name : template.ToString());
+            }
+
+            string side = faction == 1 ? "EF" : "Zeon";
+            string kind = friendly ? "friendly" : "hostile";
+            string what = count == 1
+                ? string.Format("a {0} {1} ({2}) 1000 away with {3}", kind, names[0], side, weapons)
+                : string.Format("{0} {1} NPCs ({2}) 1000 away: {3}, each with random weapons", count, kind, side, string.Join(", ", names));
+            string squad = joined
+                ? string.Format("; {0} the squad of the NPCs you spawned there before ({1} NPCs now)", count == 1 ? "it joins" : "they join", group.Count)
+                : count == 1 ? "" : "; they fight as one squad";
+            return string.Format("Spawned {0}{1}{2}.", what, squad,
+                !friendly ? "" : count == 1 ? "; it will not attack you and fires back only when shot" : "; they will not attack you and fire back only when shot");
+        }
+
         public string GmSpawn(string[] args)
         {
             if (!InGame || Coord == null || args.Length == 0)
             {
-                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID]";
+                return "Usage: #spawn id itemID | #spawn name item name | #spawn ideng vehicleID engine | #spawn npc [friendly] [vehicleID] [count]";
             }
             var c = Coord;
             string type = args[0].Trim().ToLowerInvariant();
@@ -2512,24 +2615,7 @@ namespace TitansUC.GameServer.Network.Client
 
             if (type == "npc")
             {
-                // #spawn npc [friendly] [vehicleID]: hostile by default; "friendly" makes it of the GM's own faction.
-                bool friendly = args.Skip(1).Any(a => IsFriendlyWord(a));
-                byte own = Character.Faction == Faction.ZEON ? (byte)2 : (byte)1;
-                byte faction = friendly ? own : (byte)(3 - own);
-                string vehicleArg = args.Skip(1).FirstOrDefault(a => !IsFriendlyWord(a));
-                ItemTemplate suit = vehicleArg != null && int.TryParse(vehicleArg, out n) ? ItemTemplates.Get(n) : Loadouts.RandomMobileSuit();
-                int template = suit != null ? suit.ID : faction == 1 ? 410000 : 410007;
-                suit = suit ?? ItemTemplates.Get(template);
-                string weapons = "its default guns";
-                int[] armaments = suit != null && VehicleEquipment.SlotCount(suit.ID) > 0 ? Loadouts.RandomArmaments(suit, out weapons) : null;
-                var npc = NpcManager.Instance.Spawn(template, faction, c.ClusterID, c.X + 1000, c.Y, c.Z, c.Direction, armaments,
-                    friendly ? "Friendly" : "Spawned");
-                Logger.ShowInfo(string.Format("{0} spawned {1} NPC {2} ({3}, {4}) at {5}, {6}, {7}.", Character.Name, friendly ? "friendly" : "hostile",
-                    npc.ID, template, weapons, npc.X, npc.Y, npc.Z));
-                var vt = VehicleTemplates.Get(template);
-                return string.Format("Spawned a {0} {1} ({2}) 1000 away with {3}{4}.", friendly ? "friendly" : "hostile",
-                    vt != null ? vt.Name : template.ToString(), faction == 1 ? "EF" : "Zeon", weapons,
-                    friendly ? "; it will not attack you and fires back only when shot" : "");
+                return GmSpawnNpcs(args);
             }
 
             ItemTemplate item = null;

@@ -1635,6 +1635,24 @@ class Test
         };
         var p1 = npcAt(1090000000);
         Check(p1 != null, "the spawned hostile ZAKU II (the first NPC spawned, 1090000000) is in the position list");
+        // The friendly NPCs spawned together (#spawn npc friendly, then #spawn npc friendly 410000 2 at the same spot
+        // right after) are one squad, one team id in the position list; the hostile one has a squad of its own.
+        askList();
+        var teamList = RecvOp(g, 0x8003);
+        var teams = new Dictionary<uint, int>();
+        if (teamList.Item1 == 0x8003)
+        {
+            var tl = new R(teamList.Item2); tl.U16(); int tcount = tl.Size();
+            for (int i = 0; i < tcount; i++)
+            {
+                uint id = new R(teamList.Item2) { Pos = tl.Pos + 53 * i + 18 }.U32();
+                teams[id] = new R(teamList.Item2) { Pos = tl.Pos + 53 * i + 44 }.I32();
+            }
+        }
+        Console.WriteLine("  spawned NPC teams: " + string.Join(", ", teams.Where(kv => kv.Key >= 1090000000).Select(kv => kv.Key + " " + kv.Value)));
+        Check(teams.ContainsKey(1090000001) && teams.ContainsKey(1090000002) && teams.ContainsKey(1090000003) && teams.ContainsKey(1090000000) &&
+            teams[1090000001] == teams[1090000002] && teams[1090000002] == teams[1090000003] && teams[1090000000] != teams[1090000001],
+            "the friendly NPCs spawned together are one squad (one team id), the hostile one another");
         p1 = p1 ?? new[] { gmX - 300, gmY };
         // 3500 away: beyond where a gun keeps its distance (3000 at most), within NpcChaseRange (4000).
         moveGm(p1[0] + 3500, p1[1]);
@@ -1843,11 +1861,15 @@ class Test
         if (p == null) return;
         moveGm(p[0] + 1000, p[1]);
         Check(waitFor(0x803B, bazooka, 12), "the Brawler shoots the GM 1000 away with its longest-range gun, the bazooka (0x803B 280041)");
+        var shot = DateTime.Now;
         Check(held() == bazooka, "and holds it (slot 0 of its looks)");
 
+        // Next to it, it takes up the heat hawk, but strikes only once the bazooka's reload (6-9 s) is over.
         p = npcAt(brawler) ?? p;
         moveGm(p[0] + 150, p[1]);
-        Check(waitFor(0x800F, hawk, 12), "with the GM 150 away, it strikes with its heat hawk (0x800F 280037)");
+        Check(waitFor(0x800F, hawk, 15), "with the GM 150 away, it strikes with its heat hawk (0x800F 280037)");
+        double wait = (DateTime.Now - shot).TotalSeconds;
+        Check(wait >= 5.5, string.Format("only after the bazooka's reload ({0:0.0} s after the shot)", wait));
         Check(held() == hawk, "and holds the heat hawk");
         int shots = 0;
         var quiet = DateTime.Now.AddSeconds(4);

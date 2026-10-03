@@ -74,7 +74,7 @@ namespace TitansUC.GameServer.World
         /// An NPC with a gun and a melee weapon takes up the melee weapon when its target is within this many
         /// melee reaches, and its gun again once the target is beyond <see cref="MeleeLeaveReaches"/> (our rule;
         /// the gap keeps it from switching back and forth). Changing weapons takes <see cref="WeaponChangeMs"/>
-        /// (the templates' change time is 500-1000 ms).
+        /// (the templates' change time is 500-1000 ms), and it still waits out the reload of its last shot or strike.
         /// </summary>
         public const int MeleeEnterReaches = 2;
         public const int MeleeLeaveReaches = 3;
@@ -163,17 +163,18 @@ namespace TitansUC.GameServer.World
 
         /// <summary>
         /// A GM's #spawn npc: an NPC of <paramref name="faction"/> at a point (hostile to the other faction). It fights like the others
-        /// but does not come back once destroyed.
+        /// but does not come back once destroyed. <paramref name="squad"/> (from <see cref="NewSquad"/>) puts it in the squad of
+        /// the NPCs spawned with it; 0 gives it a squad of its own.
         /// </summary>
         public Npc Spawn(int templateID, byte faction, ushort zone, int x, int y, int z, short direction, int[] armaments = null,
-            string name = "Spawned")
+            string name = "Spawned", int squad = 0)
         {
             lock (addLock)
             {
                 armaments = armaments ?? (faction == 1 ? EfArmaments : ZeonArmaments);
                 var npc = Parse(new[]
                 {
-                    (nextSpawnedID++).ToString(), name, faction.ToString(), templateID.ToString(), (nextSpawnedSquad++).ToString(),
+                    (nextSpawnedID++).ToString(), name, faction.ToString(), templateID.ToString(), (squad > 0 ? squad : nextSpawnedSquad++).ToString(),
                     zone.ToString(), x.ToString(), y.ToString(), z.ToString(), "0", "0", direction.ToString(), "6", "48",
                     string.Join("/", armaments), "0",
                 });
@@ -182,6 +183,18 @@ namespace TitansUC.GameServer.World
                 copy[npc.ID] = npc;
                 npcs = copy;
                 return npc;
+            }
+        }
+
+        /// <summary>
+        /// A new squad id for NPCs a GM spawns together (#spawn npc): they fight as one and the client shows them as
+        /// one team.
+        /// </summary>
+        public int NewSquad()
+        {
+            lock (addLock)
+            {
+                return nextSpawnedSquad++;
             }
         }
 
@@ -748,8 +761,8 @@ namespace TitansUC.GameServer.World
             }
             if (SetMeleeMode(npc, melee))
             {
-                // Taking up the other weapon replaces the wait for the next shot or strike.
-                npc.NextShot = now + WeaponChangeMs;
+                // Taking up the other weapon takes a moment, and does not cut short the reload of the last attack.
+                npc.NextShot = Math.Max(npc.NextShot, now + WeaponChangeMs);
             }
         }
 

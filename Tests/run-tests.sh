@@ -181,7 +181,7 @@ run_spawn() {
   for _ in $(seq 1 90); do [ -f "${ready}t" ] && break; sleep 1; done
   say "spawn Gmtest id 330002"
   for _ in $(seq 1 60); do [ -f "${ready}2" ] && break; sleep 1; done
-  say "gm Gmtest god on" "spawn Gmtest npc 410007" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000" "gm Gmtest near" \
+  say "gm Gmtest god on" "spawn Gmtest npc 410007" "spawn Gmtest npc friendly" "spawn Gmtest npc friendly 410000 2" "gm Gmtest near" \
     "gm Gmtest near 20000" "gm Gmtest tp 1000000005" "gm Gmtest tp nobody" "gm Gmtest tp burchard" "gm Gmtest tp 1090000000"
   for _ in $(seq 1 150); do [ -f "${ready}3" ] && break; sleep 1; done
   say "spawn Gmtest id 550410"
